@@ -1,0 +1,16 @@
+[package]
+name = "htmf-server"
+version = "0.1.0"
+authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
+
+[dependencies]
+bit-set = "0.4.0"
+futures = "0.1.14"
+rand = "0.3.16"
+serde = "1.0.11"
+serde_derive = "1.0.11"
+serde_json = "1.0.2"
+tokio-core = "0.1.9"
+websocket = "0.20.2"
+
+htmf = { path = "../engine" }
