@@ -1,0 +1,9 @@
+[package]
+name = "htmf-bots"
+version = "0.1.0"
+authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
+
+[dependencies]
+rand = "0.4.2"
+
+htmf = { path = "../engine" }

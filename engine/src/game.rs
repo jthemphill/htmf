@@ -66,6 +66,14 @@ impl GameState {
 
     // Actions
 
+    pub fn apply_action(&mut self, action: &Action) -> Result<(), IllegalMoveError> {
+        match action {
+            &Action::Move(src, dst) => self.move_penguin(src, dst),
+            &Action::Place(cell_idx) => self.place_penguin(cell_idx),
+            _ => unimplemented!(),
+        }
+    }
+
     pub fn new_two_player(seed: &[usize]) -> GameState {
         GameState {
             nplayers: 2,

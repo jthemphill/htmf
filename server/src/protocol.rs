@@ -16,15 +16,20 @@ use htmf::game::{GameState, Action};
 /// 3. We send GameStateJSON back to the client.
 
 pub fn action_from_str(action_str: &str) -> Option<Action> {
-    println!("Action: {}", action_str);
     let action = match serde_json::from_str(action_str) {
         Ok(action) => action,
-        Err(_) => {
-            println!("{} is not a valid action", action_str);
+        Err(e) => {
+            println!("Error {}: {} is not a valid action", e, action_str);
             return None;
         }
     };
-    get_action(action)
+    if let Some(action) = get_action(action) {
+        println!("Action: {}", action_str);
+        Some(action)
+    } else {
+        println!("Invalid action: {}", action_str);
+        None
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -84,8 +89,14 @@ fn get_action(action_json: ActionJSON) -> Option<Action> {
             Some(Action::Place(place_data.hex as usize))
         },
         ActionType::Setup => {
-            let game_state_data: ActionSetupJSON =
-                serde_json::from_value(action_json.data).unwrap_or(None)?;
+            println!("Setting up?");
+            let game_state_data: ActionSetupJSON = match serde_json::from_value(action_json.data) {
+                Ok(data) => Some(data),
+                Err(e) => {
+                    println!("Error setting state: {}", e);
+                    None
+                },
+            }?;
             let setup_action = Action::Setup(game_state_data.state.to_game());
             Some(setup_action)
         },
@@ -174,7 +185,7 @@ impl BoardJSON {
         let mut claimed = vec![];
         let mut possible_moves = vec![];
 
-        for (i, cell) in b.cells.iter().enumerate() {
+        for cell in b.cells.iter() {
             fish.push(cell.fish as usize);
             claimed.push(
                 match cell.claimed {
@@ -278,7 +289,7 @@ mod tests {
         let mut game = GameState::new_two_player(&[0]);
         let eligible_place = game.board.cells.iter()
             .enumerate()
-            .filter(|&(i, cell)| cell.fish == 1)
+            .filter(|&(_, cell)| cell.fish == 1)
             .next()
             .unwrap().0;
         game.place_penguin(eligible_place).unwrap();

@@ -1,5 +1,3 @@
-#![allow(unused_imports, unused_variables)]
-
 extern crate futures;
 extern crate rand;
 extern crate tokio_core;
@@ -10,10 +8,12 @@ extern crate htmf;
 #[macro_use]
 extern crate serde_derive;
 
+mod protocol;
+mod session;
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::net::SocketAddr;
 use std::rc::Rc;
 
 use rand::Rng;
@@ -25,10 +25,9 @@ use websocket::server::InvalidConnection;
 use tokio_core::reactor::{Handle, Core};
 use futures::{Future, Sink, Stream};
 
-use htmf::board::{Board, Player};
 use htmf::game::{Action, GameState};
 
-mod protocol;
+use session::Session;
 
 fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
 	where F: Future<Item = I, Error = E> + 'static,
@@ -45,31 +44,29 @@ fn main() {
 
 	let server = Server::bind("127.0.0.1:2794", &handle).unwrap();
 
-    let game_states = Rc::new(RefCell::new(HashMap::new()));
+    let sessions = Rc::new(RefCell::new(HashMap::new()));
 	let f = server.incoming()
         // we don't wanna save the stream if it drops
         .map_err(|InvalidConnection { error, .. }| error)
         .for_each(move |(upgrade, addr)| {
-            let game_states_init = Rc::clone(&game_states);
-            let game_states_update = Rc::clone(&game_states);
+            let sessions_init = Rc::clone(&sessions);
+            let sessions_update = Rc::clone(&sessions);
             let f = upgrade.accept()
                 .and_then(move |(s, _)| {
                     let mut rng = rand::thread_rng();
                     let game_state = GameState::new_two_player(&[rng.gen(); 1]);
 
-                    let mut states = game_states_init.borrow_mut();
-                    states.insert(
+                    let mut sessions = sessions_init.borrow_mut();
+                    sessions.insert(
                         addr,
-                        game_state,
+                        Session::new(game_state),
                     );
 
-                    let g = states.get(&addr).unwrap();
+                    let session = sessions.get(&addr).unwrap();
                     println!("Started a connection");
                     s.send(
                         Message::text(
-                            protocol::init_with_board(
-                                &g.board
-                            )
+                            protocol::init_with_board(&session.game.board)
                         ).into()
                     )
                 })
@@ -79,9 +76,9 @@ fn main() {
                     .take_while(|m| Ok(!m.is_close()))
                     .filter_map(move |m| {
                         // println!("Message from Client: {:?}", m);
-                        let mut game = {
-                            let states = game_states_update.borrow();
-                            states
+                        let mut session = {
+                            let sessions = sessions_update.borrow();
+                            sessions
                                 .get(&addr)
                                 .unwrap()
                                 .clone()
@@ -93,11 +90,11 @@ fn main() {
                             OwnedMessage::Pong(_) => None,
                             OwnedMessage::Text(request_str) => {
                                 let response_str = get_response(
-                                    &mut game,
-                                    &request_str
+                                    &mut session,
+                                    &request_str,
                                 );
-                                game_states_update.borrow_mut()
-                                    .insert(addr, game);
+                                sessions_update.borrow_mut()
+                                    .insert(addr, session.clone());
                                 Some(OwnedMessage::Text(response_str))
                             },
                             _ => None,
@@ -116,47 +113,34 @@ fn main() {
 	core.run(f).unwrap();
 }
 
-fn get_response(game: &mut GameState, action_str: &str) -> String {
+fn get_response(session: &mut Session, action_str: &str) -> String {
     let action = match protocol::action_from_str(action_str) {
         Some(a) => a,
         None => {
-            let mut game_json = protocol::GameStateJSON::from_game(&game);
+            let mut game_json = protocol::GameStateJSON::from_game(&session.game);
             game_json.last_move_valid = false;
             return game_json.to_string();
         },
     };
     match action {
-        Action::Move(src, dst) => {
-            let res = game.move_penguin(src, dst);
-            let mut game_json = protocol::GameStateJSON::from_game(&game);
-            if res.is_err() {
-                game_json.last_move_valid = false;
-            }
-            game_json.to_string()
-        },
-        Action::Place(cell_idx) => {
-            let res = game.place_penguin(cell_idx);
-            let mut game_json = protocol::GameStateJSON::from_game(&game);
-            if res.is_err() {
-                game_json.last_move_valid = false;
-            }
-            game_json.to_string()
-        },
         Action::Selection(cell_idx) => {
-            let board = &game.board;
-            let cell = board.cells[cell_idx];
+            let board = &session.game.board;
             let possible_moves = board.moves(cell_idx);
             let mut board_json = protocol::BoardJSON::from_board(board);
             for i in possible_moves {
                 board_json.possible_moves[i] = true;
             }
-            let mut game_json = protocol::GameStateJSON::from_game(&game);
+            let mut game_json = protocol::GameStateJSON::from_game(&session.game);
             game_json.board = board_json;
             game_json.to_string()
         },
-        Action::Setup(new_game_state) => {
-            *game = new_game_state;
-            protocol::GameStateJSON::from_game(&game).to_string()
+        _ => {
+            let res = session.apply_action(&action);
+            let mut game_json = protocol::GameStateJSON::from_game(&session.game);
+            if res.is_err() {
+                game_json.last_move_valid = false;
+            }
+            game_json.to_string()
         },
     }
 }

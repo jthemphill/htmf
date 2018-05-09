@@ -165,12 +165,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "htmf-bots"
+version = "0.1.0"
+dependencies = [
+ "htmf 0.1.0",
+ "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "htmf-server"
 version = "0.1.0"
 dependencies = [
  "bit-set 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "htmf 0.1.0",
+ "htmf-bots 0.1.0",
  "rand 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
