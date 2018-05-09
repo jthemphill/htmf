@@ -19,10 +19,13 @@ type Props = {
 type State = {
     minDim: number,
     chosenCell: ?number,
+    // The first time we click a penguin, show moves the penguin can
+    // take. The second time we click the same penguin, suppress those
+    // moves.
     disablePossibleMoves: bool,
 }
 
-class Board extends React.PureComponent<Props, State> {
+class Board extends React.Component<Props, State> {
 
     handleCellClick: (key: number) => void;
 
@@ -98,7 +101,8 @@ class Board extends React.PureComponent<Props, State> {
                 const possible = !this.state.disablePossibleMoves &&
                       any_possible_moves && this.props.possibleMoves[key];
 
-                const is_highlighted = any_possible_moves &&
+                const is_highlighted = !this.state.disablePossibleMoves &&
+                      any_possible_moves &&
                       this.state.chosenCell === key;
 
                 hexes.push(
@@ -181,17 +185,21 @@ class Board extends React.PureComponent<Props, State> {
     }
 
     _toggleCellHighlight(key: number) {
-        if (this.state.chosenCell === key) {
+        if (!this.state.disablePossibleMoves && this.state.chosenCell === key) {
             this.setState({
-                chosenCell: null,
                 disablePossibleMoves: true,
             });
-        } else {
-            this.setState({
-                chosenCell: key,
-                disablePossibleMoves: false,
-            });
+            return;
         }
+
+        this.setState({
+            chosenCell: key,
+            // TODO: Doing this here causes UI flicker - we
+            // temporarily show the old possible moves before getting
+            // the new ones from the server.
+            disablePossibleMoves: false,
+        });
+
         const data = JSON.stringify({
             "action_type": "selection",
             "data": {

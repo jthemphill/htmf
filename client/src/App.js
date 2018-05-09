@@ -27,7 +27,6 @@ type Props = {
 
 class App extends React.Component<Props, State> {
 
-    stateInput: ?HTMLInput;
     socket: WebSocket;
 
     constructor(props: Props) {
@@ -53,18 +52,20 @@ class App extends React.Component<Props, State> {
 
         shuffle(fish);
         const gameState = {
-          last_move_valid: true,
-          mode_type: "drafting",
-          board: {
-              fish,
-              penguins,
-              claimed,
-              possible_moves,
-          },
+            last_move_valid: true,
+            mode_type: "drafting",
+            nplayers: 2,
+            board: {
+                fish,
+                penguins,
+                claimed,
+                possible_moves,
+            },
+            turn: 0,
+            scores: [0, 0],
         };
         this.state = {
-          gameState,
-          inputText: JSON.stringify(gameState),
+            gameState,
         };
     }
 
@@ -107,12 +108,14 @@ class App extends React.Component<Props, State> {
             <p>{this.state.gameState.mode_type}</p>
             <p>{invalid_move_block}</p>
             <div>{scores_block}</div>
-            <input defaultValue={JSON.stringify(this.state.gameState)}
+            <input value={this.state.inputText}
                    type="text"
-                   ref={(input) => this.stateInput = input}
+                   onChange={(e) => {
+                       this.setState({inputText: e.target.value});
+                   }}
                    onBlur={(e) => {
                      try {
-                       const input_data = JSON.parse(this.stateInput.value);
+                       const input_data = JSON.parse(this.state.inputText);
                        this.socket.send(JSON.stringify({
                          "action_type": "setup",
                          "data": {state: input_data},
@@ -128,7 +131,7 @@ class App extends React.Component<Props, State> {
 
     componentDidMount() {
         this.socket = new WebSocket('ws://127.0.0.1:2794');
-        this.socket.onmessage = ((e: MessageEvent) => {
+        this.socket.onmessage = (e: MessageEvent) => {
             if (typeof e.data !== 'string') {
                 throw TypeError(
                     [
@@ -141,7 +144,7 @@ class App extends React.Component<Props, State> {
             const new_state = JSON.parse(e.data);
             console.log('Received state: ', new_state);
             this.setState({gameState: new_state, inputText: JSON.stringify(new_state)});
-        });
+        };
     }
 
     componentWillUnmount() {
