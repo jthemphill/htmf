@@ -56,7 +56,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn two_player_game() {
+    fn two_players_no_illegal_moves() {
         let mut game = GameState::new_two_player(&[0]);
         let mut bots = vec![
             RandomBot::new(&game, Player{id:0}),

@@ -4,17 +4,17 @@ extern crate htmf_bots;
 use htmf::board::{Player};
 use htmf::game::{Action, GameState};
 use htmf::errors::IllegalMoveError;
-use self::htmf_bots::randombot::RandomBot;
+use self::htmf_bots::*;
 
 #[derive(Clone)]
 pub struct Session {
     pub game: GameState,
-    bot: RandomBot,
+    bot: MinimaxBot,
 }
 
 impl Session {
     pub fn new(game: GameState) -> Session {
-        let bot = RandomBot::new(
+        let bot = MinimaxBot::new(
             &game,
             Player { id: 1 },
         );

@@ -5,5 +5,13 @@ authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 
 [dependencies]
 rand = "0.4.2"
+rayon = "1.0.1"
 
 htmf = { path = "../engine" }
+
+[dev-dependencies]
+criterion = "0.2.3"
+
+[[bench]]
+name = "minimax_full_game"
+harness = false
