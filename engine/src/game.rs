@@ -120,9 +120,9 @@ impl GameState {
         }
         let active_player = self.active_player().unwrap();
         try!(self.board.move_penguin(active_player, src, dst));
-        let mut has_pruned = self.board.prune();
-        while has_pruned {
-            has_pruned = self.board.prune();
+        let mut needs_prune = self.board.is_cut_cell(src);
+        while needs_prune {
+            needs_prune = self.board.prune();
         }
         self.board.reap();
         self.scores[active_player.id] = self.board.get_score(&active_player);

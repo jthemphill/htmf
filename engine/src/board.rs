@@ -125,13 +125,12 @@ impl Board {
         &self.cells[Board::evenr_to_index(c)]
     }
 
-    fn neighbors(c: usize) -> Vec<usize> {
+    fn neighbors(c: usize) -> impl Iterator<Item=usize> {
         Board::index_to_evenr(c)
             .neighbors()
             .into_iter()
             .filter(|neighbor| Board::in_bounds(neighbor))
             .map(|evenr| Board::evenr_to_index(&evenr))
-            .collect()
     }
 
     fn in_bounds(c: &EvenR) -> bool {
@@ -157,10 +156,39 @@ impl Board {
             .collect()
     }
 
+    /// Is the given cell a "cut cell"?
+    ///
+    /// Look at each of the cell's unclaimed neighbors and return true
+    /// if there are any claimed cells separating them.
+    ///
+    /// This is designed to be a cheap check to figure out if moving a
+    /// penguin from the given cell cannot possibly increase the
+    /// number of connected components. The function which actually
+    /// determines a board's connected components is quite expensive!
+    pub fn is_cut_cell(&self, cell_idx: usize) -> bool {
+        let neighbors = Board::neighbors(cell_idx);
+        let mut saw_live = false;
+        let mut crossings = 0;
+        for neighbor in neighbors {
+            if self.cells[neighbor].claimed.is_none() {
+                saw_live = true;
+            } else {
+                if saw_live {
+                    crossings += 1;
+                }
+                saw_live = false;
+            }
+            if crossings >= 2 {
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn moves(&self, cell_idx: usize) -> Vec<usize> {
         let cell = Board::index_to_evenr(cell_idx);
-        cell.neighbors().iter()
-            .flat_map(|&n| self.legal_moves_in_line(&cell, &n).into_iter())
+        cell.neighbors().into_iter()
+            .flat_map(|n| self.legal_moves_in_line(&cell, &n).into_iter())
             .map(|cell| Board::evenr_to_index(&cell))
             .into_iter()
             .collect()
@@ -261,8 +289,8 @@ impl Board {
                 .enumerate()
                 .flat_map(|(player, penguins)| {
                     penguins.into_iter()
-                        .filter(|&p| Board::neighbors(p).iter().any(
-                            |&neighbor| {
+                        .filter(|&p| Board::neighbors(p).any(
+                            |neighbor| {
                                 iceberg.contains(neighbor)
                             }
                         ))
@@ -274,8 +302,8 @@ impl Board {
                 continue;
             }
             let (player, penguin) = penguins_touching_iceberg[0];
-            let can_leave_iceberg = Board::neighbors(penguin).iter()
-                .any(|&neighbor| {
+            let can_leave_iceberg = Board::neighbors(penguin)
+                .any(|neighbor| {
                     !iceberg.contains(neighbor) &&
                         self.cells[neighbor].claimed.is_none()
                 });
@@ -338,8 +366,8 @@ impl Board {
             board.connected_components()
                 .iter()
                 .filter(
-                    |&iceberg| Board::neighbors(penguin).iter()
-                        .any(|&adjacency| iceberg.contains(adjacency))
+                    |&iceberg| Board::neighbors(penguin)
+                        .any(|adjacency| iceberg.contains(adjacency))
                 )
                 .map(|iceberg| iceberg.iter()
                      .map(|idx| board.cells[idx].fish)
