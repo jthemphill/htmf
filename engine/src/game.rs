@@ -10,7 +10,6 @@ pub struct GameState {
 }
 
 impl GameState {
-
     // Predicates
 
     pub fn finished_drafting(&self) -> bool {
@@ -24,9 +23,12 @@ impl GameState {
     }
 
     pub fn game_over(&self) -> bool {
-        self.finished_drafting() && self.board.penguins.iter()
-            .find(|&p| !p.is_empty())
-            .is_none()
+        self.finished_drafting()
+            && self.board
+                .penguins
+                .iter()
+                .find(|&p| !p.is_empty())
+                .is_none()
     }
 
     pub fn active_player(&self) -> Option<Player> {
@@ -39,18 +41,16 @@ impl GameState {
                 p += 1;
                 p %= self.nplayers;
             }
-            Some(Player{id: p})
+            Some(Player { id: p })
         } else if self.turn / self.nplayers % 2 == 1 {
             let mut turn = -(self.turn as isize) - 1;
             turn %= self.nplayers as isize;
             if turn < 0 {
                 turn += self.nplayers as isize;
             }
-            Some(Player{
-                id: turn as usize,
-            })
+            Some(Player { id: turn as usize })
         } else {
-            Some(Player{
+            Some(Player {
                 id: self.turn % self.nplayers,
             })
         }
@@ -61,15 +61,16 @@ impl GameState {
     }
 
     pub fn is_legal_move(&self, src: usize, dst: usize) -> bool {
-        self.board.is_legal_move(self.active_player().unwrap(), src, dst)
+        self.board
+            .is_legal_move(self.active_player().unwrap(), src, dst)
     }
 
     // Actions
 
     pub fn apply_action(&mut self, action: &Action) -> Result<(), IllegalMoveError> {
-        match action {
-            &Action::Move(src, dst) => self.move_penguin(src, dst),
-            &Action::Place(cell_idx) => self.place_penguin(cell_idx),
+        match *action {
+            Action::Move(src, dst) => self.move_penguin(src, dst),
+            Action::Place(cell_idx) => self.place_penguin(cell_idx),
             _ => unimplemented!(),
         }
     }
@@ -83,10 +84,7 @@ impl GameState {
         }
     }
 
-    pub fn place_penguin(
-        &mut self,
-        c: usize,
-    ) -> Result<(), IllegalMoveError> {
+    pub fn place_penguin(&mut self, c: usize) -> Result<(), IllegalMoveError> {
         if self.finished_drafting() {
             return Err(IllegalMoveError::new(
                 self.active_player().unwrap(),
@@ -106,17 +104,12 @@ impl GameState {
         Ok(())
     }
 
-    pub fn move_penguin(
-        &mut self,
-        src: usize,
-        dst: usize,
-    ) -> Result<(), IllegalMoveError> {
+    pub fn move_penguin(&mut self, src: usize, dst: usize) -> Result<(), IllegalMoveError> {
         if !self.finished_drafting() {
-            return Err(
-                IllegalMoveError::new(
-                    self.active_player().unwrap(),
-                    "Drafting phase is not over".to_owned(),
-                ));
+            return Err(IllegalMoveError::new(
+                self.active_player().unwrap(),
+                "Drafting phase is not over".to_owned(),
+            ));
         }
         let active_player = self.active_player().unwrap();
         try!(self.board.move_penguin(active_player, src, dst));
@@ -147,14 +140,13 @@ mod tests {
     fn draft_turn_sequence_is_good() {
         let g = GameState::new_two_player(&[0]);
 
-        let actives: Vec<usize> = (0..8).scan(
-            g,
-            |g, _| {
+        let actives: Vec<usize> = (0..8)
+            .scan(g, |g, _| {
                 let p = g.active_player().unwrap();
                 g.turn += 1;
                 Some(p.id)
-            }
-        ).collect();
+            })
+            .collect();
         let expected = vec![0, 1, 1, 0, 0, 1, 1, 0];
         assert_eq!(actives, expected);
     }

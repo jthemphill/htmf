@@ -8,9 +8,6 @@ pub struct IllegalMoveError {
 
 impl IllegalMoveError {
     pub fn new(player: Player, message: String) -> Self {
-        IllegalMoveError {
-            player,
-            message,
-        }
+        IllegalMoveError { player, message }
     }
 }

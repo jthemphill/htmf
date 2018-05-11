@@ -18,34 +18,36 @@ use std::rc::Rc;
 
 use rand::Rng;
 
-use websocket::{Message, OwnedMessage};
 use websocket::async::Server;
 use websocket::server::InvalidConnection;
+use websocket::{Message, OwnedMessage};
 
-use tokio_core::reactor::{Handle, Core};
 use futures::{Future, Sink, Stream};
+use tokio_core::reactor::{Core, Handle};
 
 use htmf::game::{Action, GameState};
 
 use session::Session;
 
 fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
-	where F: Future<Item = I, Error = E> + 'static,
-		  E: Debug
+where
+    F: Future<Item = I, Error = E> + 'static,
+    E: Debug,
 {
-	handle.spawn(f.map_err(move |e| println!("{}: '{:?}'", desc, e))
-		         .map(move |_| println!("{}: Finished.", desc)));
+    handle.spawn(
+        f.map_err(move |e| println!("{}: '{:?}'", desc, e))
+            .map(move |_| println!("{}: Finished.", desc)),
+    );
 }
 
 fn main() {
+    let mut core = Core::new().unwrap();
+    let handle = core.handle();
 
-	let mut core = Core::new().unwrap();
-	let handle = core.handle();
-
-	let server = Server::bind("127.0.0.1:2794", &handle).unwrap();
+    let server = Server::bind("127.0.0.1:2794", &handle).unwrap();
 
     let sessions = Rc::new(RefCell::new(HashMap::new()));
-	let f = server.incoming()
+    let f = server.incoming()
         // we don't wanna save the stream if it drops
         .map_err(|InvalidConnection { error, .. }| error)
         .for_each(move |(upgrade, addr)| {
@@ -110,7 +112,7 @@ fn main() {
             Ok(())
         });
 
-	core.run(f).unwrap();
+    core.run(f).unwrap();
 }
 
 fn get_response(session: &mut Session, action_str: &str) -> String {
@@ -120,7 +122,7 @@ fn get_response(session: &mut Session, action_str: &str) -> String {
             let mut game_json = protocol::GameStateJSON::from_game(&session.game);
             game_json.last_move_valid = false;
             return game_json.to_string();
-        },
+        }
     };
     match action {
         Action::Selection(cell_idx) => {
@@ -133,7 +135,7 @@ fn get_response(session: &mut Session, action_str: &str) -> String {
             let mut game_json = protocol::GameStateJSON::from_game(&session.game);
             game_json.board = board_json;
             game_json.to_string()
-        },
+        }
         _ => {
             let res = session.apply_action(&action);
             let mut game_json = protocol::GameStateJSON::from_game(&session.game);
@@ -141,6 +143,6 @@ fn get_response(session: &mut Session, action_str: &str) -> String {
                 game_json.last_move_valid = false;
             }
             game_json.to_string()
-        },
+        }
     }
 }

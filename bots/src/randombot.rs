@@ -1,5 +1,5 @@
-extern crate rand;
 extern crate htmf;
+extern crate rand;
 use htmf::board::Player;
 use htmf::game::{Action, GameState};
 
@@ -33,20 +33,23 @@ impl RandomBot {
                 self.game.board.penguins[self.me.id].iter(),
                 1,
             ).unwrap()[0];
-            let dst = rand::seq::sample_iter(
-                &mut self.rng,
-                self.game.board.moves(src),
-                1,
-            ).unwrap()[0];
+            let dst =
+                rand::seq::sample_iter(&mut self.rng, self.game.board.moves(src), 1).unwrap()[0];
             Action::Move(src, dst)
         } else {
-            Action::Place(rand::seq::sample_iter(
-                &mut self.rng,
-                self.game.board.cells.iter().enumerate()
-                    .filter(|&(_, c)| c.claimed == None && c.fish == 1)
-                    .map(|(idx, _)| idx),
-                1,
-            ).unwrap()[0])
+            Action::Place(
+                rand::seq::sample_iter(
+                    &mut self.rng,
+                    self.game
+                        .board
+                        .cells
+                        .iter()
+                        .enumerate()
+                        .filter(|&(_, c)| c.claimed == None && c.fish == 1)
+                        .map(|(idx, _)| idx),
+                    1,
+                ).unwrap()[0],
+            )
         }
     }
 }
@@ -59,8 +62,8 @@ mod tests {
     fn two_players_no_illegal_moves() {
         let mut game = GameState::new_two_player(&[0]);
         let mut bots = vec![
-            RandomBot::new(&game, Player{id:0}),
-            RandomBot::new(&game, Player{id:1}),
+            RandomBot::new(&game, Player { id: 0 }),
+            RandomBot::new(&game, Player { id: 1 }),
         ];
         while let Some(player) = game.active_player() {
             {

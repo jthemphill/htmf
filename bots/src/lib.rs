@@ -1,7 +1,7 @@
 extern crate htmf;
 
-pub mod randombot;
 pub mod minimaxbot;
+pub mod randombot;
 
-pub use randombot::RandomBot;
 pub use minimaxbot::MinimaxBot;
+pub use randombot::RandomBot;

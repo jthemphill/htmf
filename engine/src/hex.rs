@@ -6,7 +6,7 @@ pub struct EvenR {
 
 impl EvenR {
     pub fn from_cube(cube: &Cube) -> EvenR {
-        EvenR{
+        EvenR {
             col: cube.x + (cube.z + (cube.z & 1)) / 2,
             row: cube.z,
         }
@@ -17,7 +17,9 @@ impl EvenR {
     }
 
     pub fn neighbors(&self) -> Vec<EvenR> {
-        Cube::from_evenr(self).neighbors().iter()
+        Cube::from_evenr(self)
+            .neighbors()
+            .iter()
             .map(|&x| EvenR::from_cube(&x))
             .collect()
     }
@@ -35,7 +37,7 @@ impl Cube {
         let x = hex.col - (hex.row + (hex.row & 1)) / 2;
         let z = hex.row;
         let y = -(x + z);
-        Cube{x, y, z}
+        Cube { x, y, z }
     }
 
     pub fn in_line(&self, rhs: &Cube) -> bool {
@@ -44,12 +46,36 @@ impl Cube {
 
     pub fn neighbors(&self) -> Vec<Cube> {
         vec![
-            Cube{x: self.x + 1, y: self.y - 1, z: self.z},
-            Cube{x: self.x + 1, y: self.y, z: self.z - 1},
-            Cube{x: self.x, y: self.y + 1, z: self.z - 1},
-            Cube{x: self.x - 1, y: self.y + 1, z: self.z},
-            Cube{x: self.x - 1, y: self.y, z: self.z + 1},
-            Cube{x: self.x, y: self.y - 1, z: self.z + 1},
+            Cube {
+                x: self.x + 1,
+                y: self.y - 1,
+                z: self.z,
+            },
+            Cube {
+                x: self.x + 1,
+                y: self.y,
+                z: self.z - 1,
+            },
+            Cube {
+                x: self.x,
+                y: self.y + 1,
+                z: self.z - 1,
+            },
+            Cube {
+                x: self.x - 1,
+                y: self.y + 1,
+                z: self.z,
+            },
+            Cube {
+                x: self.x - 1,
+                y: self.y,
+                z: self.z + 1,
+            },
+            Cube {
+                x: self.x,
+                y: self.y - 1,
+                z: self.z + 1,
+            },
         ]
     }
 }
@@ -66,12 +92,16 @@ pub fn line(src: &EvenR, dst: &EvenR) -> Iterator {
         panic!("source and destination hexes aren't actually in the same line");
     }
 
-    fn get_x(c: &Cube) -> i64 { c.x }
-    fn get_y(c: &Cube) -> i64 { c.y }
+    fn get_x(c: &Cube) -> i64 {
+        c.x
+    }
+    fn get_y(c: &Cube) -> i64 {
+        c.y
+    }
 
     let (constant_element, get_other_element, make_) = if src_cube.x == dst_cube.x {
         fn make_xy(x: i64, y: i64) -> Cube {
-            Cube{x, y, z: -(x + y)}
+            Cube { x, y, z: -(x + y) }
         }
         (
             src_cube.x,
@@ -80,7 +110,7 @@ pub fn line(src: &EvenR, dst: &EvenR) -> Iterator {
         )
     } else if src_cube.y == dst_cube.y {
         fn make_yx(y: i64, x: i64) -> Cube {
-            Cube{x, y, z: -(x + y)}
+            Cube { x, y, z: -(x + y) }
         }
         (
             src_cube.y,
@@ -89,7 +119,7 @@ pub fn line(src: &EvenR, dst: &EvenR) -> Iterator {
         )
     } else {
         fn make_zx(z: i64, x: i64) -> Cube {
-            Cube{x, y: -(x + z), z}
+            Cube { x, y: -(x + z), z }
         }
         (
             src_cube.z,
@@ -98,7 +128,7 @@ pub fn line(src: &EvenR, dst: &EvenR) -> Iterator {
         )
     };
 
-    Iterator{
+    Iterator {
         constant: constant_element,
         get_other_element,
         _make_cube: make_,
@@ -149,10 +179,22 @@ mod tests {
 
     #[test]
     fn some_equivalences() {
-        assert_eq!(Cube::from_evenr(&EvenR{col: 0, row: 0}), Cube{x: 0, y: 0, z: 0});
-        assert_eq!(Cube::from_evenr(&EvenR{col: 1, row: 1}), Cube{x: 0, y: -1, z: 1});
-        assert_eq!(Cube::from_evenr(&EvenR{col: 1, row: 2}), Cube{x: 0, y: -2, z: 2});
-        assert_eq!(Cube::from_evenr(&EvenR{col: 3, row: 6}), Cube{x: 0, y: -6, z: 6});
+        assert_eq!(
+            Cube::from_evenr(&EvenR { col: 0, row: 0 }),
+            Cube { x: 0, y: 0, z: 0 }
+        );
+        assert_eq!(
+            Cube::from_evenr(&EvenR { col: 1, row: 1 }),
+            Cube { x: 0, y: -1, z: 1 }
+        );
+        assert_eq!(
+            Cube::from_evenr(&EvenR { col: 1, row: 2 }),
+            Cube { x: 0, y: -2, z: 2 }
+        );
+        assert_eq!(
+            Cube::from_evenr(&EvenR { col: 3, row: 6 }),
+            Cube { x: 0, y: -6, z: 6 }
+        );
     }
 
     #[test]
@@ -160,8 +202,8 @@ mod tests {
         for row in -10..10 {
             for col in -10..10 {
                 assert_eq!(
-                    EvenR{col: col, row: row},
-                    EvenR::from_cube(&Cube::from_evenr(&EvenR{col: col, row: row}))
+                    EvenR { col: col, row: row },
+                    EvenR::from_cube(&Cube::from_evenr(&EvenR { col: col, row: row }))
                 );
             }
         }
@@ -173,8 +215,8 @@ mod tests {
             for y in -10..10 {
                 let z = -1 * (x + y);
                 assert_eq!(
-                    Cube{x: x, y: y, z: z},
-                    Cube::from_evenr(&EvenR::from_cube(&Cube{x: x, y: y, z: z}))
+                    Cube { x: x, y: y, z: z },
+                    Cube::from_evenr(&EvenR::from_cube(&Cube { x: x, y: y, z: z }))
                 );
             }
         }
@@ -182,7 +224,7 @@ mod tests {
 
     #[test]
     fn cube_neighbors_distinct() {
-        let c = Cube::from_evenr(&EvenR{col: 1, row: 2});
+        let c = Cube::from_evenr(&EvenR { col: 1, row: 2 });
         let neighbors = c.neighbors();
         for x in neighbors {
             assert!(x != c);
@@ -191,7 +233,7 @@ mod tests {
 
     #[test]
     fn neighbors_distinct() {
-        let c = EvenR{col: 1, row: 2};
+        let c = EvenR { col: 1, row: 2 };
         let neighbors = c.neighbors();
         for x in neighbors {
             assert!(x != c);
@@ -200,38 +242,38 @@ mod tests {
 
     #[test]
     fn neighbors_in_line() {
-        let c1 = EvenR{col: 1, row: 2};
-        let c2 = EvenR{col: 2, row: 3};
+        let c1 = EvenR { col: 1, row: 2 };
+        let c2 = EvenR { col: 2, row: 3 };
         assert!(c1.in_line(&c2));
     }
 
     #[test]
     fn cells_in_line() {
-        let c1 = EvenR{col: 1, row: 2};
-        let c2 = EvenR{col: 3, row: 5};
+        let c1 = EvenR { col: 1, row: 2 };
+        let c2 = EvenR { col: 3, row: 5 };
         assert!(c1.in_line(&c2));
     }
 
     #[test]
     fn cells_not_in_line() {
-        let c1 = EvenR{col: 1, row: 2};
-        let c2 = EvenR{col: 4, row: 6};
+        let c1 = EvenR { col: 1, row: 2 };
+        let c2 = EvenR { col: 4, row: 6 };
         assert!(!c1.in_line(&c2));
     }
 
     #[test]
     fn enumerate_line() {
-        let c1 = EvenR{col: 0, row: 0};
-        let c2 = EvenR{col: 3, row: 6};
+        let c1 = EvenR { col: 0, row: 0 };
+        let c2 = EvenR { col: 3, row: 6 };
 
         let expected_line = vec![
-            EvenR{col: 0, row: 0},
-            EvenR{col: 1, row: 1},
-            EvenR{col: 1, row: 2},
-            EvenR{col: 2, row: 3},
-            EvenR{col: 2, row: 4},
-            EvenR{col: 3, row: 5},
-            EvenR{col: 3, row: 6},
+            EvenR { col: 0, row: 0 },
+            EvenR { col: 1, row: 1 },
+            EvenR { col: 1, row: 2 },
+            EvenR { col: 2, row: 3 },
+            EvenR { col: 2, row: 4 },
+            EvenR { col: 3, row: 5 },
+            EvenR { col: 3, row: 6 },
         ];
 
         for (actual, expected) in line(&c1, &c2).zip(expected_line) {
@@ -241,8 +283,8 @@ mod tests {
 
     #[test]
     fn line_is_distinct() {
-        let src = EvenR{col: 1, row: 2};
-        let dst = EvenR{col: 2, row: 2};
+        let src = EvenR { col: 1, row: 2 };
+        let dst = EvenR { col: 2, row: 2 };
         let ln: Vec<EvenR> = line(&src, &dst).take(5).collect();
         for i in 0..ln.len() {
             for j in 0..ln.len() {

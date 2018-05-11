@@ -47,34 +47,33 @@ impl MinimaxBot {
             let (_, (src, dst)) = Self::best_move(&self.game, &self.me, self.ply);
             Action::Move(src, dst)
         } else {
-            Action::Place(rand::seq::sample_iter(
-                &mut self.rng,
-                self.game.board.cells.iter().enumerate()
-                    .filter(|&(_, c)| c.claimed == None && c.fish == 1)
-                    .map(|(idx, _)| idx),
-                1,
-            ).unwrap()[0])
+            Action::Place(
+                rand::seq::sample_iter(
+                    &mut self.rng,
+                    self.game
+                        .board
+                        .cells
+                        .iter()
+                        .enumerate()
+                        .filter(|&(_, c)| c.claimed == None && c.fish == 1)
+                        .map(|(idx, _)| idx),
+                    1,
+                ).unwrap()[0],
+            )
         }
     }
 
-    fn best_move(
-        game: &GameState,
-        p: &Player,
-        ply: i32,
-    ) -> (Vec<usize>, (usize, usize)) {
-        Self::all_moves(game, p).into_par_iter()
+    fn best_move(game: &GameState, p: &Player, ply: i32) -> (Vec<usize>, (usize, usize)) {
+        Self::all_moves(game, p)
+            .into_par_iter()
             .map(|mv| (Self::score_move(game, &mv, ply), mv))
             .max_by_key(|&(ref scores, _)| Self::negamax_score(scores, p))
             .unwrap()
     }
 
-    fn score_move(
-        game: &GameState,
-        mv: &(usize, usize),
-        ply: i32,
-    ) -> Vec<usize> {
+    fn score_move(game: &GameState, mv: &(usize, usize), ply: i32) -> Vec<usize> {
         if ply <= 0 {
-            return game.scores.iter().cloned().collect();
+            return game.scores.to_vec();
         }
         let game = {
             let mut game = game.clone();
@@ -85,13 +84,15 @@ impl MinimaxBot {
             let (scores, _) = Self::best_move(&game, &new_active_player, ply - 1);
             scores
         } else {
-            game.scores.iter().cloned().collect()
+            game.scores.to_vec()
         }
     }
 
-    fn negamax_score(scores: &Vec<usize>, p: &Player) -> i32 {
+    fn negamax_score(scores: &[usize], p: &Player) -> i32 {
         let my_score = scores[p.id];
-        let best_other_score = scores.iter().enumerate()
+        let best_other_score = scores
+            .iter()
+            .enumerate()
             .filter(|&(i, _)| i != p.id)
             .map(|(_, &score)| score)
             .max()
@@ -100,10 +101,10 @@ impl MinimaxBot {
     }
 
     fn all_moves(game: &GameState, p: &Player) -> Vec<(usize, usize)> {
-        game.board.penguins[p.id].into_iter().flat_map(
-            |src| game.board.moves(src).into_iter()
-                .map(move |dst| (src, dst))
-        ).collect()
+        game.board.penguins[p.id]
+            .into_iter()
+            .flat_map(|src| game.board.moves(src).into_iter().map(move |dst| (src, dst)))
+            .collect()
     }
 }
 
@@ -115,8 +116,8 @@ mod tests {
     fn two_players_no_illegal_moves() {
         let mut game = GameState::new_two_player(&[0]);
         let mut bots = vec![
-            MinimaxBot::new_with_ply(&game, Player{id:0}, 0),
-            MinimaxBot::new_with_ply(&game, Player{id:1}, 0),
+            MinimaxBot::new_with_ply(&game, Player { id: 0 }, 0),
+            MinimaxBot::new_with_ply(&game, Player { id: 1 }, 0),
         ];
         while let Some(player) = game.active_player() {
             {

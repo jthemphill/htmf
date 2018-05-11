@@ -8,7 +8,7 @@ extern crate htmf;
 
 use self::bit_set::BitSet;
 use htmf::board::{Board, Cell, Player, NUM_CELLS, NUM_FISH};
-use htmf::game::{GameState, Action};
+use htmf::game::{Action, GameState};
 
 /// Module for all input and output.
 /// 1. We receive ActionJSON from the client
@@ -77,17 +77,17 @@ fn get_action(action_json: ActionJSON) -> Option<Action> {
             let selection_data: ActionSelectionJSON =
                 serde_json::from_value(action_json.data).unwrap_or(None)?;
             Some(Action::Selection(selection_data.hex as usize))
-        },
+        }
         ActionType::Move => {
             let move_data: ActionMoveJSON =
                 serde_json::from_value(action_json.data).unwrap_or(None)?;
             Some(Action::Move(move_data.src as usize, move_data.dst as usize))
-        },
+        }
         ActionType::Place => {
             let place_data: ActionPlaceJSON =
                 serde_json::from_value(action_json.data).unwrap_or(None)?;
             Some(Action::Place(place_data.hex as usize))
-        },
+        }
         ActionType::Setup => {
             println!("Setting up?");
             let game_state_data: ActionSetupJSON = match serde_json::from_value(action_json.data) {
@@ -95,11 +95,11 @@ fn get_action(action_json: ActionJSON) -> Option<Action> {
                 Err(e) => {
                     println!("Error setting state: {}", e);
                     None
-                },
+                }
             }?;
             let setup_action = Action::Setup(game_state_data.state.to_game());
             Some(setup_action)
-        },
+        }
     }
 }
 
@@ -115,7 +115,6 @@ pub struct GameStateJSON {
 }
 
 impl GameStateJSON {
-
     pub fn to_string(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
@@ -187,19 +186,18 @@ impl BoardJSON {
 
         for cell in b.cells.iter() {
             fish.push(cell.fish as usize);
-            claimed.push(
-                match cell.claimed {
-                    None => -1 as i32,
-                    Some(player) => player.id as i32,
-                }
-            );
+            claimed.push(match cell.claimed {
+                None => -1 as i32,
+                Some(player) => player.id as i32,
+            });
             possible_moves.push(false);
         }
 
         BoardJSON {
             fish,
             claimed,
-            penguins: b.penguins.iter()
+            penguins: b.penguins
+                .iter()
                 .cloned()
                 .map(|x| x.into_iter().collect())
                 .collect(),
@@ -208,8 +206,9 @@ impl BoardJSON {
     }
 
     fn to_native(&self, nplayers: usize) -> Board {
-        let cells = (0..NUM_CELLS).into_iter().map(
-            |i| Cell {
+        let cells = (0..NUM_CELLS)
+            .into_iter()
+            .map(|i| Cell {
                 fish: self.fish[i],
                 claimed: {
                     let claimed_player = self.claimed[i];
@@ -218,13 +217,16 @@ impl BoardJSON {
                     }
                     match claimed_player {
                         -1 => None,
-                        _ => Some(Player{id: claimed_player as usize}),
+                        _ => Some(Player {
+                            id: claimed_player as usize,
+                        }),
                     }
                 },
-            }
-        ).collect();
-        let penguins = (0..nplayers).into_iter().map(
-            |player| {
+            })
+            .collect();
+        let penguins = (0..nplayers)
+            .into_iter()
+            .map(|player| {
                 let mut penguin_set = BitSet::new();
                 if let Some(player_penguins) = self.penguins.get(player) {
                     for &p in player_penguins {
@@ -232,12 +234,9 @@ impl BoardJSON {
                     }
                 }
                 penguin_set
-            }
-        ).collect();
-        Board {
-            penguins,
-            cells,
-        }
+            })
+            .collect();
+        Board { penguins, cells }
     }
 
     pub fn to_string(&self) -> String {
@@ -287,11 +286,14 @@ mod tests {
     #[test]
     fn after_claiming() {
         let mut game = GameState::new_two_player(&[0]);
-        let eligible_place = game.board.cells.iter()
+        let eligible_place = game.board
+            .cells
+            .iter()
             .enumerate()
             .filter(|&(_, cell)| cell.fish == 1)
             .next()
-            .unwrap().0;
+            .unwrap()
+            .0;
         game.place_penguin(eligible_place).unwrap();
         let game_json = GameStateJSON::from_game(&game);
         let game_again = game_json.to_game();

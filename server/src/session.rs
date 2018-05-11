@@ -1,10 +1,10 @@
 extern crate htmf;
 extern crate htmf_bots;
 
-use htmf::board::{Player};
-use htmf::game::{Action, GameState};
-use htmf::errors::IllegalMoveError;
 use self::htmf_bots::*;
+use htmf::board::Player;
+use htmf::errors::IllegalMoveError;
+use htmf::game::{Action, GameState};
 
 #[derive(Clone)]
 pub struct Session {
@@ -14,14 +14,8 @@ pub struct Session {
 
 impl Session {
     pub fn new(game: GameState) -> Session {
-        let bot = MinimaxBot::new(
-            &game,
-            Player { id: 1 },
-        );
-        Session {
-            game,
-            bot,
-        }
+        let bot = MinimaxBot::new(&game, Player { id: 1 });
+        Session { game, bot }
     }
 
     pub fn apply_action(&mut self, action: &Action) -> Result<(), IllegalMoveError> {
@@ -35,13 +29,13 @@ impl Session {
                 self.game.place_penguin(cell_idx)?;
                 self.bot.update(&self.game);
                 Ok(())
-            },
+            }
             &Action::Selection(_) => Ok(()),
             &Action::Setup(ref new_game_state) => {
                 self.game = new_game_state.clone();
                 self.bot.update(&self.game);
                 Ok(())
-            },
+            }
         };
         if res.is_err() {
             return res;
