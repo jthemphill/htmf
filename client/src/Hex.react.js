@@ -24,7 +24,7 @@ class Hex extends React.PureComponent<Props> {
         const transform = 'translate(' + this.props.cx + ',' + this.props.cy + ')';
 
         const color = this.props.color;
-        if (!color && this.props.claimed !== -1) {
+        if (!color && this.props.claimed) {
             return (
                 <g transform={transform}>
                   <polygon

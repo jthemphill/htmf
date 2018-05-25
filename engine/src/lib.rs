@@ -1,3 +1,4 @@
+extern crate arrayvec;
 extern crate rand;
 
 pub mod board;

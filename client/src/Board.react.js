@@ -83,6 +83,14 @@ class Board extends React.Component<Props, State> {
             }
         }
 
+        const claimed = new Set([]);
+        console.log(this.props.gameState.board.claimed);
+        for (let player_claimed of this.props.gameState.board.claimed) {
+            for (let cell of player_claimed) {
+                claimed.add(cell);
+            }
+        }
+
         const hexes = [];
         for (let r = 0; r < NUM_ROWS; ++r) {
             const y = start_y + r * 1.5 * side_length;
@@ -97,7 +105,6 @@ class Board extends React.Component<Props, State> {
                 const key = hexes.length;
                 const fish = this.props.gameState.board.fish[key];
                 const color = colors[key];
-                const claimed = this.props.gameState.board.claimed[key];
                 const possible = !this.state.disablePossibleMoves &&
                       any_possible_moves && this.props.possibleMoves[key];
 
@@ -117,7 +124,7 @@ class Board extends React.Component<Props, State> {
                     highlighted={is_highlighted}
                     possible={possible}
                     color={color}
-                    claimed={claimed}
+                    claimed={claimed.has(key)}
                   />
                 );
             }

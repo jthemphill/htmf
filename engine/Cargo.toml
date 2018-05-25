@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 
 [dependencies]
+arrayvec = "0.4.7"
 bit-set = "0.4.0"
 itertools = "0.7.8"
 pathfinding = "0.7.1"

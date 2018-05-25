@@ -5,7 +5,7 @@ extern crate htmf;
 
 use self::rayon::prelude::*;
 
-use htmf::board::Player;
+use htmf::board::{NUM_CELLS, Player};
 use htmf::game::{Action, GameState};
 
 #[derive(Clone)]
@@ -47,16 +47,13 @@ impl MinimaxBot {
             let (_, (src, dst)) = Self::best_move(&self.game, &self.me, self.ply);
             Action::Move(src, dst)
         } else {
+            let draftable_cells: Vec<usize> = (0..NUM_CELLS).into_iter()
+                .filter(|&c| !self.game.board.is_claimed(c) && self.game.board.num_fish(c) == 1)
+                .collect();
             Action::Place(
                 rand::seq::sample_iter(
                     &mut self.rng,
-                    self.game
-                        .board
-                        .cells
-                        .iter()
-                        .enumerate()
-                        .filter(|&(_, c)| c.claimed == None && c.fish == 1)
-                        .map(|(idx, _)| idx),
+                    draftable_cells,
                     1,
                 ).unwrap()[0],
             )

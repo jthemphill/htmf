@@ -1,10 +1,12 @@
+use arrayvec::ArrayVec;
+
 use board::{Board, Player};
 use errors::IllegalMoveError;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GameState {
     pub nplayers: usize,
-    pub scores: Vec<usize>,
+    pub scores: ArrayVec<[usize; 4]>,
     pub turn: usize,
     pub board: Board,
 }
@@ -57,7 +59,7 @@ impl GameState {
     }
 
     pub fn is_legal_place(&self, c: usize) -> bool {
-        self.board.cells[c].claimed == None
+        !self.board.is_claimed(c)
     }
 
     pub fn is_legal_move(&self, src: usize, dst: usize) -> bool {
@@ -76,10 +78,15 @@ impl GameState {
     }
 
     pub fn new_two_player(seed: &[usize]) -> GameState {
+        let nplayers = 2;
+        let mut scores = ArrayVec::new();
+        for _ in 0..nplayers {
+            scores.push(0);
+        }
         GameState {
-            nplayers: 2,
+            nplayers,
             turn: 0,
-            scores: vec![0, 0],
+            scores,
             board: Board::new(seed),
         }
     }
@@ -91,7 +98,7 @@ impl GameState {
                 "Drafting phase is over".to_owned(),
             ));
         }
-        if self.board.cells[c].fish != 1 {
+        if self.board.num_fish(c) != 1 {
             return Err(IllegalMoveError::new(
                 self.active_player().unwrap(),
                 "You must place on a cell containing one fish!".to_owned(),
@@ -112,13 +119,13 @@ impl GameState {
             ));
         }
         let active_player = self.active_player().unwrap();
-        try!(self.board.move_penguin(active_player, src, dst));
+        self.board.move_penguin(active_player, src, dst)?;
         let mut needs_prune = self.board.is_cut_cell(src);
         while needs_prune {
             needs_prune = self.board.prune();
         }
         self.board.reap();
-        self.scores[active_player.id] = self.board.get_score(&active_player);
+        self.scores[active_player.id] = self.board.get_score(active_player);
         self.turn += 1;
         Ok(())
     }

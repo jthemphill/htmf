@@ -34,7 +34,7 @@ class App extends React.Component<Props, State> {
 
         const fish = [];
         const penguins = [[], []];
-        const claimed = [];
+        const claimed = [[], [], [], []];
         const possible_moves = [];
 
         for (let i = 0; i < 60; ++i) {
@@ -46,7 +46,6 @@ class App extends React.Component<Props, State> {
                 fish[i] = 3;
             }
 
-            claimed[i] = -1;
             possible_moves[i] = false;
         }
 

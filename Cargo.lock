@@ -352,6 +352,7 @@ dependencies = [
 name = "htmf"
 version = "0.1.0"
 dependencies = [
+ "arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "bit-set 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "pathfinding 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
