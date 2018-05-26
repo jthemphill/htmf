@@ -175,7 +175,7 @@ pub struct BoardJSON {
     pub fish: Vec<usize>,
     pub penguins: Vec<Vec<usize>>,
     pub claimed: Vec<Vec<i32>>,
-    pub possible_moves: Vec<bool>,
+    pub possible_moves: Vec<usize>,
 }
 
 impl BoardJSON {
@@ -184,7 +184,7 @@ impl BoardJSON {
             fish: (0..NUM_CELLS).map(|c| b.num_fish(c)).collect(),
             claimed: b.claimed.iter().map(|cells| cells.into_iter().map(|c| c as i32).collect()).collect(),
             penguins: b.penguins.iter().map(|cells| cells.into_iter().collect()).collect(),
-            possible_moves: (0..NUM_CELLS).into_iter().map(|_| false).collect(),
+            possible_moves: vec![],
         }
     }
 

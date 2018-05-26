@@ -35,7 +35,7 @@ class App extends React.Component<Props, State> {
         const fish = [];
         const penguins = [[], []];
         const claimed = [[], [], [], []];
-        const possible_moves = [];
+        const possible_moves = new Set([]);
 
         for (let i = 0; i < 60; ++i) {
             if (i < 30) {
@@ -45,8 +45,6 @@ class App extends React.Component<Props, State> {
             } else {
                 fish[i] = 3;
             }
-
-            possible_moves[i] = false;
         }
 
         shuffle(fish);
@@ -73,10 +71,7 @@ class App extends React.Component<Props, State> {
   }
 
   render() {
-      const possible_moves = [];
-      for (let x of this.state.gameState.board.possible_moves) {
-          possible_moves.push(x);
-      }
+      const possible_moves = new Set(this.state.gameState.board.possible_moves);
       const invalid_move_block = this.state.gameState.last_move_valid
             ? null
             : "Invalid move!";

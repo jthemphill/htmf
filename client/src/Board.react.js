@@ -106,7 +106,7 @@ class Board extends React.Component<Props, State> {
                 const fish = this.props.gameState.board.fish[key];
                 const color = colors[key];
                 const possible = !this.state.disablePossibleMoves &&
-                      any_possible_moves && this.props.possibleMoves[key];
+                      any_possible_moves && this.props.possibleMoves.has(key);
 
                 const is_highlighted = !this.state.disablePossibleMoves &&
                       any_possible_moves &&
