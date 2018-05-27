@@ -132,7 +132,7 @@ impl GameStateJSON {
                 Some(p) => Some(p.id),
                 _ => None,
             },
-            scores: state.scores.to_vec(),
+            scores: state.get_scores(),
             turn: state.turn,
             board: BoardJSON::from_board(&state.board),
         }
@@ -142,7 +142,6 @@ impl GameStateJSON {
         GameState {
             nplayers: self.nplayers,
             turn: self.turn,
-            scores: self.scores.iter().cloned().collect(),
             board: self.board.to_native(),
         }
     }

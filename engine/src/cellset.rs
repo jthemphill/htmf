@@ -2,7 +2,7 @@ use std::iter::FromIterator;
 
 use NUM_CELLS;
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CellSet {
     pub data: u64,
 }

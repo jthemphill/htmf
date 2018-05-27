@@ -1,12 +1,9 @@
-use arrayvec::ArrayVec;
-
 use board::{Board, Player};
 use errors::IllegalMoveError;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GameState {
     pub nplayers: usize,
-    pub scores: ArrayVec<[usize; 4]>,
     pub turn: usize,
     pub board: Board,
 }
@@ -58,6 +55,12 @@ impl GameState {
         }
     }
 
+    pub fn get_scores(&self) -> Vec<usize> {
+        (0..self.nplayers).into_iter()
+            .map(|i| self.board.get_score(Player{id: i}))
+            .collect()
+    }
+
     pub fn is_legal_place(&self, c: u8) -> bool {
         !self.board.is_claimed(c)
     }
@@ -79,14 +82,9 @@ impl GameState {
 
     pub fn new_two_player(seed: &[usize]) -> GameState {
         let nplayers = 2;
-        let mut scores = ArrayVec::new();
-        for _ in 0..nplayers {
-            scores.push(0);
-        }
         GameState {
             nplayers,
             turn: 0,
-            scores,
             board: Board::new(seed),
         }
     }
@@ -106,7 +104,6 @@ impl GameState {
         }
         let active_player = self.active_player().unwrap();
         try!(self.board.claim_cell(active_player, c));
-        self.scores[active_player.id] += 1;
         self.turn += 1;
         Ok(())
     }
@@ -125,7 +122,6 @@ impl GameState {
             needs_prune = self.board.prune();
         }
         self.board.reap();
-        self.scores[active_player.id] = self.board.get_score(active_player);
         self.turn += 1;
         Ok(())
     }

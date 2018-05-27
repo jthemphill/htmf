@@ -94,7 +94,11 @@ impl Board {
     }
 
     pub fn get_score(&self, p: Player) -> usize {
-        self.claimed[p.id].into_iter().map(|c| self.num_fish(c)).sum()
+        (1..=3).into_iter().map(|num_fish| {
+            let mut claimed_with_fish = self.claimed[p.id].clone();
+            claimed_with_fish.intersect(&self.fish[num_fish - 1]);
+            claimed_with_fish.len() * num_fish
+        }).sum()
     }
 
     pub fn move_penguin(

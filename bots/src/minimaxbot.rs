@@ -72,7 +72,9 @@ impl MinimaxBot {
 
     fn score_move(game: &GameState, mv: &Move, ply: i32) -> Vec<usize> {
         if ply <= 0 {
-            return game.scores.to_vec();
+            return (0..game.nplayers).into_iter()
+                .map(|i| game.board.get_score(Player{id: i}))
+                .collect()
         }
         let game = {
             let mut game = game.clone();
@@ -83,7 +85,9 @@ impl MinimaxBot {
             let (scores, _) = Self::best_move(&game, &new_active_player, ply - 1);
             scores
         } else {
-            game.scores.to_vec()
+            (0..game.nplayers).into_iter()
+                .map(|i| game.board.get_score(Player{id: i}))
+                .collect()
         }
     }
 
