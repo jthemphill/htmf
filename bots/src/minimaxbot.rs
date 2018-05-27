@@ -5,8 +5,10 @@ extern crate htmf;
 
 use self::rayon::prelude::*;
 
-use htmf::board::{NUM_CELLS, Player};
+use htmf::board::Player;
 use htmf::game::{Action, GameState};
+
+type Move = (u8, u8);
 
 #[derive(Clone)]
 pub struct MinimaxBot {
@@ -47,28 +49,28 @@ impl MinimaxBot {
             let (_, (src, dst)) = Self::best_move(&self.game, &self.me, self.ply);
             Action::Move(src, dst)
         } else {
-            let draftable_cells: Vec<usize> = (0..NUM_CELLS).into_iter()
-                .filter(|&c| !self.game.board.is_claimed(c) && self.game.board.num_fish(c) == 1)
-                .collect();
+            // Cells with one fish and nobody claiming them
+            let mut draftable_cells = self.game.board.fish[0].clone();
+            draftable_cells.exclude(&self.game.board.all_claimed_cells());
             Action::Place(
                 rand::seq::sample_iter(
                     &mut self.rng,
-                    draftable_cells,
+                    draftable_cells.iter(),
                     1,
                 ).unwrap()[0],
             )
         }
     }
 
-    fn best_move(game: &GameState, p: &Player, ply: i32) -> (Vec<usize>, (usize, usize)) {
-        Self::all_moves(game, p)
+    fn best_move(game: &GameState, p: &Player, ply: i32) -> (Vec<usize>, Move) {
+        Self::all_moves(game, *p)
             .into_par_iter()
             .map(|mv| (Self::score_move(game, &mv, ply), mv))
             .max_by_key(|&(ref scores, _)| Self::negamax_score(scores, p))
             .unwrap()
     }
 
-    fn score_move(game: &GameState, mv: &(usize, usize), ply: i32) -> Vec<usize> {
+    fn score_move(game: &GameState, mv: &Move, ply: i32) -> Vec<usize> {
         if ply <= 0 {
             return game.scores.to_vec();
         }
@@ -97,10 +99,17 @@ impl MinimaxBot {
         my_score as i32 - best_other_score as i32
     }
 
-    fn all_moves(game: &GameState, p: &Player) -> Vec<(usize, usize)> {
+    fn all_moves(game: &GameState, p: Player) -> Vec<Move> {
         game.board.penguins[p.id]
             .into_iter()
-            .flat_map(|src| game.board.moves(src).into_iter().map(move |dst| (src, dst)))
+            .flat_map(|src| {
+                let move_vec: Vec<Move> = game.board
+                    .moves(src)
+                    .into_iter()
+                    .map(|dst| (src, dst))
+                    .collect();
+                move_vec.into_iter()
+            })
             .collect()
     }
 }

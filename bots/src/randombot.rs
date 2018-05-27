@@ -1,6 +1,8 @@
 extern crate htmf;
 extern crate rand;
-use htmf::board::{NUM_CELLS, Player};
+
+use htmf::NUM_CELLS;
+use htmf::board::Player;
 use htmf::game::{Action, GameState};
 
 #[derive(Clone)]
@@ -34,10 +36,10 @@ impl RandomBot {
                 1,
             ).unwrap()[0];
             let dst =
-                rand::seq::sample_iter(&mut self.rng, self.game.board.moves(src), 1).unwrap()[0];
+                rand::seq::sample_iter(&mut self.rng, self.game.board.moves(src).iter(), 1).unwrap()[0];
             Action::Move(src, dst)
         } else {
-            let draftable_cells: Vec<usize> = (0..NUM_CELLS).into_iter()
+            let draftable_cells: Vec<u8> = (0..NUM_CELLS as u8).into_iter()
                 .filter(|&c| !self.game.board.is_claimed(c) && self.game.board.num_fish(c) == 1)
                 .collect();
             Action::Place(

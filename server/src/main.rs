@@ -128,7 +128,7 @@ fn get_response(session: &mut Session, action_str: &str) -> String {
         Action::Selection(cell_idx) => {
             let board = &session.game.board;
             let mut board_json = protocol::BoardJSON::from_board(board);
-            board_json.possible_moves = board.moves(cell_idx);
+            board_json.possible_moves = board.moves(cell_idx).into_iter().collect();
             let mut game_json = protocol::GameStateJSON::from_game(&session.game);
             game_json.board = board_json;
             game_json.to_string()

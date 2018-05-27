@@ -1,13 +1,11 @@
-#![allow(dead_code)]
-
-extern crate bit_set;
 extern crate serde;
 extern crate serde_json;
 
 extern crate htmf;
 
-use self::bit_set::BitSet;
-use htmf::board::{Board, NUM_CELLS};
+use htmf::NUM_CELLS;
+use htmf::board::Board;
+use htmf::cellset::CellSet;
 use htmf::game::{Action, GameState};
 
 /// Module for all input and output.
@@ -52,18 +50,18 @@ enum ActionType {
 
 #[derive(Serialize, Deserialize)]
 struct ActionSelectionJSON {
-    hex: u64,
+    hex: u8,
 }
 
 #[derive(Serialize, Deserialize)]
 struct ActionPlaceJSON {
-    hex: u64,
+    hex: u8,
 }
 
 #[derive(Serialize, Deserialize)]
 struct ActionMoveJSON {
-    src: u64,
-    dst: u64,
+    src: u8,
+    dst: u8,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -76,17 +74,17 @@ fn get_action(action_json: ActionJSON) -> Option<Action> {
         ActionType::Selection => {
             let selection_data: ActionSelectionJSON =
                 serde_json::from_value(action_json.data).unwrap_or(None)?;
-            Some(Action::Selection(selection_data.hex as usize))
+            Some(Action::Selection(selection_data.hex))
         }
         ActionType::Move => {
             let move_data: ActionMoveJSON =
                 serde_json::from_value(action_json.data).unwrap_or(None)?;
-            Some(Action::Move(move_data.src as usize, move_data.dst as usize))
+            Some(Action::Move(move_data.src, move_data.dst))
         }
         ActionType::Place => {
             let place_data: ActionPlaceJSON =
                 serde_json::from_value(action_json.data).unwrap_or(None)?;
-            Some(Action::Place(place_data.hex as usize))
+            Some(Action::Place(place_data.hex))
         }
         ActionType::Setup => {
             println!("Setting up?");
@@ -173,16 +171,16 @@ pub enum GameModeType {
 #[derive(Serialize, Deserialize)]
 pub struct BoardJSON {
     pub fish: Vec<usize>,
-    pub penguins: Vec<Vec<usize>>,
-    pub claimed: Vec<Vec<i32>>,
-    pub possible_moves: Vec<usize>,
+    pub penguins: Vec<Vec<u8>>,
+    pub claimed: Vec<Vec<u8>>,
+    pub possible_moves: Vec<u8>,
 }
 
 impl BoardJSON {
     pub fn from_board(b: &Board) -> Self {
         BoardJSON {
-            fish: (0..NUM_CELLS).map(|c| b.num_fish(c)).collect(),
-            claimed: b.claimed.iter().map(|cells| cells.into_iter().map(|c| c as i32).collect()).collect(),
+            fish: (0..NUM_CELLS as u8).map(|c| b.num_fish(c)).collect(),
+            claimed: b.claimed.iter().map(|cells| cells.into_iter().collect()).collect(),
             penguins: b.penguins.iter().map(|cells| cells.into_iter().collect()).collect(),
             possible_moves: vec![],
         }
@@ -194,29 +192,25 @@ impl BoardJSON {
                 self.fish.iter()
                     .enumerate()
                     .filter(|&(_, fish)| *fish == num_fish)
-                    .map(|(i, _)| i)
+                    .map(|(i, _)| i as u8)
                     .collect()
             ).collect();
         let penguins = (0..=4)
             .into_iter()
             .map(|player| {
-                let mut penguin_set = BitSet::new();
+                let mut penguin_set = CellSet::new();
                 if let Some(player_penguins) = self.penguins.get(player) {
                     for &p in player_penguins {
-                        penguin_set.insert(p);
+                        penguin_set.insert(p as u8);
                     }
                 }
                 penguin_set
             })
             .collect();
         let claimed = self.claimed.iter()
-            .map(|cells| cells.iter().map(|&c| c as usize).collect())
+            .map(|cells| cells.iter().cloned().collect())
             .collect();
         Board { fish, penguins, claimed }
-    }
-
-    pub fn to_string(&self) -> String {
-        serde_json::to_string(self).unwrap()
     }
 }
 
@@ -241,7 +235,7 @@ mod tests {
     #[test]
     fn after_claiming() {
         let mut game = GameState::new_two_player(&[0]);
-        let eligible_place = (0..NUM_CELLS)
+        let eligible_place = (0..NUM_CELLS as u8)
             .into_iter()
             .filter(|&cell| game.board.num_fish(cell) == 1)
             .next()

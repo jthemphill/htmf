@@ -4,7 +4,6 @@ version = "0.1.0"
 authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 
 [dependencies]
-bit-set = "0.4.0"
 futures = "0.1.14"
 rand = "0.3.16"
 serde = "1.0.11"

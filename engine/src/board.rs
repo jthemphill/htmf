@@ -1,24 +1,16 @@
-extern crate bit_set;
 extern crate itertools;
 extern crate pathfinding;
 
 use arrayvec::ArrayVec;
 use rand::{Rng, SeedableRng, StdRng};
 
-use self::bit_set::BitSet;
+use {EVEN_ROW_LEN, ODD_ROW_LEN, NUM_CELLS, NUM_ONE_FISH, NUM_TWO_FISH, NUM_THREE_FISH};
+use cellset::CellSet;
+
 use self::itertools::Itertools;
 
 use errors::IllegalMoveError;
 use hex::{line, EvenR};
-
-const EVEN_ROW_LEN: usize = 7;
-const ODD_ROW_LEN: usize = 8;
-pub const NUM_CELLS: usize = (EVEN_ROW_LEN * (NUM_ROWS / 2) + ODD_ROW_LEN * (NUM_ROWS / 2));
-const NUM_ROWS: usize = 8;
-const NUM_ONE_FISH: usize = 30;
-const NUM_TWO_FISH: usize = 20;
-const NUM_THREE_FISH: usize = 10;
-pub const NUM_FISH: usize = NUM_ONE_FISH + NUM_TWO_FISH + NUM_THREE_FISH;
 
 type Fish = usize;
 
@@ -29,9 +21,9 @@ pub struct Player {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Board {
-    pub penguins: ArrayVec<[BitSet<u32>; 4]>,
-    pub fish: ArrayVec<[BitSet<u32>; 3]>,
-    pub claimed: ArrayVec<[BitSet<u32>; 4]>,
+    pub penguins: ArrayVec<[CellSet; 4]>,
+    pub fish: ArrayVec<[CellSet; 3]>,
+    pub claimed: ArrayVec<[CellSet; 4]>,
 }
 
 impl Board {
@@ -53,22 +45,22 @@ impl Board {
             rng.shuffle(&mut cell_to_fish);
         }
 
-        let mut fish: ArrayVec<[BitSet<u32>; 3]> = ArrayVec::new();
+        let mut fish: ArrayVec<[CellSet; 3]> = ArrayVec::new();
         for _ in 0..3 {
-            fish.push(BitSet::new());
+            fish.push(CellSet::new());
         }
         for i in 0..NUM_CELLS {
-            fish[cell_to_fish[i] - 1].insert(i);
+            fish[cell_to_fish[i] - 1].insert(i as u8);
         }
 
         Board {
             fish,
-            penguins: (0..4).map(|_| BitSet::new()).collect(),
-            claimed: (0..4).map(|_| BitSet::new()).collect(),
+            penguins: (0..4).map(|_| CellSet::new()).collect(),
+            claimed: (0..4).map(|_| CellSet::new()).collect(),
         }
     }
 
-    pub fn num_fish(&self, idx: usize) -> usize {
+    pub fn num_fish(&self, idx: u8) -> usize {
         self.fish.iter()
             .enumerate()
             .filter(|&(_, cells_with_fish)| cells_with_fish.contains(idx))
@@ -76,11 +68,19 @@ impl Board {
             .unwrap().0 + 1
     }
 
-    pub fn is_claimed(&self, idx: usize) -> bool {
-        self.claimed.iter().any(|cells| cells.contains(idx))
+    pub fn all_claimed_cells(&self) -> CellSet {
+        let mut ret = CellSet::new();
+        for cells in self.claimed.iter() {
+            ret.union(cells);
+        }
+        ret
     }
 
-    pub fn claim_cell(&mut self, p: Player, idx: usize) -> Result<(), IllegalMoveError> {
+    pub fn is_claimed(&self, idx: u8) -> bool {
+        self.claimed.iter().any(|cells| cells.contains(idx as u8))
+    }
+
+    pub fn claim_cell(&mut self, p: Player, idx: u8) -> Result<(), IllegalMoveError> {
         if self.is_claimed(idx) {
             return Err(IllegalMoveError::new(
                 p,
@@ -89,7 +89,7 @@ impl Board {
         }
 
         self.claimed[p.id].insert(idx);
-        self.penguins[p.id].insert(idx);
+        self.penguins[p.id].insert(idx as u8);
         Ok(())
     }
 
@@ -100,8 +100,8 @@ impl Board {
     pub fn move_penguin(
         &mut self,
         p: Player,
-        src: usize,
-        dst: usize,
+        src: u8,
+        dst: u8,
     ) -> Result<&Self, IllegalMoveError> {
         if !self.is_legal_move(p, src, dst) {
             return Err(IllegalMoveError::new(
@@ -113,12 +113,12 @@ impl Board {
             ));
         }
         self.claimed[p.id].insert(dst);
-        self.penguins[p.id].remove(src);
-        self.penguins[p.id].insert(dst);
+        self.penguins[p.id].remove(src as u8);
+        self.penguins[p.id].insert(dst as u8);
         Ok(self)
     }
 
-    fn neighbors(c: usize) -> impl Iterator<Item = usize> {
+    fn neighbors(c: u8) -> impl Iterator<Item = u8> {
         Board::index_to_evenr(c)
             .neighbors()
             .into_iter()
@@ -127,7 +127,7 @@ impl Board {
     }
 
     fn in_bounds(c: &EvenR) -> bool {
-        c.row >= 0 && Board::in_column_bounds(c) && Board::evenr_to_index(c) < NUM_CELLS
+        c.row >= 0 && Board::in_column_bounds(c) && Board::evenr_to_index(c) < NUM_CELLS as u8
     }
 
     fn in_column_bounds(c: &EvenR) -> bool {
@@ -140,11 +140,12 @@ impl Board {
         }
     }
 
-    pub fn claimed_cells(&self) -> Vec<usize> {
-        self.claimed
-            .iter()
-            .flat_map(|cells| cells.iter())
-            .collect()
+    pub fn claimed_cells(&self) -> CellSet {
+        let mut ret = CellSet::new();
+        for cells in self.claimed.iter() {
+            ret.union(cells);
+        }
+        ret
     }
 
     /// Is the given cell a "cut cell"?
@@ -156,7 +157,7 @@ impl Board {
     /// penguin from the given cell cannot possibly increase the
     /// number of connected components. The function which actually
     /// determines a board's connected components is quite expensive!
-    pub fn is_cut_cell(&self, cell_idx: usize) -> bool {
+    pub fn is_cut_cell(&self, cell_idx: u8) -> bool {
         let neighbors = Board::neighbors(cell_idx);
         let mut saw_live = false;
         let mut crossings = 0;
@@ -176,7 +177,7 @@ impl Board {
         false
     }
 
-    pub fn moves(&self, cell_idx: usize) -> Vec<usize> {
+    pub fn moves(&self, cell_idx: u8) -> CellSet {
         let cell = Board::index_to_evenr(cell_idx);
         cell.neighbors()
             .into_iter()
@@ -186,9 +187,9 @@ impl Board {
             .collect()
     }
 
-    pub fn is_legal_move(&self, p: Player, src: usize, dst: usize) -> bool {
-        (self.penguins[p.id].contains(src) && !self.is_claimed(dst)
-            && self.is_clear_path(&Board::index_to_evenr(src), &Board::index_to_evenr(dst)))
+    pub fn is_legal_move(&self, p: Player, src: u8, dst: u8) -> bool {
+        self.penguins[p.id].contains(src) && !self.is_claimed(dst)
+            && self.is_clear_path(&Board::index_to_evenr(src), &Board::index_to_evenr(dst))
     }
 
     /**
@@ -219,13 +220,13 @@ impl Board {
             .all(|idx| !self.is_claimed(idx))
     }
 
-    pub fn evenr_to_index(c: &EvenR) -> usize {
-        let paired_offset = (EVEN_ROW_LEN + ODD_ROW_LEN) * (c.row / 2) as usize;
-        let unpaired_offset = if c.row % 2 == 1 { EVEN_ROW_LEN } else { 0 } as usize;
-        paired_offset + unpaired_offset + c.col as usize
+    pub fn evenr_to_index(c: &EvenR) -> u8 {
+        let paired_offset = (EVEN_ROW_LEN + ODD_ROW_LEN) as u8 * (c.row / 2) as u8;
+        let unpaired_offset = if c.row % 2 == 1 { EVEN_ROW_LEN } else { 0 } as u8;
+        paired_offset + unpaired_offset + c.col as u8
     }
 
-    pub fn index_to_evenr(idx: usize) -> EvenR {
+    pub fn index_to_evenr(idx: u8) -> EvenR {
         let mut idx = idx as i64;
         let mut row = 0;
         loop {
@@ -298,7 +299,7 @@ impl Board {
     /// Assuming the given penguin is alone on a connected component,
     /// and if the penguin can touch every tile on that component
     /// exactly once, do so and return true.
-    fn fill(&mut self, player: &Player, penguin: usize) -> bool {
+    fn fill(&mut self, player: &Player, penguin: u8) -> bool {
         let moves = self.optimal_path(player, penguin);
 
         if let Some((cells_to_take, _)) = moves {
@@ -316,9 +317,9 @@ impl Board {
     fn optimal_path(
         &self,
         player: &Player,
-        penguin: usize,
-    ) -> Option<(Vec<(Board, usize, usize)>, usize)> {
-        let best_remaining_score_fn = |board: &Board, penguin: usize| -> usize {
+        penguin: u8,
+    ) -> Option<(Vec<(Board, u8, usize)>, usize)> {
+        let best_remaining_score_fn = |board: &Board, penguin: u8| -> usize {
             // pick the largest adjacent component
             // and assume we can get the whole thing
             board
@@ -368,15 +369,15 @@ impl Board {
         }
     }
 
-    fn connected_components(&self) -> Vec<BitSet<u32>> {
-        let num_unclaimed = (0..NUM_CELLS)
+    fn connected_components(&self) -> Vec<CellSet> {
+        let num_unclaimed = (0..NUM_CELLS as u8)
             .filter(|&idx| !self.is_claimed(idx))
             .count();
-        let mut marked = BitSet::new();
+        let mut marked = CellSet::new();
         let mut components = vec![];
 
         while marked.len() < num_unclaimed {
-            let idx = (0..NUM_CELLS)
+            let idx = (0..NUM_CELLS as u8)
                 .filter(|&idx| !marked.contains(idx) && !self.is_claimed(idx))
                 .nth(0)
                 .unwrap();
@@ -389,8 +390,8 @@ impl Board {
         components
     }
 
-    fn component(&self, start: usize) -> BitSet<u32> {
-        let mut marked = BitSet::new();
+    fn component(&self, start: u8) -> CellSet {
+        let mut marked = CellSet::new();
         let mut queue = vec![start];
         while let Some(idx) = queue.pop() {
             marked.insert(idx);
@@ -416,7 +417,7 @@ mod tests {
 
     #[test]
     fn index_evenr_translation() {
-        for idx in 0..NUM_CELLS {
+        for idx in 0..NUM_CELLS as u8 {
             assert!(Board::evenr_to_index(&Board::index_to_evenr(idx)) == idx);
         }
     }
@@ -475,7 +476,7 @@ mod tests {
         let b = Board::new(&[0]);
         let c = EvenR { col: 1, row: 2 };
         let moves = b.moves(Board::evenr_to_index(&c));
-        assert_ne!(moves, vec![]);
+        assert_ne!(moves, CellSet::new());
     }
 
     #[test]
@@ -489,7 +490,7 @@ mod tests {
             }
         }
         let moves = b.moves(Board::evenr_to_index(&c));
-        assert_eq!(moves, vec![]);
+        assert_eq!(moves, CellSet::new());
     }
 
     #[test]
@@ -533,13 +534,13 @@ mod tests {
                 b.claimed_cells().len() + components.iter().flat_map(|x| x).count(),
                 NUM_CELLS,
             );
-            let mut all_cells = BitSet::new();
+            let mut all_cells = CellSet::new();
             for component in components {
                 for cell in component.iter() {
                     all_cells.insert(cell);
                 }
             }
-            for cell in b.claimed_cells() {
+            for cell in b.claimed_cells().iter() {
                 all_cells.insert(cell);
             }
             assert_eq!(all_cells.len(), NUM_CELLS);
@@ -555,7 +556,7 @@ mod tests {
         let mut b = Board::new(&[0]);
         b.claim_cell(Player { id: 0 }, 0).unwrap();
         b.prune();
-        let num_claimed_cells = (0..NUM_CELLS).into_iter().filter(|&c| b.is_claimed(c)).count();
+        let num_claimed_cells = (0..NUM_CELLS as u8).into_iter().filter(|&c| b.is_claimed(c)).count();
         assert_eq!(num_claimed_cells, NUM_CELLS);
     }
 
@@ -565,7 +566,7 @@ mod tests {
         b.claim_cell(Player { id: 0 }, 0).unwrap();
         b.claim_cell(Player { id: 1 }, 1).unwrap();
         b.prune();
-        let num_claimed_cells = (0..NUM_CELLS).into_iter().filter(|&c| b.is_claimed(c)).count();
+        let num_claimed_cells = (0..NUM_CELLS as u8).into_iter().filter(|&c| b.is_claimed(c)).count();
         assert_eq!(num_claimed_cells, 2);
     }
 }

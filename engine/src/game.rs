@@ -58,11 +58,11 @@ impl GameState {
         }
     }
 
-    pub fn is_legal_place(&self, c: usize) -> bool {
+    pub fn is_legal_place(&self, c: u8) -> bool {
         !self.board.is_claimed(c)
     }
 
-    pub fn is_legal_move(&self, src: usize, dst: usize) -> bool {
+    pub fn is_legal_move(&self, src: u8, dst: u8) -> bool {
         self.board
             .is_legal_move(self.active_player().unwrap(), src, dst)
     }
@@ -91,7 +91,7 @@ impl GameState {
         }
     }
 
-    pub fn place_penguin(&mut self, c: usize) -> Result<(), IllegalMoveError> {
+    pub fn place_penguin(&mut self, c: u8) -> Result<(), IllegalMoveError> {
         if self.finished_drafting() {
             return Err(IllegalMoveError::new(
                 self.active_player().unwrap(),
@@ -111,7 +111,7 @@ impl GameState {
         Ok(())
     }
 
-    pub fn move_penguin(&mut self, src: usize, dst: usize) -> Result<(), IllegalMoveError> {
+    pub fn move_penguin(&mut self, src: u8, dst: u8) -> Result<(), IllegalMoveError> {
         if !self.finished_drafting() {
             return Err(IllegalMoveError::new(
                 self.active_player().unwrap(),
@@ -133,9 +133,9 @@ impl GameState {
 
 #[derive(Debug)]
 pub enum Action {
-    Move(usize, usize),
-    Place(usize),
-    Selection(usize),
+    Move(u8, u8),
+    Place(u8),
+    Selection(u8),
     Setup(GameState),
 }
 
