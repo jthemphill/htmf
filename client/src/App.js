@@ -33,18 +33,15 @@ class App extends React.Component<Props, State> {
         super(props);
 
         const fish = [];
-        const penguins = [[], []];
-        const claimed = [[], [], [], []];
-        const possible_moves = new Set([]);
 
-        for (let i = 0; i < 60; ++i) {
-            if (i < 30) {
-                fish[i] = 1;
-            } else if (i < 50) {
-                fish[i] = 2;
-            } else {
-                fish[i] = 3;
-            }
+        for (let i = 0; i < 30; ++i) {
+            fish.push(1);
+        }
+        for (let i = 30; i < 50; ++i) {
+            fish.push(2);
+        }
+        for (let i = 50; i < 60; ++i) {
+            fish.push(3);
         }
 
         shuffle(fish);
@@ -54,9 +51,9 @@ class App extends React.Component<Props, State> {
             nplayers: 2,
             board: {
                 fish,
-                penguins,
-                claimed,
-                possible_moves,
+                penguins: [[], []],
+                claimed: [[], []],
+                possible_moves: new Set(),
             },
             turn: 0,
             scores: [0, 0],
@@ -137,6 +134,7 @@ class App extends React.Component<Props, State> {
             }
             const new_state = JSON.parse(e.data);
             console.log('Received state: ', new_state);
+            new_state.possible_moves = new Set(new_state.possible_moves);
             this.setState({gameState: new_state, inputText: JSON.stringify(new_state)});
         };
     }

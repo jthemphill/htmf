@@ -370,21 +370,19 @@ impl Board {
     }
 
     fn connected_components(&self) -> Vec<CellSet> {
-        let num_unclaimed = (0..NUM_CELLS as u8)
-            .filter(|&idx| !self.is_claimed(idx))
-            .count();
+        let claimed_cells = self.all_claimed_cells();
+        let num_unclaimed = NUM_CELLS - claimed_cells.len();
         let mut marked = CellSet::new();
         let mut components = vec![];
 
         while marked.len() < num_unclaimed {
-            let idx = (0..NUM_CELLS as u8)
-                .filter(|&idx| !marked.contains(idx) && !self.is_claimed(idx))
-                .nth(0)
-                .unwrap();
+            let mut available = CellSet::full();
+            available.exclude(&claimed_cells);
+            available.exclude(&marked);
+
+            let idx = available.iter().next().unwrap();
             let new_component = self.component(idx);
-            for x in new_component.iter() {
-                marked.insert(x);
-            }
+            marked.union(&new_component);
             components.push(new_component);
         }
         components
@@ -395,10 +393,10 @@ impl Board {
         let mut queue = vec![start];
         while let Some(idx) = queue.pop() {
             marked.insert(idx);
-            let new_members = Board::neighbors(idx)
-                .into_iter()
-                .filter(|&idx| !self.is_claimed(idx) && !marked.contains(idx));
-            for x in new_members {
+            let mut new_members: CellSet = Board::neighbors(idx).collect();
+            new_members.exclude(&self.all_claimed_cells());
+            new_members.exclude(&marked);
+            for x in new_members.iter() {
                 queue.push(x);
             }
         }

@@ -12,6 +12,10 @@ impl CellSet {
         CellSet{data: 0}
     }
 
+    pub fn full() -> Self {
+        CellSet{data: !0 >> 4}
+    }
+
     pub fn insert(&mut self, value: u8) {
         self.data |= 1 << value;
     }

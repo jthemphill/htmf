@@ -158,13 +158,14 @@ class Board extends React.Component<Props, State> {
         if (active_player === null) {
             return;
         }
+        console.log(this.props.possibleMoves);
         if (game_state.mode_type === 'drafting') {
             this._placePenguin(key);
         } else if (game_state.board.penguins[active_player].includes(key)) {
             this._toggleCellHighlight(key);
         } else if (
             this.state.chosenCell !== null &&
-                game_state.board.possible_moves[key]
+                this.props.possibleMoves.has(key)
         ) {
             this._movePenguinToCell(key);
         }
