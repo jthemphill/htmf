@@ -9,13 +9,13 @@ use htmf::game::{Action, GameState};
 #[derive(Clone)]
 pub struct Session {
     pub game: GameState,
-    bot: MinimaxBot,
+    bot: MCTSBot,
 }
 
 impl Session {
     pub fn new(game: GameState) -> Session {
-        let bot = MinimaxBot::new(&game, Player { id: 1 });
-        Session { game, bot }
+        let bot = MCTSBot::new(game.clone(), Player { id: 1 });
+        Session { game: game, bot }
     }
 
     pub fn apply_action(&mut self, action: &Action) -> Result<(), IllegalMoveError> {

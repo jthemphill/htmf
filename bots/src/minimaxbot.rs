@@ -1,3 +1,4 @@
+extern crate mcts;
 extern crate rand;
 extern crate rayon;
 

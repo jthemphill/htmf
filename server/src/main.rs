@@ -80,19 +80,20 @@ fn main() {
                     .take_while(|m| Ok(!m.is_close()))
                     .filter_map(move |m| {
                         // println!("Message from Client: {:?}", m);
-                        let mut session = {
-                            let sessions = sessions_update.borrow();
-                            sessions
-                                .get(&addr)
-                                .unwrap()
-                                .clone()
-                        };
                         match m {
                             OwnedMessage::Ping(p) => Some(
                                 OwnedMessage::Pong(p)
                             ),
                             OwnedMessage::Pong(_) => None,
                             OwnedMessage::Text(request_str) => {
+                                let mut session = {
+                                    let sessions = sessions_update.borrow();
+                                    let session = sessions
+                                        .get(&addr)
+                                        .unwrap();
+                                    session.clone()
+                                };
+                                let mut session = session.clone();
                                 let response_str = get_response(
                                     &mut session,
                                     &request_str,
