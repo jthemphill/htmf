@@ -3,5 +3,6 @@
 members = [
   "bots",
   "engine",
+  "selfplay",
   "server",
 ]

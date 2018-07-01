@@ -97,9 +97,9 @@ pub struct MCTSBot {
 }
 
 impl MCTSBot {
-    pub fn new(game: htmf::game::GameState, me: htmf::board::Player) -> Self {
+    pub fn new(game: &htmf::game::GameState, me: htmf::board::Player) -> Self {
         MCTSBot {
-            game: Game{state: game},
+            game: Game{state: game.clone()},
             me,
         }
     }
@@ -113,8 +113,12 @@ impl MCTSBot {
             panic!("{:?} was asked to move, but it is not their turn!", self.me);
         }
         let mut mcts = MCTSManager::new(self.game.clone(), MyMCTS, MyEvaluator, UCTPolicy::new(0.5));
-        mcts.playout_n_parallel(100000, 4);
-        let best_move = mcts.principal_variation(1).into_iter().next().unwrap();
+        mcts.playout_n_parallel(100, 4);
+        let pv = mcts.principal_variation(1);
+        if pv.len() == 0 {
+            panic!(format!("No moves??? {}...", self.game.state.game_over()));
+        }
+        let best_move = pv.into_iter().next().unwrap();
         match best_move {
             Move::Move((src, dst)) => htmf::game::Action::Move(src, dst),
             Move::Place(dst) => htmf::game::Action::Place(dst)

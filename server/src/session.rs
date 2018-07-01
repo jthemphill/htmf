@@ -14,7 +14,7 @@ pub struct Session {
 
 impl Session {
     pub fn new(game: GameState) -> Session {
-        let bot = MCTSBot::new(game.clone(), Player { id: 1 });
+        let bot = MCTSBot::new(&game, Player { id: 1 });
         Session { game: game, bot }
     }
 

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde_json;
 
 use board::Board;
@@ -5,7 +7,7 @@ use cellset::CellSet;
 use game::GameState;
 use NUM_CELLS;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GameStateJSON {
     pub last_move_valid: bool,
     pub mode_type: GameModeType,
@@ -14,6 +16,28 @@ pub struct GameStateJSON {
     pub scores: Vec<usize>,
     pub turn: usize,
     pub board: BoardJSON,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BoardJSON {
+    pub fish: Vec<usize>,
+    pub penguins: Vec<Vec<u8>>,
+    pub claimed: Vec<Vec<u8>>,
+    pub possible_moves: Vec<u8>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum GameModeType {
+    #[serde(rename = "drafting")]
+    Drafting,
+    #[serde(rename = "playing")]
+    Playing,
+}
+
+impl fmt::Display for GameStateJSON {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        serde_json::to_string(self).unwrap().fmt(f)
+    }
 }
 
 impl<'a> From<&'a GameState> for GameStateJSON {
@@ -67,22 +91,6 @@ impl<'a> From<&'a GameStateJSON> for String {
     fn from(state: &'a GameStateJSON) -> String {
         serde_json::to_string(state).unwrap()
     }
-}
-
-#[derive(Serialize, Deserialize)]
-pub enum GameModeType {
-    #[serde(rename = "drafting")]
-    Drafting,
-    #[serde(rename = "playing")]
-    Playing,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct BoardJSON {
-    pub fish: Vec<usize>,
-    pub penguins: Vec<Vec<u8>>,
-    pub claimed: Vec<Vec<u8>>,
-    pub possible_moves: Vec<u8>,
 }
 
 impl<'a> From<&'a Board> for BoardJSON {

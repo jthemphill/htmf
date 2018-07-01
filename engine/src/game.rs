@@ -1,11 +1,20 @@
+use std::fmt;
+
 use board::{Board, Player};
 use errors::IllegalMoveError;
+use json::GameStateJSON;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GameState {
     pub nplayers: usize,
     pub turn: usize,
     pub board: Board,
+}
+
+impl fmt::Display for GameState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        GameStateJSON::from(self).fmt(f)
+    }
 }
 
 impl GameState {

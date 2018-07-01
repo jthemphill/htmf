@@ -1,9 +1,9 @@
-extern crate htmf;
-extern crate rand;
+use rand;
 
-use htmf::NUM_CELLS;
 use htmf::board::Player;
 use htmf::game::{Action, GameState};
+use htmf::json::*;
+use htmf::NUM_CELLS;
 
 #[derive(Clone)]
 pub struct RandomBot {
@@ -30,25 +30,31 @@ impl RandomBot {
             panic!("{:?} was asked to move, but it is not their turn!", self.me);
         }
         if self.game.finished_drafting() {
-            let src = rand::seq::sample_iter(
-                &mut self.rng,
-                self.game.board.penguins[self.me.id].iter(),
-                1,
-            ).unwrap()[0];
-            let dst =
-                rand::seq::sample_iter(&mut self.rng, self.game.board.moves(src).iter(), 1).unwrap()[0];
+            let penguins = self.game.board.penguins[self.me.id];
+            if penguins.is_empty() {
+                panic!(
+                    "{:?} was asked to move a penguin, but no penguins exist!",
+                    self.me
+                );
+            }
+            let src = rand::seq::sample_iter(&mut self.rng, penguins.iter(), 1).unwrap()[0];
+            let moves = self.game.board.moves(src);
+            if moves.is_empty() {
+                panic!(
+                    "{:?} wants to move a penguin from {}, but has nowhere to move it! Board: {}",
+                    self.me,
+                    src,
+                    GameStateJSON::from(&self.game)
+                );
+            }
+            let dst = rand::seq::sample_iter(&mut self.rng, moves.iter(), 1).unwrap()[0];
             Action::Move(src, dst)
         } else {
-            let draftable_cells: Vec<u8> = (0..NUM_CELLS as u8).into_iter()
+            let draftable_cells: Vec<u8> = (0..NUM_CELLS as u8)
+                .into_iter()
                 .filter(|&c| !self.game.board.is_claimed(c) && self.game.board.num_fish(c) == 1)
                 .collect();
-            Action::Place(
-                rand::seq::sample_iter(
-                    &mut self.rng,
-                    draftable_cells,
-                    1,
-                ).unwrap()[0],
-            )
+            Action::Place(rand::seq::sample_iter(&mut self.rng, draftable_cells, 1).unwrap()[0])
         }
     }
 }
