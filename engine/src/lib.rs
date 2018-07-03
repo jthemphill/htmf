@@ -1,6 +1,12 @@
 extern crate arrayvec;
 extern crate rand;
 
+extern crate serde;
+extern crate serde_json;
+
+#[macro_use]
+extern crate serde_derive;
+
 pub const EVEN_ROW_LEN: usize = 7;
 pub const ODD_ROW_LEN: usize = 8;
 pub const NUM_CELLS: usize = (EVEN_ROW_LEN * (NUM_ROWS / 2) + ODD_ROW_LEN * (NUM_ROWS / 2));
@@ -14,4 +20,5 @@ pub mod board;
 pub mod errors;
 pub mod game;
 pub mod cellset;
+pub mod json;
 mod hex;

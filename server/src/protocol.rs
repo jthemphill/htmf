@@ -1,12 +1,7 @@
-extern crate serde;
-extern crate serde_json;
+use serde_json;
 
-extern crate htmf;
-
-use htmf::NUM_CELLS;
-use htmf::board::Board;
-use htmf::cellset::CellSet;
 use htmf::game::{Action, GameState};
+use htmf::json::{GameStateJSON};
 
 /// Module for all input and output.
 /// 1. We receive ActionJSON from the client
@@ -95,153 +90,8 @@ fn get_action(action_json: ActionJSON) -> Option<Action> {
                     None
                 }
             }?;
-            let setup_action = Action::Setup(game_state_data.state.to_game());
+            let setup_action = Action::Setup(GameState::from(&game_state_data.state));
             Some(setup_action)
         }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct GameStateJSON {
-    pub last_move_valid: bool,
-    pub mode_type: GameModeType,
-    pub nplayers: usize,
-    pub active_player: Option<usize>,
-    pub scores: Vec<usize>,
-    pub turn: usize,
-    pub board: BoardJSON,
-}
-
-impl GameStateJSON {
-    pub fn to_string(&self) -> String {
-        serde_json::to_string(self).unwrap()
-    }
-
-    pub fn from_game(state: &GameState) -> Self {
-        let mode_type = if state.finished_drafting() {
-            GameModeType::Playing
-        } else {
-            GameModeType::Drafting
-        };
-
-        GameStateJSON {
-            last_move_valid: true,
-            mode_type,
-            nplayers: state.nplayers,
-            active_player: match state.active_player() {
-                Some(p) => Some(p.id),
-                _ => None,
-            },
-            scores: state.get_scores(),
-            turn: state.turn,
-            board: BoardJSON::from_board(&state.board),
-        }
-    }
-
-    pub fn to_game(&self) -> GameState {
-        GameState {
-            nplayers: self.nplayers,
-            turn: self.turn,
-            board: self.board.to_native(),
-        }
-    }
-
-    pub fn from_board(b: &Board) -> Self {
-        GameStateJSON {
-            last_move_valid: true,
-            mode_type: GameModeType::Drafting,
-            scores: vec![0, 0],
-            nplayers: 2,
-            active_player: Some(0),
-            turn: 0,
-            board: BoardJSON::from_board(b),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub enum GameModeType {
-    #[serde(rename = "drafting")]
-    Drafting,
-    #[serde(rename = "playing")]
-    Playing,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct BoardJSON {
-    pub fish: Vec<usize>,
-    pub penguins: Vec<Vec<u8>>,
-    pub claimed: Vec<Vec<u8>>,
-    pub possible_moves: Vec<u8>,
-}
-
-impl BoardJSON {
-    pub fn from_board(b: &Board) -> Self {
-        BoardJSON {
-            fish: (0..NUM_CELLS as u8).map(|c| b.num_fish(c)).collect(),
-            claimed: b.claimed.iter().map(|cells| cells.into_iter().collect()).collect(),
-            penguins: b.penguins.iter().map(|cells| cells.into_iter().collect()).collect(),
-            possible_moves: vec![],
-        }
-    }
-
-    fn to_native(&self) -> Board {
-        let fish = (1..=3).into_iter()
-            .map(|num_fish|
-                self.fish.iter()
-                    .enumerate()
-                    .filter(|&(_, fish)| *fish == num_fish)
-                    .map(|(i, _)| i as u8)
-                    .collect()
-            ).collect();
-        let penguins = (0..=4)
-            .into_iter()
-            .map(|player| {
-                let mut penguin_set = CellSet::new();
-                if let Some(player_penguins) = self.penguins.get(player) {
-                    for &p in player_penguins {
-                        penguin_set.insert(p as u8);
-                    }
-                }
-                penguin_set
-            })
-            .collect();
-        let claimed = self.claimed.iter()
-            .map(|cells| cells.iter().cloned().collect())
-            .collect();
-        Board { fish, penguins, claimed }
-    }
-}
-
-pub fn init_with_board(board: &Board) -> String {
-    let state = GameStateJSON::from_board(board);
-
-    serde_json::to_string(&state).unwrap()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn initial_state() {
-        let game = GameState::new_two_player(&[0]);
-        let game_json = GameStateJSON::from_game(&game);
-        let game_again = game_json.to_game();
-        assert_eq!(game, game_again);
-    }
-
-    #[test]
-    fn after_claiming() {
-        let mut game = GameState::new_two_player(&[0]);
-        let eligible_place = (0..NUM_CELLS as u8)
-            .into_iter()
-            .filter(|&cell| game.board.num_fish(cell) == 1)
-            .next()
-            .unwrap();
-        game.place_penguin(eligible_place).unwrap();
-        let game_json = GameStateJSON::from_game(&game);
-        let game_again = game_json.to_game();
-        assert_eq!(game, game_again);
     }
 }

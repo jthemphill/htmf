@@ -7,6 +7,7 @@ extern crate htmf;
 
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
 
 mod protocol;
 mod session;
@@ -26,6 +27,7 @@ use futures::{Future, Sink, Stream};
 use tokio_core::reactor::{Core, Handle};
 
 use htmf::game::{Action, GameState};
+use htmf::json::*;
 
 use session::Session;
 
@@ -68,7 +70,7 @@ fn main() {
                     println!("Started a connection");
                     s.send(
                         Message::text(
-                            protocol::init_with_board(&session.game.board)
+                            String::from(&GameStateJSON::from(&session.game.board))
                         ).into()
                     )
                 })
@@ -119,27 +121,27 @@ fn get_response(session: &mut Session, action_str: &str) -> String {
     let action = match protocol::action_from_str(action_str) {
         Some(a) => a,
         None => {
-            let mut game_json = protocol::GameStateJSON::from_game(&session.game);
+            let mut game_json = GameStateJSON::from(&session.game);
             game_json.last_move_valid = false;
-            return game_json.to_string();
+            return String::from(&game_json);
         }
     };
     match action {
         Action::Selection(cell_idx) => {
             let board = &session.game.board;
-            let mut board_json = protocol::BoardJSON::from_board(board);
+            let mut board_json = BoardJSON::from(board);
             board_json.possible_moves = board.moves(cell_idx).into_iter().collect();
-            let mut game_json = protocol::GameStateJSON::from_game(&session.game);
+            let mut game_json = GameStateJSON::from(&session.game);
             game_json.board = board_json;
-            game_json.to_string()
-        }
+            String::from(&game_json)
+        },
         _ => {
             let res = session.apply_action(&action);
-            let mut game_json = protocol::GameStateJSON::from_game(&session.game);
+            let mut game_json = GameStateJSON::from(&session.game);
             if res.is_err() {
                 game_json.last_move_valid = false;
             }
-            game_json.to_string()
-        }
+            String::from(&game_json)
+        },
     }
 }
