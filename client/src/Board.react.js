@@ -13,50 +13,22 @@ const ODD_ROW_LEN = 8;
 type Props = {
     socket: WebSocket,
     gameState: GameState,
-    possibleMoves: Array<bool>,
+    minDim: number,
+    disablePossibleMoves: bool,
+    chosenCell: ?number,
+    handleCellClick: ((number) => void),
 };
 
 type State = {
-    minDim: number,
-    chosenCell: ?number,
-    // The first time we click a penguin, show moves the penguin can
-    // take. The second time we click the same penguin, suppress those
-    // moves.
-    disablePossibleMoves: bool,
+
 }
 
 class Board extends React.Component<Props, State> {
 
     handleCellClick: (key: number) => void;
 
-    constructor(props: Props) {
-        super(props);
-
-        this.state = {
-            minDim: Math.min(window.innerWidth, window.innerHeight),
-            chosenCell: null,
-            disablePossibleMoves: false,
-        };
-
-        this.handleCellClick = this._handleCellClick.bind(this);
-    }
-
-    componentDidMount() {
-        window.addEventListener('resize', this.updateWindowDimensions.bind(this));
-    }
-
-    componentWillUnmount() {
-        window.removeEventListener('resize', this.updateWindowDimensions.bind(this));
-    }
-
-    updateWindowDimensions() {
-        this.setState({
-            minDim: Math.min(window.innerWidth, window.innerHeight),
-        });
-    }
-
     render() {
-        const side_length = this.state.minDim / 16;
+        const side_length = this.props.minDim / 16;
 
         const start_x = 2 * side_length;
         const start_y = 2 * side_length;
@@ -75,16 +47,9 @@ class Board extends React.Component<Props, State> {
             }
         }
 
-        let any_possible_moves = false;
-        for (let can_move of this.props.possibleMoves) {
-            if (can_move) {
-                any_possible_moves = true;
-                break;
-            }
-        }
+        const any_possible_moves = this.props.gameState.board.possible_moves.length > 0;
 
         const claimed = new Set([]);
-        console.log(this.props.gameState.board.claimed);
         for (let player_claimed of this.props.gameState.board.claimed) {
             for (let cell of player_claimed) {
                 claimed.add(cell);
@@ -105,44 +70,44 @@ class Board extends React.Component<Props, State> {
                 const key = hexes.length;
                 const fish = this.props.gameState.board.fish[key];
                 const color = colors[key];
-                const possible = !this.state.disablePossibleMoves &&
-                      any_possible_moves && this.props.possibleMoves.has(key);
+                const possible = !this.props.disablePossibleMoves &&
+                    any_possible_moves && this.props.gameState.board.possible_moves.includes(key);
 
-                const is_highlighted = !this.state.disablePossibleMoves &&
-                      any_possible_moves &&
-                      this.state.chosenCell === key;
+                const is_highlighted = !this.props.disablePossibleMoves &&
+                    any_possible_moves &&
+                    this.props.chosenCell === key;
 
                 hexes.push(
-                  <Hex
-                    key={key}
-                    _key={key}
-                    onClick={this.handleCellClick}
-                    fish={fish}
-                    cx={x}
-                    cy={y}
-                    sideLength={side_length}
-                    highlighted={is_highlighted}
-                    possible={possible}
-                    color={color}
-                    claimed={claimed.has(key)}
-                  />
+                    <Hex
+                        key={key}
+                        _key={key}
+                        onClick={this.props.handleCellClick}
+                        fish={fish}
+                        cx={x}
+                        cy={y}
+                        sideLength={side_length}
+                        highlighted={is_highlighted}
+                        possible={possible}
+                        color={color}
+                        claimed={claimed.has(key)}
+                    />
                 );
             }
         }
 
         const style = {
-            'height': this.state.minDim,
-            'width': this.state.minDim,
+            'height': this.props.minDim,
+            'width': this.props.minDim,
             'gridColumn': '1 / auto',
         };
 
         return (
-          <svg version="1.1"
-            style={style}
-            baseProfile="full"
-            xmlns="http://www.w3.org/2000/svg">
-            {hexes}
-          </svg>
+            <svg version="1.1"
+                style={style}
+                baseProfile="full"
+                xmlns="http://www.w3.org/2000/svg">
+                {hexes}
+            </svg>
         );
     }
 
@@ -150,80 +115,6 @@ class Board extends React.Component<Props, State> {
     activePlayer(): ?number {
         const game_state = this.props.gameState;
         return game_state.active_player;
-    }
-
-    _handleCellClick(key: number) {
-        const game_state = this.props.gameState;
-        const active_player = this.activePlayer();
-        if (active_player === null) {
-            return;
-        }
-        console.log(this.props.possibleMoves);
-        if (game_state.mode_type === 'drafting') {
-            this._placePenguin(key);
-        } else if (game_state.board.penguins[active_player].includes(key)) {
-            this._toggleCellHighlight(key);
-        } else if (
-            this.state.chosenCell !== null &&
-                this.props.possibleMoves.has(key)
-        ) {
-            this._movePenguinToCell(key);
-        }
-    }
-
-    _placePenguin(key: number) {
-        const data = JSON.stringify({
-            "action_type": "place",
-            "data": {
-                "hex": key,
-            },
-        });
-        this.sendData(data);
-    }
-
-    _movePenguinToCell(key: number) {
-        const data = JSON.stringify({
-            "action_type": "move",
-            "data": {
-                "src": this.state.chosenCell,
-                "dst": key,
-            },
-        });
-        this.sendData(data);
-    }
-
-    _toggleCellHighlight(key: number) {
-        if (!this.state.disablePossibleMoves && this.state.chosenCell === key) {
-            this.setState({
-                disablePossibleMoves: true,
-            });
-            return;
-        }
-
-        this.setState({
-            chosenCell: key,
-            // TODO: Doing this here causes UI flicker - we
-            // temporarily show the old possible moves before getting
-            // the new ones from the server.
-            disablePossibleMoves: false,
-        });
-
-        const data = JSON.stringify({
-            "action_type": "selection",
-            "data": {
-                "hex": key,
-            },
-        });
-        this.sendData(data);
-    }
-
-    sendData(data: string) {
-        if (!this.props.socket) {
-            console.log("Not connected to a server!");
-            return;
-        }
-        console.log('sending data: ' + data);
-        this.props.socket.send(data);
     }
 }
 
