@@ -4,8 +4,8 @@ extern crate pathfinding;
 use arrayvec::ArrayVec;
 use rand::{Rng, SeedableRng, StdRng};
 
-use {EVEN_ROW_LEN, ODD_ROW_LEN, NUM_CELLS, NUM_ONE_FISH, NUM_TWO_FISH, NUM_THREE_FISH};
 use cellset::CellSet;
+use {EVEN_ROW_LEN, NUM_CELLS, NUM_ONE_FISH, NUM_THREE_FISH, NUM_TWO_FISH, ODD_ROW_LEN};
 
 use self::itertools::Itertools;
 
@@ -61,11 +61,13 @@ impl Board {
     }
 
     pub fn num_fish(&self, idx: u8) -> usize {
-        self.fish.iter()
+        self.fish
+            .iter()
             .enumerate()
             .filter(|&(_, cells_with_fish)| cells_with_fish.contains(idx))
             .nth(0)
-            .unwrap().0 + 1
+            .unwrap()
+            .0 + 1
     }
 
     pub fn all_claimed_cells(&self) -> CellSet {
@@ -94,19 +96,17 @@ impl Board {
     }
 
     pub fn get_score(&self, p: Player) -> usize {
-        (1..=3).into_iter().map(|num_fish| {
-            let mut claimed_with_fish = self.claimed[p.id].clone();
-            claimed_with_fish.intersect(&self.fish[num_fish - 1]);
-            claimed_with_fish.len() * num_fish
-        }).sum()
+        (1..=3)
+            .into_iter()
+            .map(|num_fish| {
+                let mut claimed_with_fish = self.claimed[p.id].clone();
+                claimed_with_fish.intersect(&self.fish[num_fish - 1]);
+                claimed_with_fish.len() * num_fish
+            })
+            .sum()
     }
 
-    pub fn move_penguin(
-        &mut self,
-        p: Player,
-        src: u8,
-        dst: u8,
-    ) -> Result<&Self, IllegalMoveError> {
+    pub fn move_penguin(&mut self, p: Player, src: u8, dst: u8) -> Result<&Self, IllegalMoveError> {
         if !self.is_legal_move(p, src, dst) {
             return Err(IllegalMoveError::new(
                 p,
@@ -162,11 +162,11 @@ impl Board {
     /// number of connected components. The function which actually
     /// determines a board's connected components is quite expensive!
     pub fn is_cut_cell(&self, cell_idx: u8) -> bool {
-        let neighbors = Board::neighbors(cell_idx);
+        let neighbors = Board::index_to_evenr(cell_idx).neighbors().into_iter();
         let mut saw_live = false;
         let mut crossings = 0;
         for neighbor in neighbors {
-            if !self.is_claimed(neighbor) {
+            if Board::in_bounds(&neighbor) && !self.is_claimed(Board::evenr_to_index(&neighbor)) {
                 saw_live = true;
             } else {
                 if saw_live {
@@ -192,7 +192,8 @@ impl Board {
     }
 
     pub fn is_legal_move(&self, p: Player, src: u8, dst: u8) -> bool {
-        self.penguins[p.id].contains(src) && !self.is_claimed(dst)
+        self.penguins[p.id].contains(src)
+            && !self.is_claimed(dst)
             && self.is_clear_path(&Board::index_to_evenr(src), &Board::index_to_evenr(dst))
     }
 
@@ -260,7 +261,8 @@ impl Board {
         // that penguin can no longer interact with the rest of the
         // board.
         for iceberg in &components {
-            let penguins_touching_iceberg = self.penguins
+            let penguins_touching_iceberg = self
+                .penguins
                 .iter()
                 .enumerate()
                 .flat_map(|(player, penguins)| {
@@ -275,9 +277,8 @@ impl Board {
                 continue;
             }
             let (player, penguin) = penguins_touching_iceberg[0];
-            let can_leave_iceberg = Board::neighbors(penguin).any(|neighbor| {
-                !iceberg.contains(neighbor) && !self.is_claimed(neighbor)
-            });
+            let can_leave_iceberg = Board::neighbors(penguin)
+                .any(|neighbor| !iceberg.contains(neighbor) && !self.is_claimed(neighbor));
             if can_leave_iceberg {
                 continue;
             }
@@ -289,7 +290,8 @@ impl Board {
 
     pub fn reap(&mut self) {
         // remove penguins that can no longer move
-        self.penguins = self.penguins
+        self.penguins = self
+            .penguins
             .iter()
             .map(|penguins| {
                 penguins
@@ -431,10 +433,7 @@ mod tests {
         let c = 32;
         assert!(!b.is_claimed(c));
 
-        b.claim_cell(
-            Player { id: 1 },
-            c,
-        ).unwrap();
+        b.claim_cell(Player { id: 1 }, c).unwrap();
         assert!(b.is_claimed(c));
     }
 
@@ -520,6 +519,14 @@ mod tests {
     }
 
     #[test]
+    fn test_cut_cell_in_corner() {
+        let mut b = Board::new(&[0]);
+
+        b.claim_cell(Player { id: 0 }, 8).unwrap();
+        assert!(b.is_cut_cell(1));
+    }
+
+    #[test]
     fn test_connected_components() {
         fn run_test(seed: &[usize]) {
             let mut b = Board::new(seed);
@@ -558,7 +565,10 @@ mod tests {
         let mut b = Board::new(&[0]);
         b.claim_cell(Player { id: 0 }, 0).unwrap();
         b.prune();
-        let num_claimed_cells = (0..NUM_CELLS as u8).into_iter().filter(|&c| b.is_claimed(c)).count();
+        let num_claimed_cells = (0..NUM_CELLS as u8)
+            .into_iter()
+            .filter(|&c| b.is_claimed(c))
+            .count();
         assert_eq!(num_claimed_cells, NUM_CELLS);
     }
 
@@ -568,7 +578,10 @@ mod tests {
         b.claim_cell(Player { id: 0 }, 0).unwrap();
         b.claim_cell(Player { id: 1 }, 1).unwrap();
         b.prune();
-        let num_claimed_cells = (0..NUM_CELLS as u8).into_iter().filter(|&c| b.is_claimed(c)).count();
+        let num_claimed_cells = (0..NUM_CELLS as u8)
+            .into_iter()
+            .filter(|&c| b.is_claimed(c))
+            .count();
         assert_eq!(num_claimed_cells, 2);
     }
 }
