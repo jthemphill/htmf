@@ -91,7 +91,7 @@ impl GameState {
         }
     }
 
-    pub fn new_two_player(seed: &[usize]) -> GameState {
+    pub fn new_two_player(seed: [u8; 32]) -> GameState {
         let nplayers = 2;
         GameState {
             nplayers,
@@ -152,7 +152,7 @@ mod tests {
 
     #[test]
     fn draft_turn_sequence_is_good() {
-        let g = GameState::new_two_player(&[0]);
+        let g = GameState::new_two_player([0; 32]);
 
         let actives: Vec<usize> = (0..8)
             .scan(g, |g, _| {

@@ -58,7 +58,7 @@ fn main() {
             let f = upgrade.accept()
                 .and_then(move |(s, _)| {
                     let mut rng = rand::thread_rng();
-                    let game_state = GameState::new_two_player(&[rng.gen(); 1]);
+                    let game_state = GameState::new_two_player(rng.gen());
 
                     let mut sessions = sessions_init.borrow_mut();
                     sessions.insert(

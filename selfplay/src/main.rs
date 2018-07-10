@@ -26,7 +26,7 @@ fn main() {
 
 fn play_game() -> i32 {
     let seed = rand::random();
-    let mut game = GameState::new_two_player(&[seed]);
+    let mut game = GameState::new_two_player(seed);
     let mut random = RandomBot::new(&game, Player { id: 0 });
     let mut mcts = MCTSBot::new(&game, Player { id: 1 });
 

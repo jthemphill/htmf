@@ -73,24 +73,22 @@ impl self::mcts::GameState for Game {
             Move::Place(dst) => self.state.place_penguin(*dst).unwrap(),
             Move::Move((src, dst)) => {
                 let p = self.state.active_player().unwrap();
-                self.state.board.move_penguin(p, *src, *dst).unwrap();
+                self.state.board.claimed[p.id].insert(*dst);
+                self.state.board.penguins[p.id].remove(*src);
+                self.state.board.penguins[p.id].insert(*dst);
             },
         }
     }
 }
 
 fn all_moves(game: &htmf::game::GameState, p: htmf::board::Player) -> Vec<Move> {
-    game.board.penguins[p.id]
-        .into_iter()
-        .flat_map(|src| {
-            let move_vec: Vec<Move> = game.board
-                .moves(src)
-                .into_iter()
-                .map(|dst| Move::Move((src, dst)))
-                .collect();
-            move_vec.into_iter()
-        })
-        .collect()
+    let mut moves = vec![];
+    for src in game.board.penguins[p.id].into_iter() {
+        for dst in game.board.moves(src).into_iter() {
+            moves.push(Move::Move((src, dst)));
+        }
+    }
+    moves
 }
 
 #[derive(Clone)]

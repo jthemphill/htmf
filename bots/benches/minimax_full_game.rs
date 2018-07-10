@@ -13,7 +13,7 @@ use htmf_bots::*;
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("minimax_full_game", |b| {
         b.iter(|| {
-            let mut game = GameState::new_two_player(&[0]);
+            let mut game = GameState::new_two_player([0; 32]);
             let mut bots = vec![
                 MinimaxBot::new_with_ply(&game, Player { id: 0 }, 1),
                 MinimaxBot::new_with_ply(&game, Player { id: 1 }, 0),

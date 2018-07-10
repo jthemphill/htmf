@@ -156,7 +156,7 @@ mod tests {
 
     #[test]
     fn initial_state() {
-        let game = GameState::new_two_player(&[0]);
+        let game = GameState::new_two_player([0; 32]);
         let game_json = GameStateJSON::from(&game);
         let game_again = GameState::from(&game_json);
         assert_eq!(game, game_again);
@@ -164,7 +164,7 @@ mod tests {
 
     #[test]
     fn after_claiming() {
-        let mut game = GameState::new_two_player(&[0]);
+        let mut game = GameState::new_two_player([0; 32]);
         let eligible_place = (0..NUM_CELLS as u8)
             .into_iter()
             .filter(|&cell| game.board.num_fish(cell) == 1)

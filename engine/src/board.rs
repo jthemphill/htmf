@@ -27,7 +27,7 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn new(seed: &[usize]) -> Board {
+    pub fn new(seed: [u8; 32]) -> Board {
         let mut cell_to_fish: [Fish; NUM_CELLS] = [1; NUM_CELLS];
         let mut size: usize = NUM_ONE_FISH;
 
@@ -416,7 +416,7 @@ mod tests {
 
     #[test]
     fn can_create_board() {
-        Board::new(&[0]);
+        Board::new([0; 32]);
     }
 
     #[test]
@@ -428,7 +428,7 @@ mod tests {
 
     #[test]
     fn claim_cell() {
-        let mut b = Board::new(&[0]);
+        let mut b = Board::new([0; 32]);
 
         let c = 32;
         assert!(!b.is_claimed(c));
@@ -439,7 +439,7 @@ mod tests {
 
     #[test]
     fn claimed_cell_breaks_path() {
-        let mut b = Board::new(&[0]);
+        let mut b = Board::new([0; 32]);
 
         let c1 = EvenR { col: 1, row: 2 };
         let c2 = EvenR { col: 3, row: 5 };
@@ -454,7 +454,7 @@ mod tests {
 
     #[test]
     fn claimed_start() {
-        let mut b = Board::new(&[0]);
+        let mut b = Board::new([0; 32]);
         let c1 = EvenR { col: 1, row: 2 };
         let c2 = EvenR { col: 3, row: 5 };
         b.claim_cell(Player { id: 1 }, Board::evenr_to_index(&c1))
@@ -464,7 +464,7 @@ mod tests {
 
     #[test]
     fn claimed_finish() {
-        let mut b = Board::new(&[0]);
+        let mut b = Board::new([0; 32]);
         let c1 = EvenR { col: 1, row: 2 };
         let c2 = EvenR { col: 3, row: 5 };
         b.claim_cell(Player { id: 1 }, Board::evenr_to_index(&c2))
@@ -474,7 +474,7 @@ mod tests {
 
     #[test]
     fn nonempty_legal_moves() {
-        let b = Board::new(&[0]);
+        let b = Board::new([0; 32]);
         let c = EvenR { col: 1, row: 2 };
         let moves = b.moves(Board::evenr_to_index(&c));
         assert_ne!(moves, CellSet::new());
@@ -482,7 +482,7 @@ mod tests {
 
     #[test]
     fn empty_legal_moves() {
-        let mut b = Board::new(&[0]);
+        let mut b = Board::new([0; 32]);
         let c = EvenR { col: 1, row: 2 };
         for x in c.neighbors() {
             if Board::in_bounds(&x) {
@@ -496,7 +496,7 @@ mod tests {
 
     #[test]
     fn one_connected_component_at_start() {
-        let b = Board::new(&[0]);
+        let b = Board::new([0; 32]);
         let components = b.connected_components();
         assert_eq!(components.len(), 1);
         assert_eq!(components[0].len(), NUM_CELLS);
@@ -504,7 +504,7 @@ mod tests {
 
     #[test]
     fn two_connected_components() {
-        let mut b = Board::new(&[0]);
+        let mut b = Board::new([0; 32]);
 
         // carve out upper left corner
         let claimed = vec![1, 7, 8];
@@ -520,7 +520,7 @@ mod tests {
 
     #[test]
     fn test_cut_cell_in_corner() {
-        let mut b = Board::new(&[0]);
+        let mut b = Board::new([0; 32]);
 
         b.claim_cell(Player { id: 0 }, 8).unwrap();
         assert!(b.is_cut_cell(1));
@@ -528,7 +528,7 @@ mod tests {
 
     #[test]
     fn test_connected_components() {
-        fn run_test(seed: &[usize]) {
+        fn run_test(seed: [u8; 32]) {
             let mut b = Board::new(seed);
 
             let mut cells = (0..NUM_CELLS).into_iter().collect_vec();
@@ -556,13 +556,13 @@ mod tests {
         }
 
         for seed in 0..100 {
-            run_test(&[seed]);
+            run_test([seed; 32]);
         }
     }
 
     #[test]
     fn one_penguin_prunes_the_whole_board() {
-        let mut b = Board::new(&[0]);
+        let mut b = Board::new([0; 32]);
         b.claim_cell(Player { id: 0 }, 0).unwrap();
         b.prune();
         let num_claimed_cells = (0..NUM_CELLS as u8)
@@ -574,7 +574,7 @@ mod tests {
 
     #[test]
     fn two_players_no_pruning() {
-        let mut b = Board::new(&[0]);
+        let mut b = Board::new([0; 32]);
         b.claim_cell(Player { id: 0 }, 0).unwrap();
         b.claim_cell(Player { id: 1 }, 1).unwrap();
         b.prune();
