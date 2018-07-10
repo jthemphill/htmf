@@ -5,6 +5,7 @@ authors = ["Jeff Hemphill <jhemphill@fb.com>"]
 
 [dependencies]
 rand = "0.5"
+rayon = "1.0.2"
 
 htmf-bots = { path = "../bots" }
 htmf = { path = "../engine" }

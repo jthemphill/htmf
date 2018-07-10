@@ -1,7 +1,5 @@
-extern crate mcts;
-
-use self::mcts::*;
-use self::mcts::tree_policy::*;
+use mcts::*;
+use mcts::tree_policy::*;
 
 extern crate htmf;
 
@@ -9,19 +7,26 @@ struct MyMCTS;
 
 struct MyEvaluator;
 
-impl Evaluator<MyMCTS> for MyEvaluator {
-    type StateEvaluation = Vec<usize>;
+type MoveVec = Vec<Move>;
 
-    fn evaluate_new_state(&self, game: &Game, moves: &Vec<Move>,
+impl Evaluator<MyMCTS> for MyEvaluator {
+    type StateEvaluation =i32;
+
+    fn evaluate_new_state(&self, game: &Game, moves: &MoveVec,
         _: Option<SearchHandle<MyMCTS>>)
-        -> (Vec<()>, Vec<usize>) {
-        (vec![(); moves.len()], game.state.get_scores().to_vec())
+        -> (Vec<()>, Self::StateEvaluation) {
+        let scores = game.state.get_scores();
+        (vec![(); moves.len()], scores[1] as i32 - scores[0] as i32)
     }
-    fn interpret_evaluation_for_player(&self, evaln: &Vec<usize>, player: &htmf::board::Player) -> i64 {
-        evaln[player.id] as i64 - evaln[1 - player.id] as i64
+    fn interpret_evaluation_for_player(&self, evaln: &Self::StateEvaluation, player: &htmf::board::Player) -> i64 {
+        if player.id == 1 {
+            *evaln as i64
+        } else {
+            -*evaln as i64
+        }
     }
-    fn evaluate_existing_state(&self, game: &Game, _evaln: &Vec<usize>, _: SearchHandle<MyMCTS>) -> Vec<usize> {
-        game.state.get_scores().to_vec()
+    fn evaluate_existing_state(&self, _game: &Game, evaln: &Self::StateEvaluation, _: SearchHandle<MyMCTS>) -> Self::StateEvaluation {
+        *evaln
     }
 }
 
@@ -44,18 +49,18 @@ pub enum Move {
     Move((u8, u8)),
 }
 
-impl self::mcts::GameState for Game {
+impl GameState for Game {
     type Move = Move;
     type Player = htmf::board::Player;
-    type MoveList = Vec<Move>;
+    type MoveList = MoveVec;
 
     fn current_player(&self) -> Self::Player {
         self.state.active_player().unwrap()
     }
 
-    fn available_moves(&self) -> Vec<Self::Move> {
+    fn available_moves(&self) -> Self::MoveList {
         if self.state.game_over() {
-            return vec![]
+            return Vec::new();
         }
         let p = self.current_player();
         if self.state.finished_drafting() {
@@ -81,8 +86,8 @@ impl self::mcts::GameState for Game {
     }
 }
 
-fn all_moves(game: &htmf::game::GameState, p: htmf::board::Player) -> Vec<Move> {
-    let mut moves = vec![];
+fn all_moves(game: &htmf::game::GameState, p: htmf::board::Player) -> MoveVec {
+    let mut moves = Vec::new();
     for src in game.board.penguins[p.id].into_iter() {
         for dst in game.board.moves(src).into_iter() {
             moves.push(Move::Move((src, dst)));

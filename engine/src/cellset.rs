@@ -54,20 +54,20 @@ impl CellSet {
         count
     }
 
-    pub fn iter<'a>(&'a self) -> Iter<'a> {
+    pub fn iter<'a>(&'a self) -> Iter {
         Iter {
-            cell_set: &self,
+            cell_set: self.clone(),
             value: 0,
         }
     }
 }
 
-pub struct Iter<'a> {
-    cell_set: &'a CellSet,
+pub struct Iter {
+    cell_set: CellSet,
     value: u8,
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter {
     type Item = u8;
 
     fn next(&mut self) -> Option<u8> {
@@ -86,11 +86,11 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
-impl<'a> IntoIterator for &'a CellSet {
+impl IntoIterator for CellSet {
     type Item = u8;
-    type IntoIter = Iter<'a>;
+    type IntoIter = Iter;
 
-    fn into_iter(self) -> Iter<'a> {
+    fn into_iter(self) -> Iter {
         self.iter()
     }
 }

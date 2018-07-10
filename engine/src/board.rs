@@ -185,10 +185,12 @@ impl Board {
         let cell = Board::index_to_evenr(cell_idx);
         cell.neighbors()
             .into_iter()
-            .flat_map(|n| self.legal_moves_in_line(&cell, &n).into_iter())
-            .map(|cell| Board::evenr_to_index(&cell))
-            .into_iter()
-            .collect()
+            .map(|n| self.legal_moves_in_line(&cell, &n))
+            .fold(CellSet::new(), |acc, moves| {
+                let mut acc = acc.clone();
+                acc.union(&moves);
+                acc
+            })
     }
 
     pub fn is_legal_move(&self, p: Player, src: u8, dst: u8) -> bool {
@@ -200,9 +202,9 @@ impl Board {
     /**
      * Return all legal moves in the line connecting src to dst.
      */
-    fn legal_moves_in_line(&self, src: &EvenR, dst: &EvenR) -> Vec<EvenR> {
+    fn legal_moves_in_line(&self, src: &EvenR, dst: &EvenR) -> CellSet {
         if src == dst {
-            return vec![];
+            return CellSet::new();
         }
 
         line(&src, &dst)
@@ -211,6 +213,7 @@ impl Board {
                 let in_bounds = Board::in_bounds(hex);
                 in_bounds && !self.is_claimed(Board::evenr_to_index(hex))
             })
+            .map(|cell| Board::evenr_to_index(&cell))
             .collect()
     }
 
@@ -540,7 +543,7 @@ mod tests {
             }
             let components = b.connected_components();
             assert_eq!(
-                b.claimed_cells().len() + components.iter().flat_map(|x| x).count(),
+                b.claimed_cells().len() + components.iter().flat_map(|x| x.iter()).count(),
                 NUM_CELLS,
             );
             let mut all_cells = CellSet::new();

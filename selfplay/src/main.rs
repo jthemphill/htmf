@@ -1,26 +1,26 @@
 extern crate rand;
+extern crate rayon;
 
 extern crate htmf;
 extern crate htmf_bots;
 
-use self::htmf::board::*;
-use self::htmf::game::*;
-use self::htmf_bots::mctsbot::*;
-use self::htmf_bots::randombot::*;
+use rayon::prelude::*;
+
+use htmf::board::*;
+use htmf::game::*;
+use htmf_bots::mctsbot::*;
+use htmf_bots::randombot::*;
 
 fn main() {
     let trials = 1000;
-    let mut mcts_wins = 0;
-    for _ in 0..trials {
-        let winner = play_game();
+    let mcts_wins: usize = (0..trials).into_par_iter().map(|_| {
+      let winner = play_game();
         match winner {
-            0 => {}
-            1 => {
-                mcts_wins += 1;
-            }
+            0 => 0,
+            1 => 1,
             _ => panic!("Wrong player as winner"),
         }
-    }
+    }).sum();
     println!("{} / {} wins.", mcts_wins, trials);
 }
 

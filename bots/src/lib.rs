@@ -1,4 +1,6 @@
+extern crate mcts;
 extern crate rand;
+extern crate smallvec;
 
 extern crate htmf;
 
