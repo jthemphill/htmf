@@ -15,13 +15,13 @@ impl Evaluator<MyMCTS> for MyEvaluator {
     fn evaluate_new_state(&self, game: &Game, moves: &Vec<Move>,
         _: Option<SearchHandle<MyMCTS>>)
         -> (Vec<()>, Vec<usize>) {
-        (vec![(); moves.len()], game.state.get_scores())
+        (vec![(); moves.len()], game.state.get_scores().to_vec())
     }
     fn interpret_evaluation_for_player(&self, evaln: &Vec<usize>, player: &htmf::board::Player) -> i64 {
         evaln[player.id] as i64 - evaln[1 - player.id] as i64
     }
     fn evaluate_existing_state(&self, game: &Game, _evaln: &Vec<usize>, _: SearchHandle<MyMCTS>) -> Vec<usize> {
-        game.state.get_scores()
+        game.state.get_scores().to_vec()
     }
 }
 
@@ -116,7 +116,7 @@ impl MCTSBot {
             panic!("{:?} was asked to move, but it is not their turn!", self.me);
         }
         let mut mcts = MCTSManager::new(self.game.clone(), MyMCTS, MyEvaluator, UCTPolicy::new(0.5));
-        mcts.playout_n_parallel(100, 4);
+        mcts.playout_n(100);
         let pv = mcts.principal_variation(1);
         if pv.len() == 0 {
             panic!(format!("No moves??? {}...", self.game.state.game_over()));

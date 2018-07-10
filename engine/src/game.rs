@@ -1,5 +1,7 @@
 use std::fmt;
 
+use arrayvec::ArrayVec;
+
 use board::{Board, Player};
 use errors::IllegalMoveError;
 use json::GameStateJSON;
@@ -64,7 +66,7 @@ impl GameState {
         }
     }
 
-    pub fn get_scores(&self) -> Vec<usize> {
+    pub fn get_scores(&self) -> ArrayVec<[usize; 4]> {
         (0..self.nplayers).into_iter()
             .map(|i| self.board.get_score(Player{id: i}))
             .collect()

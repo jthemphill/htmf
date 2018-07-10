@@ -1,3 +1,5 @@
+use arrayvec::ArrayVec;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct EvenR {
     pub col: i64,
@@ -16,7 +18,7 @@ impl EvenR {
         Cube::from_evenr(self).in_line(&Cube::from_evenr(rhs))
     }
 
-    pub fn neighbors(&self) -> Vec<EvenR> {
+    pub fn neighbors(&self) -> ArrayVec<[EvenR; 6]> {
         Cube::from_evenr(self)
             .neighbors()
             .iter()
@@ -44,8 +46,8 @@ impl Cube {
         self.x == rhs.x || self.y == rhs.y || self.z == rhs.z
     }
 
-    pub fn neighbors(&self) -> Vec<Cube> {
-        vec![
+    pub fn neighbors(&self) -> ArrayVec<[Cube; 6]> {
+        ArrayVec::from([
             Cube {
                 x: self.x + 1,
                 y: self.y - 1,
@@ -76,7 +78,7 @@ impl Cube {
                 y: self.y - 1,
                 z: self.z + 1,
             },
-        ]
+        ])
     }
 }
 

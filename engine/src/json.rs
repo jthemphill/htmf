@@ -56,7 +56,7 @@ impl<'a> From<&'a GameState> for GameStateJSON {
                 Some(p) => Some(p.id),
                 _ => None,
             },
-            scores: state.get_scores(),
+            scores: state.get_scores().to_vec(),
             turn: state.turn,
             board: BoardJSON::from(&state.board),
         }
