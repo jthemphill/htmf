@@ -71,7 +71,10 @@ impl self::mcts::GameState for Game {
     fn make_move(&mut self, mov: &Self::Move) {
         match mov {
             Move::Place(dst) => self.state.place_penguin(*dst).unwrap(),
-            Move::Move((src, dst)) => self.state.move_penguin(*src, *dst).unwrap(),
+            Move::Move((src, dst)) => {
+                let p = self.state.active_player().unwrap();
+                self.state.board.move_penguin(p, *src, *dst).unwrap();
+            },
         }
     }
 }
