@@ -147,6 +147,9 @@ class App extends React.Component<Props, State> {
                 );
             }
             const new_state = JSON.parse(e.data);
+            if (new_state.board.possible_moves === null) {
+                new_state.board.possible_moves = [];
+            }
             console.log('Received state: ', new_state);
             this.setState({
                 gameState: new_state,

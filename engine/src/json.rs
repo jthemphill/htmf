@@ -23,7 +23,7 @@ pub struct BoardJSON {
     pub fish: Vec<usize>,
     pub penguins: Vec<Vec<u8>>,
     pub claimed: Vec<Vec<u8>>,
-    pub possible_moves: Vec<u8>,
+    pub possible_moves: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -107,7 +107,7 @@ impl<'a> From<&'a Board> for BoardJSON {
                 .iter()
                 .map(|cells| cells.into_iter().collect())
                 .collect(),
-            possible_moves: vec![],
+            possible_moves: None,
         }
     }
 }

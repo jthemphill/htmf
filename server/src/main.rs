@@ -131,7 +131,7 @@ fn get_response(session: &mut Session, action_str: &str) -> String {
         Action::Selection(cell_idx) => {
             let board = &session.game.board;
             let mut board_json = BoardJSON::from(board);
-            board_json.possible_moves = board.moves(cell_idx).into_iter().collect();
+            board_json.possible_moves = Some(board.moves(cell_idx).into_iter().collect());
             let mut game_json = GameStateJSON::from(&session.game);
             game_json.board = board_json;
             String::from(&game_json)
