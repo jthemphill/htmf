@@ -12,23 +12,37 @@ use htmf_bots::mctsbot::*;
 use htmf_bots::randombot::*;
 
 fn main() {
+    let verbose = std::env::args().into_iter().any(|arg| arg == "-v");
     let trials = 1000;
-    let mcts_wins: usize = (0..trials).into_par_iter().map(|_| {
-      let winner = play_game();
-        match winner {
-            0 => 0,
-            1 => 1,
-            _ => panic!("Wrong player as winner"),
+    let results : Vec<(i32, Vec<GameState>)> = (0..trials).into_par_iter()
+        .map(|_| play_game(verbose))
+        .collect();
+
+    let mcts_wins : usize = results.iter()
+        .map(|(winner, _)|
+            match winner {
+                0 => 0,
+                1 => 1,
+                _ => panic!("Expected winning player to be 0 or 1, got {}", winner)
+            }).sum();
+    for (winner, gamestates) in results {
+         if verbose && !gamestates.is_empty() {
+            for g in gamestates {
+                println!("game: {}", g);
+            }
+            println!("winner: {}", winner);
         }
-    }).sum();
-    println!("{} / {} wins.", mcts_wins, trials);
+   }
+   println!("{} / {} wins.", mcts_wins, trials);
 }
 
-fn play_game() -> i32 {
+fn play_game(verbose: bool) -> (i32, Vec<GameState>) {
     let seed = rand::random();
     let mut game = GameState::new_two_player(seed);
     let mut random = RandomBot::new(&game, Player { id: 0 });
     let mut mcts = MCTSBot::new(&game, Player { id: 1 });
+
+    let mut logged_states = vec![];
 
     while let Some(p) = game.active_player() {
         let action = match p.id {
@@ -55,6 +69,11 @@ fn play_game() -> i32 {
             _ => panic!("Unexpected action received"),
         };
 
+        let logging_roll : f64 = rand::random();
+        if verbose && logging_roll < 0.01 {
+            logged_states.push(game.clone());
+        }
+
         random.update(&game);
         mcts.update(&game);
     }
@@ -64,5 +83,5 @@ fn play_game() -> i32 {
         .enumerate()
         .max_by(|(_, score1), (_, score2)| score1.cmp(score2))
         .unwrap();
-    winner as i32
+    (winner as i32, logged_states)
 }
