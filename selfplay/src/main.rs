@@ -47,14 +47,14 @@ fn play_game() -> i32 {
                 if let Err(_) = game.place_penguin(dst) {
                     panic!(format!("Player {} made an illegal move", p.id));
                 }
+                if game.board.is_cut_cell(dst) {
+                    game.board.prune();
+                }
+                game.board.reap();
             }
             _ => panic!("Unexpected action received"),
         };
 
-        if game.finished_drafting() {
-            game.board.prune();
-            game.board.reap();
-        }
         random.update(&game);
         mcts.update(&game);
     }
