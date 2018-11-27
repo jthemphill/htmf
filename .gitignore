@@ -1,1 +1,3 @@
 target
+train/data
+*.pyc
