@@ -82,7 +82,7 @@ fn main() {
                                 OwnedMessage::Ping(p) => Some(OwnedMessage::Pong(p)),
                                 OwnedMessage::Pong(_) => None,
                                 OwnedMessage::Text(request_str) => {
-                                    let mut session = {
+                                    let session = {
                                         let sessions = sessions_update.borrow();
                                         let session = sessions.get(&addr).unwrap();
                                         session.clone()

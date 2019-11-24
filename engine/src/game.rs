@@ -6,7 +6,7 @@ use board::{Board, Player};
 use errors::IllegalMoveError;
 use json::GameStateJSON;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct GameState {
     pub nplayers: usize,
     pub turn: usize,
