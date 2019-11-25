@@ -8,6 +8,7 @@ use cellset::CellSet;
 use {EVEN_ROW_LEN, NUM_CELLS, NUM_ONE_FISH, NUM_THREE_FISH, NUM_TWO_FISH, ODD_ROW_LEN};
 
 use self::itertools::Itertools;
+use self::pathfinding::prelude::dfs;
 
 use errors::IllegalMoveError;
 use hex::{line, EvenR};
@@ -344,7 +345,7 @@ impl Board {
         };
         let best_score_from_start = best_remaining_score_fn(self, penguin);
 
-        let soln = pathfinding::dfs::dfs(
+        let soln = dfs(
             (self.clone(), penguin, 0),
             |&(ref board, src, score)| {
                 // Fail early if we can't get a perfect score
