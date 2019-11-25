@@ -9,11 +9,11 @@ pub struct CellSet {
 
 impl CellSet {
     pub fn new() -> Self {
-        CellSet{data: 0}
+        CellSet { data: 0 }
     }
 
     pub fn full() -> Self {
-        CellSet{data: !0 >> 4}
+        CellSet { data: !0 >> 4 }
     }
 
     pub fn insert(&mut self, value: u8) {
@@ -96,7 +96,7 @@ impl IntoIterator for CellSet {
 }
 
 impl FromIterator<u8> for CellSet {
-    fn from_iter<I: IntoIterator<Item=u8>>(iter: I) -> CellSet {
+    fn from_iter<I: IntoIterator<Item = u8>>(iter: I) -> CellSet {
         let mut ret = CellSet::new();
         for i in iter {
             ret.insert(i);
@@ -104,7 +104,6 @@ impl FromIterator<u8> for CellSet {
         ret
     }
 }
-
 
 #[cfg(test)]
 mod tests {

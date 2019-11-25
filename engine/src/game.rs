@@ -34,7 +34,8 @@ impl GameState {
 
     pub fn game_over(&self) -> bool {
         self.finished_drafting()
-            && self.board
+            && self
+                .board
                 .penguins
                 .iter()
                 .find(|&p| !p.is_empty())
@@ -67,8 +68,9 @@ impl GameState {
     }
 
     pub fn get_scores(&self) -> ArrayVec<[usize; 4]> {
-        (0..self.nplayers).into_iter()
-            .map(|i| self.board.get_score(Player{id: i}))
+        (0..self.nplayers)
+            .into_iter()
+            .map(|i| self.board.get_score(Player { id: i }))
             .collect()
     }
 

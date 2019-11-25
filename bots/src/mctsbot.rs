@@ -1,5 +1,5 @@
-use mcts::*;
 use mcts::tree_policy::*;
+use mcts::*;
 
 extern crate htmf;
 
@@ -12,16 +12,28 @@ type MoveVec = Vec<Move>;
 impl Evaluator<MyMCTS> for MyEvaluator {
     type StateEvaluation = [i8; 2];
 
-    fn evaluate_new_state(&self, game: &Game, moves: &MoveVec,
-        _: Option<SearchHandle<MyMCTS>>)
-        -> (Vec<()>, Self::StateEvaluation) {
+    fn evaluate_new_state(
+        &self,
+        game: &Game,
+        moves: &MoveVec,
+        _: Option<SearchHandle<MyMCTS>>,
+    ) -> (Vec<()>, Self::StateEvaluation) {
         let scores = game.state.get_scores();
         (vec![(); moves.len()], ([scores[0] as i8, scores[1] as i8]))
     }
-    fn interpret_evaluation_for_player(&self, evaln: &Self::StateEvaluation, player: &htmf::board::Player) -> i64 {
+    fn interpret_evaluation_for_player(
+        &self,
+        evaln: &Self::StateEvaluation,
+        player: &htmf::board::Player,
+    ) -> i64 {
         evaln[player.id] as i64
     }
-    fn evaluate_existing_state(&self, _game: &Game, evaln: &Self::StateEvaluation, _: SearchHandle<MyMCTS>) -> Self::StateEvaluation {
+    fn evaluate_existing_state(
+        &self,
+        _game: &Game,
+        evaln: &Self::StateEvaluation,
+        _: SearchHandle<MyMCTS>,
+    ) -> Self::StateEvaluation {
         *evaln
     }
 }
@@ -65,7 +77,10 @@ impl GameState for Game {
             // Cells with one fish and nobody claiming them
             let mut draftable_cells = self.state.board.fish[0].clone();
             draftable_cells.exclude(&self.state.board.all_claimed_cells());
-            draftable_cells.iter().map(|cell| Move::Place(cell)).collect()
+            draftable_cells
+                .iter()
+                .map(|cell| Move::Place(cell))
+                .collect()
         }
     }
 
@@ -77,7 +92,7 @@ impl GameState for Game {
                 self.state.board.claimed[p.id].insert(*dst);
                 self.state.board.penguins[p.id].remove(*src);
                 self.state.board.penguins[p.id].insert(*dst);
-            },
+            }
         }
     }
 }
@@ -101,20 +116,25 @@ pub struct MCTSBot {
 impl MCTSBot {
     pub fn new(game: &htmf::game::GameState, me: htmf::board::Player) -> Self {
         MCTSBot {
-            game: Game{state: game.clone()},
+            game: Game {
+                state: game.clone(),
+            },
             me,
         }
     }
 
     pub fn update(&mut self, game: &htmf::game::GameState) {
-        self.game = Game{state: game.clone()};
+        self.game = Game {
+            state: game.clone(),
+        };
     }
 
     pub fn take_action(&mut self) -> htmf::game::Action {
         if self.game.state.active_player() != Some(self.me) {
             panic!("{:?} was asked to move, but it is not their turn!", self.me);
         }
-        let mut mcts = MCTSManager::new(self.game.clone(), MyMCTS, MyEvaluator, UCTPolicy::new(0.5));
+        let mut mcts =
+            MCTSManager::new(self.game.clone(), MyMCTS, MyEvaluator, UCTPolicy::new(0.5));
         mcts.playout_n(50);
         let pv = mcts.principal_variation(1);
         if pv.len() == 0 {
@@ -123,7 +143,7 @@ impl MCTSBot {
         let best_move = pv.into_iter().next().unwrap();
         match best_move {
             Move::Move((src, dst)) => htmf::game::Action::Move(src, dst),
-            Move::Place(dst) => htmf::game::Action::Place(dst)
+            Move::Place(dst) => htmf::game::Action::Place(dst),
         }
     }
 }

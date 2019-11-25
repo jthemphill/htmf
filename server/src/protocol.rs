@@ -1,7 +1,7 @@
 use serde_json;
 
 use htmf::game::{Action, GameState};
-use htmf::json::{GameStateJSON};
+use htmf::json::GameStateJSON;
 
 /// Module for all input and output.
 /// 1. We receive ActionJSON from the client

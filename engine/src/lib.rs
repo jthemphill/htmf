@@ -17,8 +17,8 @@ pub const NUM_THREE_FISH: usize = 10;
 pub const NUM_FISH: usize = NUM_ONE_FISH + NUM_TWO_FISH + NUM_THREE_FISH;
 
 pub mod board;
+pub mod cellset;
 pub mod errors;
 pub mod game;
-pub mod cellset;
-pub mod json;
 mod hex;
+pub mod json;

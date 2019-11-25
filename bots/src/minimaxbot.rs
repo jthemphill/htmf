@@ -54,11 +54,7 @@ impl MinimaxBot {
             let mut draftable_cells = self.game.board.fish[0].clone();
             draftable_cells.exclude(&self.game.board.all_claimed_cells());
             Action::Place(
-                rand::seq::sample_iter(
-                    &mut self.rng,
-                    draftable_cells.iter(),
-                    1,
-                ).unwrap()[0],
+                rand::seq::sample_iter(&mut self.rng, draftable_cells.iter(), 1).unwrap()[0],
             )
         }
     }
@@ -73,9 +69,10 @@ impl MinimaxBot {
 
     fn score_move(game: &GameState, mv: &Move, ply: i32) -> Vec<usize> {
         if ply <= 0 {
-            return (0..game.nplayers).into_iter()
-                .map(|i| game.board.get_score(Player{id: i}))
-                .collect()
+            return (0..game.nplayers)
+                .into_iter()
+                .map(|i| game.board.get_score(Player { id: i }))
+                .collect();
         }
         let game = {
             let mut game = game.clone();
@@ -86,8 +83,9 @@ impl MinimaxBot {
             let (scores, _) = Self::best_move(&game, &new_active_player, ply - 1);
             scores
         } else {
-            (0..game.nplayers).into_iter()
-                .map(|i| game.board.get_score(Player{id: i}))
+            (0..game.nplayers)
+                .into_iter()
+                .map(|i| game.board.get_score(Player { id: i }))
                 .collect()
         }
     }
@@ -108,7 +106,8 @@ impl MinimaxBot {
         game.board.penguins[p.id]
             .into_iter()
             .flat_map(|src| {
-                let move_vec: Vec<Move> = game.board
+                let move_vec: Vec<Move> = game
+                    .board
                     .moves(src)
                     .into_iter()
                     .map(|dst| (src, dst))

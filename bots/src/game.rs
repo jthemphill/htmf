@@ -24,7 +24,7 @@ impl self::mcts::GameState for Game {
 
     fn available_moves(&self) -> Vec<Self::Move> {
         if self.state.game_over() {
-            return vec![]
+            return vec![];
         }
         let p = self.current_player();
         if self.state.finished_drafting() {
@@ -33,7 +33,10 @@ impl self::mcts::GameState for Game {
             // Cells with one fish and nobody claiming them
             let mut draftable_cells = self.state.board.fish[0].clone();
             draftable_cells.exclude(&self.state.board.all_claimed_cells());
-            draftable_cells.iter().map(|cell| Move::Place(cell)).collect()
+            draftable_cells
+                .iter()
+                .map(|cell| Move::Place(cell))
+                .collect()
         }
     }
 
@@ -49,7 +52,8 @@ fn all_moves(game: &htmf::game::GameState, p: htmf::board::Player) -> Vec<Move> 
     game.board.penguins[p.id]
         .into_iter()
         .flat_map(|src| {
-            let move_vec: Vec<Move> = game.board
+            let move_vec: Vec<Move> = game
+                .board
                 .moves(src)
                 .into_iter()
                 .map(|dst| Move::Move((src, dst)))

@@ -49,66 +49,54 @@ fn main() {
     let server = Server::bind("127.0.0.1:2794", &handle).unwrap();
 
     let sessions = Rc::new(RefCell::new(HashMap::new()));
-    let f = server.incoming()
+    let f = server
+        .incoming()
         // we don't wanna save the stream if it drops
         .map_err(|InvalidConnection { error, .. }| error)
         .for_each(move |(upgrade, addr)| {
             let sessions_init = Rc::clone(&sessions);
             let sessions_update = Rc::clone(&sessions);
-            let f = upgrade.accept()
+            let f = upgrade
+                .accept()
                 .and_then(move |(s, _)| {
                     let mut rng = rand::thread_rng();
                     let game_state = GameState::new_two_player(rng.gen());
 
                     let mut sessions = sessions_init.borrow_mut();
-                    sessions.insert(
-                        addr,
-                        Session::new(game_state),
-                    );
+                    sessions.insert(addr, Session::new(game_state));
 
                     let session = sessions.get(&addr).unwrap();
                     println!("Started a connection");
                     s.send(
-                        Message::text(
-                            String::from(&GameStateJSON::from(&session.game.board))
-                        ).into()
+                        Message::text(String::from(&GameStateJSON::from(&session.game.board)))
+                            .into(),
                     )
                 })
                 .and_then(move |s| {
                     let (sink, stream) = s.split();
                     stream
-                    .take_while(|m| Ok(!m.is_close()))
-                    .filter_map(move |m| {
-                        // println!("Message from Client: {:?}", m);
-                        match m {
-                            OwnedMessage::Ping(p) => Some(
-                                OwnedMessage::Pong(p)
-                            ),
-                            OwnedMessage::Pong(_) => None,
-                            OwnedMessage::Text(request_str) => {
-                                let mut session = {
-                                    let sessions = sessions_update.borrow();
-                                    let session = sessions
-                                        .get(&addr)
-                                        .unwrap();
-                                    session.clone()
-                                };
-                                let mut session = session.clone();
-                                let response_str = get_response(
-                                    &mut session,
-                                    &request_str,
-                                );
-                                sessions_update.borrow_mut()
-                                    .insert(addr, session.clone());
-                                Some(OwnedMessage::Text(response_str))
-                            },
-                            _ => None,
-                        }
-                    })
-                    .forward(sink)
-                    .and_then(|(_, sink)| {
-                        sink.send(OwnedMessage::Close(None))
-                    })
+                        .take_while(|m| Ok(!m.is_close()))
+                        .filter_map(move |m| {
+                            // println!("Message from Client: {:?}", m);
+                            match m {
+                                OwnedMessage::Ping(p) => Some(OwnedMessage::Pong(p)),
+                                OwnedMessage::Pong(_) => None,
+                                OwnedMessage::Text(request_str) => {
+                                    let mut session = {
+                                        let sessions = sessions_update.borrow();
+                                        let session = sessions.get(&addr).unwrap();
+                                        session.clone()
+                                    };
+                                    let mut session = session.clone();
+                                    let response_str = get_response(&mut session, &request_str);
+                                    sessions_update.borrow_mut().insert(addr, session.clone());
+                                    Some(OwnedMessage::Text(response_str))
+                                }
+                                _ => None,
+                            }
+                        })
+                        .forward(sink)
+                        .and_then(|(_, sink)| sink.send(OwnedMessage::Close(None)))
                 });
 
             spawn_future(f, "Client Status", &handle);
@@ -135,7 +123,7 @@ fn get_response(session: &mut Session, action_str: &str) -> String {
             let mut game_json = GameStateJSON::from(&session.game);
             game_json.board = board_json;
             String::from(&game_json)
-        },
+        }
         _ => {
             let res = session.apply_action(&action);
             let mut game_json = GameStateJSON::from(&session.game);
@@ -143,6 +131,6 @@ fn get_response(session: &mut Session, action_str: &str) -> String {
                 game_json.last_move_valid = false;
             }
             String::from(&game_json)
-        },
+        }
     }
 }

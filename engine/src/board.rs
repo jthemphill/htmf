@@ -67,7 +67,8 @@ impl Board {
             .filter(|&(_, cells_with_fish)| cells_with_fish.contains(idx))
             .nth(0)
             .unwrap()
-            .0 + 1
+            .0
+            + 1
     }
 
     pub fn all_claimed_cells(&self) -> CellSet {
@@ -451,7 +452,8 @@ mod tests {
         b.claim_cell(
             Player { id: 1 },
             Board::evenr_to_index(&EvenR { col: 2, row: 3 }),
-        ).unwrap();
+        )
+        .unwrap();
         assert!(!b.is_clear_path(&c1, &c2));
     }
 
