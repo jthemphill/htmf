@@ -205,7 +205,7 @@ pub struct PolicyRng {
 impl PolicyRng {
     pub fn new() -> Self {
         let mut seed = [1; 32];
-        for i in 1..=32 {
+        for i in 1..32 {
             seed[i] = i as u8;
         }
         let rng = SeedableRng::from_seed(seed);

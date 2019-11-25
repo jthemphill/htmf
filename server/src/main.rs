@@ -1,7 +1,5 @@
-extern crate futures;
 extern crate rand;
-extern crate tokio_core;
-extern crate websocket;
+extern crate tungstenite;
 
 extern crate htmf;
 
@@ -12,98 +10,42 @@ extern crate serde_json;
 mod protocol;
 mod session;
 
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::rc::Rc;
-
 use rand::Rng;
 
-use websocket::async::Server;
-use websocket::server::InvalidConnection;
-use websocket::{Message, OwnedMessage};
-
-use futures::{Future, Sink, Stream};
-use tokio_core::reactor::{Core, Handle};
+use tungstenite::server::accept;
+use tungstenite::Message;
 
 use htmf::game::{Action, GameState};
 use htmf::json::*;
 
 use session::Session;
 
-fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
-where
-    F: Future<Item = I, Error = E> + 'static,
-    E: Debug,
-{
-    handle.spawn(
-        f.map_err(move |e| println!("{}: '{:?}'", desc, e))
-            .map(move |_| println!("{}: Finished.", desc)),
-    );
-}
-
 fn main() {
-    let mut core = Core::new().unwrap();
-    let handle = core.handle();
+    let server = std::net::TcpListener::bind("127.0.0.1:2794").unwrap();
+    for stream in server.incoming() {
+        std::thread::spawn(move || {
+            let mut websocket = accept(stream.unwrap()).unwrap();
+            let mut rng = rand::thread_rng();
+            let mut session = Session::new(GameState::new_two_player(rng.gen()));
 
-    let server = Server::bind("127.0.0.1:2794", &handle).unwrap();
+            let init_msg = String::from(&GameStateJSON::from(&session.game.board));
+            websocket.write_message(Message::Text(init_msg)).unwrap();
 
-    let sessions = Rc::new(RefCell::new(HashMap::new()));
-    let f = server
-        .incoming()
-        // we don't wanna save the stream if it drops
-        .map_err(|InvalidConnection { error, .. }| error)
-        .for_each(move |(upgrade, addr)| {
-            let sessions_init = Rc::clone(&sessions);
-            let sessions_update = Rc::clone(&sessions);
-            let f = upgrade
-                .accept()
-                .and_then(move |(s, _)| {
-                    let mut rng = rand::thread_rng();
-                    let game_state = GameState::new_two_player(rng.gen());
+            loop {
+                let request_msg = websocket.read_message().unwrap();
 
-                    let mut sessions = sessions_init.borrow_mut();
-                    sessions.insert(addr, Session::new(game_state));
-
-                    let session = sessions.get(&addr).unwrap();
-                    println!("Started a connection");
-                    s.send(
-                        Message::text(String::from(&GameStateJSON::from(&session.game.board)))
-                            .into(),
-                    )
-                })
-                .and_then(move |s| {
-                    let (sink, stream) = s.split();
-                    stream
-                        .take_while(|m| Ok(!m.is_close()))
-                        .filter_map(move |m| {
-                            // println!("Message from Client: {:?}", m);
-                            match m {
-                                OwnedMessage::Ping(p) => Some(OwnedMessage::Pong(p)),
-                                OwnedMessage::Pong(_) => None,
-                                OwnedMessage::Text(request_str) => {
-                                    let session = {
-                                        let sessions = sessions_update.borrow();
-                                        let session = sessions.get(&addr).unwrap();
-                                        session.clone()
-                                    };
-                                    let mut session = session.clone();
-                                    let response_str = get_response(&mut session, &request_str);
-                                    sessions_update.borrow_mut().insert(addr, session.clone());
-                                    Some(OwnedMessage::Text(response_str))
-                                }
-                                _ => None,
-                            }
-                        })
-                        .forward(sink)
-                        .and_then(|(_, sink)| sink.send(OwnedMessage::Close(None)))
-                });
-
-            spawn_future(f, "Client Status", &handle);
-            Ok(())
+                match request_msg {
+                    Message::Text(request_str) => {
+                        let response_str = get_response(&mut session, &request_str);
+                        websocket
+                            .write_message(Message::Text(response_str))
+                            .unwrap();
+                    }
+                    _ => {}
+                };
+            }
         });
-
-    core.run(f).unwrap();
+    }
 }
 
 fn get_response(session: &mut Session, action_str: &str) -> String {

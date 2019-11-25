@@ -4,13 +4,11 @@ version = "0.1.0"
 authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 
 [dependencies]
-futures = "0.1.14"
 rand = "0.7.2"
 serde = "1.0.69"
 serde_derive = "1.0.69"
 serde_json = "1.0.22"
-tokio-core = "0.1.9"
-websocket = "0.20.2"
+tungstenite = "0.9.2"
 
 htmf = { path = "../engine" }
 htmf-bots = { path = "../bots" }

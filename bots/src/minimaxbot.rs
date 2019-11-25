@@ -3,8 +3,8 @@ extern crate rayon;
 
 extern crate htmf;
 
-use rand::prelude::*;
 use self::rayon::prelude::*;
+use rand::prelude::*;
 
 use htmf::board::Player;
 use htmf::game::{Action, GameState};
@@ -53,9 +53,7 @@ impl MinimaxBot {
             // Cells with one fish and nobody claiming them
             let mut draftable_cells = self.game.board.fish[0].clone();
             draftable_cells.exclude(&self.game.board.all_claimed_cells());
-            Action::Place(
-                draftable_cells.iter().choose(&mut self.rng).unwrap(),
-            )
+            Action::Place(draftable_cells.iter().choose(&mut self.rng).unwrap())
         }
     }
 
