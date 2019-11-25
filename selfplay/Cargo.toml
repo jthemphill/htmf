@@ -3,9 +3,6 @@ name = "selfplay"
 version = "0.1.0"
 authors = ["Jeff Hemphill <jhemphill@fb.com>"]
 
-[profile.release]
-debug = true
-
 [dependencies]
 rand = "0.7.2"
 rayon = "1.0.2"
