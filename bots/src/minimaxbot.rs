@@ -3,6 +3,7 @@ extern crate rayon;
 
 extern crate htmf;
 
+use rand::prelude::*;
 use self::rayon::prelude::*;
 
 use htmf::board::Player;
@@ -14,7 +15,7 @@ type Move = (u8, u8);
 pub struct MinimaxBot {
     pub me: Player,
     game: GameState,
-    rng: rand::XorShiftRng,
+    rng: ThreadRng,
     ply: i32,
 }
 
@@ -23,7 +24,7 @@ impl MinimaxBot {
         MinimaxBot {
             game: game.clone(),
             me,
-            rng: rand::weak_rng(),
+            rng: thread_rng(),
             ply: 2,
         }
     }
@@ -32,7 +33,7 @@ impl MinimaxBot {
         MinimaxBot {
             game: game.clone(),
             me,
-            rng: rand::weak_rng(),
+            rng: thread_rng(),
             ply,
         }
     }
@@ -53,7 +54,7 @@ impl MinimaxBot {
             let mut draftable_cells = self.game.board.fish[0].clone();
             draftable_cells.exclude(&self.game.board.all_claimed_cells());
             Action::Place(
-                rand::seq::sample_iter(&mut self.rng, draftable_cells.iter(), 1).unwrap()[0],
+                draftable_cells.iter().choose(&mut self.rng).unwrap(),
             )
         }
     }

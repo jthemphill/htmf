@@ -2,7 +2,7 @@ extern crate rand;
 
 extern crate htmf;
 
-use rand::*;
+use rand::prelude::*;
 use std::collections::HashMap;
 
 /**
@@ -199,12 +199,16 @@ impl MCTSBot {
 
 #[derive(Clone)]
 pub struct PolicyRng {
-    rng: XorShiftRng,
+    rng: StdRng,
 }
 
 impl PolicyRng {
     pub fn new() -> Self {
-        let rng = SeedableRng::from_seed([1, 2, 3, 4]);
+        let mut seed = [1; 32];
+        for i in 1..=32 {
+            seed[i] = i as u8;
+        }
+        let rng = SeedableRng::from_seed(seed);
         Self { rng }
     }
 
@@ -224,7 +228,7 @@ impl PolicyRng {
                 best_so_far = score;
             } else if score == best_so_far {
                 num_optimal += 1;
-                if self.rng.gen_weighted_bool(num_optimal) {
+                if self.rng.gen_bool(1.0 / num_optimal as f64) {
                     choice = Some(elt);
                 }
             }

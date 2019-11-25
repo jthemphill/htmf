@@ -1,4 +1,4 @@
-use rand;
+use rand::prelude::*;
 
 use htmf::board::Player;
 use htmf::game::{Action, GameState};
@@ -9,7 +9,7 @@ use htmf::NUM_CELLS;
 pub struct RandomBot {
     pub me: Player,
     game: GameState,
-    rng: rand::XorShiftRng,
+    rng: ThreadRng,
 }
 
 impl RandomBot {
@@ -17,7 +17,7 @@ impl RandomBot {
         RandomBot {
             game: game.clone(),
             me,
-            rng: rand::weak_rng(),
+            rng: thread_rng(),
         }
     }
 
@@ -37,7 +37,7 @@ impl RandomBot {
                     self.me
                 );
             }
-            let src = rand::seq::sample_iter(&mut self.rng, penguins.iter(), 1).unwrap()[0];
+            let src = penguins.iter().choose(&mut self.rng).unwrap();
             let moves = self.game.board.moves(src);
             if moves.is_empty() {
                 panic!(
@@ -47,14 +47,14 @@ impl RandomBot {
                     GameStateJSON::from(&self.game)
                 );
             }
-            let dst = rand::seq::sample_iter(&mut self.rng, moves.iter(), 1).unwrap()[0];
+            let dst = moves.iter().choose(&mut self.rng).unwrap();
             Action::Move(src, dst)
         } else {
             let draftable_cells: Vec<u8> = (0..NUM_CELLS as u8)
                 .into_iter()
                 .filter(|&c| !self.game.board.is_claimed(c) && self.game.board.num_fish(c) == 1)
                 .collect();
-            Action::Place(rand::seq::sample_iter(&mut self.rng, draftable_cells, 1).unwrap()[0])
+            Action::Place(*draftable_cells.choose(&mut self.rng).unwrap())
         }
     }
 }

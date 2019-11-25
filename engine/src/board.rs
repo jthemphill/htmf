@@ -2,7 +2,7 @@ extern crate itertools;
 extern crate pathfinding;
 
 use arrayvec::ArrayVec;
-use rand::{Rng, SeedableRng, StdRng};
+use rand::prelude::*;
 
 use cellset::CellSet;
 use {EVEN_ROW_LEN, NUM_CELLS, NUM_ONE_FISH, NUM_THREE_FISH, NUM_TWO_FISH, ODD_ROW_LEN};
@@ -42,7 +42,7 @@ impl Board {
 
         {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
-            rng.shuffle(&mut cell_to_fish);
+            cell_to_fish.shuffle(&mut rng);
         }
 
         let mut fish: ArrayVec<[CellSet; 3]> = ArrayVec::new();
@@ -538,7 +538,7 @@ mod tests {
 
             let mut cells = (0..NUM_CELLS).into_iter().collect_vec();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
-            rng.shuffle(&mut cells);
+            cells.shuffle(&mut rng);
 
             for c in 0..30 {
                 b.claim_cell(Player { id: 0 }, c).unwrap();
