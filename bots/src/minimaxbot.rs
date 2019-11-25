@@ -131,12 +131,10 @@ mod tests {
             MinimaxBot::new_with_ply(&game, Player { id: 1 }, 0),
         ];
         while let Some(player) = game.active_player() {
-            {
-                let mut bot = &mut bots[player.id];
-                let action = bot.take_action();
-                game.apply_action(&action).unwrap();
-            }
-            for mut bot in &mut bots {
+            let bot = &mut bots[player.id];
+            let action = bot.take_action();
+            game.apply_action(&action).unwrap();
+            for bot in &mut bots {
                 bot.update(&game);
             }
         }

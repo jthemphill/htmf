@@ -20,11 +20,11 @@ fn criterion_benchmark(c: &mut Criterion) {
             ];
             while let Some(player) = game.active_player() {
                 {
-                    let mut bot = &mut bots[player.id];
+                    let bot = &mut bots[player.id];
                     let action = bot.take_action();
                     game.apply_action(&action).unwrap();
                 }
-                for mut bot in &mut bots {
+                for bot in &mut bots {
                     bot.update(&game);
                 }
             }
