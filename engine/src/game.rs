@@ -116,7 +116,7 @@ impl GameState {
             ));
         }
         let active_player = self.active_player().unwrap();
-        try!(self.board.claim_cell(active_player, c));
+        self.board.claim_cell(active_player, c)?;
         self.turn += 1;
         Ok(())
     }
