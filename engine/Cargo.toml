@@ -4,10 +4,10 @@ version = "0.1.0"
 authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 
 [dependencies]
-arrayvec = "0.4.7"
-itertools = "0.7.8"
+arrayvec = "0.5.1"
+itertools = "0.8.2"
 pathfinding = "0.7.1"
 rand = "0.7.2"
-serde = "1.0.69"
-serde_derive = "1.0.69"
-serde_json = "1.0.22"
+serde = "1.0.103"
+serde_derive = "1.0.103"
+serde_json = "1.0.42"

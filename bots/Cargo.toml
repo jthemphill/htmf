@@ -5,13 +5,13 @@ authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 
 [dependencies]
 rand = "0.7.2"
-rayon = "1.0.1"
-smallvec = "0.6.2"
+rayon = "1.2.1"
+smallvec = "1.0.0"
 
 htmf = { path = "../engine" }
 
 [dev-dependencies]
-criterion = "0.2.3"
+criterion = "0.3.0"
 
 [[bench]]
 name = "minimax_full_game"
