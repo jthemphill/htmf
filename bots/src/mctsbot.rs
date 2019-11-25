@@ -183,11 +183,16 @@ impl MCTSBot {
             }
         }
         let scores = node.state.get_scores();
-        let reward = scores[self.me.id] as f64;
         let mut backprop_node = self.root.clone();
         for mov in path {
             let p = node.state.active_player().unwrap();
-            let reward = if p == self.me { reward } else { -reward };
+            let max_opp_score = (0..self.root.state.nplayers)
+                .into_iter()
+                .filter(|&i| i != p.id)
+                .map(|i| scores[i])
+                .max()
+                .unwrap();
+            let reward = scores[p.id] as f64 - max_opp_score as f64;
             self.tree
                 .get_mut(&backprop_node)
                 .unwrap()
