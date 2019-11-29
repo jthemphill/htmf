@@ -1,12 +1,8 @@
-extern crate itertools;
-
 use arrayvec::ArrayVec;
 use rand::prelude::*;
 
 use cellset::CellSet;
 use {EVEN_ROW_LEN, NUM_CELLS, NUM_ONE_FISH, NUM_THREE_FISH, NUM_TWO_FISH, ODD_ROW_LEN};
-
-use self::itertools::Itertools;
 
 use errors::IllegalMoveError;
 use hex::{line, EvenR};
@@ -261,7 +257,7 @@ impl Board {
         // that penguin can no longer interact with the rest of the
         // board.
         for iceberg in &components {
-            let penguins_touching_iceberg = self
+            let penguins_touching_iceberg: Vec<_> = self
                 .penguins
                 .iter()
                 .enumerate()
@@ -272,7 +268,7 @@ impl Board {
                         .map(move |p| (Player { id: player }, p))
                 })
                 .take(2)
-                .collect_vec();
+                .collect();
             if penguins_touching_iceberg.len() != 1 {
                 continue;
             }
@@ -556,7 +552,7 @@ mod tests {
         fn run_test(seed: [u8; 32]) {
             let mut b = Board::new(seed);
 
-            let mut cells = (0..NUM_CELLS).collect_vec();
+            let mut cells: Vec<_> = (0..NUM_CELLS).collect();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             cells.shuffle(&mut rng);
 
