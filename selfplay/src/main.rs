@@ -60,7 +60,7 @@ fn main() {
 fn play_game(verbose: bool) -> (i32, Vec<GameState>) {
     let seed = rand::random();
     let mut game = GameState::new_two_player(seed);
-    let mut random = RandomBot::new(&game, Player { id: 0 });
+    let mut random = RandomBot::new(game.clone(), Player { id: 0 });
     let mut mcts = MCTSBot::new(game.clone(), Player { id: 1 });
 
     let mut logged_states = vec![];

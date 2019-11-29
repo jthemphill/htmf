@@ -15,8 +15,8 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| {
             let mut game = GameState::new_two_player([0; 32]);
             let mut bots = vec![
-                MinimaxBot::new_with_ply(&game, Player { id: 0 }, 1),
-                MinimaxBot::new_with_ply(&game, Player { id: 1 }, 0),
+                MinimaxBot::new_with_ply(game.clone(), Player { id: 0 }, 1),
+                MinimaxBot::new_with_ply(game.clone(), Player { id: 1 }, 0),
             ];
             while let Some(player) = game.active_player() {
                 {

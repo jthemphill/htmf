@@ -13,9 +13,9 @@ pub struct RandomBot {
 }
 
 impl RandomBot {
-    pub fn new(game: &GameState, me: Player) -> Self {
+    pub fn new(game: GameState, me: Player) -> Self {
         RandomBot {
-            game: game.clone(),
+            game,
             me,
             rng: thread_rng(),
         }
@@ -66,8 +66,8 @@ mod tests {
     fn two_players_no_illegal_moves() {
         let mut game = GameState::new_two_player([0; 32]);
         let mut bots = vec![
-            RandomBot::new(&game, Player { id: 0 }),
-            RandomBot::new(&game, Player { id: 1 }),
+            RandomBot::new(game.clone(), Player { id: 0 }),
+            RandomBot::new(game.clone(), Player { id: 1 }),
         ];
         while let Some(player) = game.active_player() {
             let bot = &mut bots[player.id];

@@ -20,18 +20,18 @@ pub struct MinimaxBot {
 }
 
 impl MinimaxBot {
-    pub fn new(game: &GameState, me: Player) -> Self {
+    pub fn new(game: GameState, me: Player) -> Self {
         MinimaxBot {
-            game: game.clone(),
+            game,
             me,
             rng: thread_rng(),
             ply: 2,
         }
     }
 
-    pub fn new_with_ply(game: &GameState, me: Player, ply: i32) -> Self {
+    pub fn new_with_ply(game: GameState, me: Player, ply: i32) -> Self {
         MinimaxBot {
-            game: game.clone(),
+            game,
             me,
             rng: thread_rng(),
             ply,
@@ -122,8 +122,8 @@ mod tests {
     fn two_players_no_illegal_moves() {
         let mut game = GameState::new_two_player([0; 32]);
         let mut bots = vec![
-            MinimaxBot::new_with_ply(&game, Player { id: 0 }, 0),
-            MinimaxBot::new_with_ply(&game, Player { id: 1 }, 0),
+            MinimaxBot::new_with_ply(game.clone(), Player { id: 0 }, 0),
+            MinimaxBot::new_with_ply(game.clone(), Player { id: 1 }, 0),
         ];
         while let Some(player) = game.active_player() {
             let bot = &mut bots[player.id];
