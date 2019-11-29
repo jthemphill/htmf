@@ -15,23 +15,23 @@ pub struct Session {
 impl Session {
     pub fn new(game: GameState) -> Session {
         let bot = MCTSBot::new(game.clone(), Player { id: 1 });
-        Session { game: game, bot }
+        Session { game, bot }
     }
 
     pub fn apply_action(&mut self, action: &Action) -> Result<(), IllegalMoveError> {
-        let res = match action {
-            &Action::Move(src, dst) => {
+        let res = match *action {
+            Action::Move(src, dst) => {
                 self.game.move_penguin(src, dst)?;
                 self.bot.update(self.game.clone());
                 Ok(())
             }
-            &Action::Place(cell_idx) => {
+            Action::Place(cell_idx) => {
                 self.game.place_penguin(cell_idx)?;
                 self.bot.update(self.game.clone());
                 Ok(())
             }
-            &Action::Selection(_) => Ok(()),
-            &Action::Setup(ref new_game_state) => {
+            Action::Selection(_) => Ok(()),
+            Action::Setup(ref new_game_state) => {
                 self.game = new_game_state.clone();
                 self.bot.update(self.game.clone());
                 Ok(())

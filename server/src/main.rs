@@ -34,15 +34,12 @@ fn main() {
             loop {
                 let request_msg = websocket.read_message().unwrap();
 
-                match request_msg {
-                    Message::Text(request_str) => {
-                        let response_str = get_response(&mut session, &request_str);
-                        websocket
-                            .write_message(Message::Text(response_str))
-                            .unwrap();
-                    }
-                    _ => {}
-                };
+                if let Message::Text(request_str) = request_msg {
+                    let response_str = get_response(&mut session, &request_str);
+                    websocket
+                        .write_message(Message::Text(response_str))
+                        .unwrap();
+                }
             }
         });
     }

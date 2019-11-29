@@ -11,7 +11,8 @@ use self::itertools::Itertools;
 use errors::IllegalMoveError;
 use hex::{line, EvenR};
 
-type Fish = usize;
+type NumFish = usize;
+type DFSState = (Board, u8, NumFish);
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Player {
@@ -27,8 +28,8 @@ pub struct Board {
 
 impl Board {
     pub fn new(seed: [u8; 32]) -> Board {
-        let mut cell_to_fish: [Fish; NUM_CELLS] = [1; NUM_CELLS];
-        let mut size: usize = NUM_ONE_FISH;
+        let mut cell_to_fish = [1; NUM_CELLS];
+        let mut size = NUM_ONE_FISH;
 
         for _ in 0..NUM_TWO_FISH {
             cell_to_fish[size] = 2;
@@ -39,10 +40,8 @@ impl Board {
             size += 1;
         }
 
-        {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
-            cell_to_fish.shuffle(&mut rng);
-        }
+        let mut rng: StdRng = SeedableRng::from_seed(seed);
+        cell_to_fish.shuffle(&mut rng);
 
         let mut fish: ArrayVec<[CellSet; 3]> = ArrayVec::new();
         for _ in 0..3 {
@@ -59,7 +58,7 @@ impl Board {
         }
     }
 
-    pub fn num_fish(&self, idx: u8) -> usize {
+    pub fn num_fish(&self, idx: u8) -> NumFish {
         self.fish
             .iter()
             .enumerate()
@@ -72,7 +71,7 @@ impl Board {
 
     pub fn all_claimed_cells(&self) -> CellSet {
         let mut ret = CellSet::new();
-        for cells in self.claimed.iter() {
+        for &cells in self.claimed.iter() {
             ret.union(cells);
         }
         ret
@@ -95,12 +94,11 @@ impl Board {
         Ok(())
     }
 
-    pub fn get_score(&self, p: Player) -> usize {
+    pub fn get_score(&self, p: Player) -> NumFish {
         (1..=3)
-            .into_iter()
             .map(|num_fish| {
-                let mut claimed_with_fish = self.claimed[p.id].clone();
-                claimed_with_fish.intersect(&self.fish[num_fish - 1]);
+                let mut claimed_with_fish = self.claimed[p.id];
+                claimed_with_fish.intersect(self.fish[num_fish - 1]);
                 claimed_with_fish.len() * num_fish
             })
             .sum()
@@ -146,7 +144,7 @@ impl Board {
 
     pub fn claimed_cells(&self) -> CellSet {
         let mut ret = CellSet::new();
-        for cells in self.claimed.iter() {
+        for &cells in self.claimed.iter() {
             ret.union(cells);
         }
         ret
@@ -186,9 +184,8 @@ impl Board {
         cell.neighbors()
             .into_iter()
             .map(|n| self.legal_moves_in_line(&cell, &n))
-            .fold(CellSet::new(), |acc, moves| {
-                let mut acc = acc.clone();
-                acc.union(&moves);
+            .fold(CellSet::new(), |mut acc, moves| {
+                acc.union(moves);
                 acc
             })
     }
@@ -285,7 +282,7 @@ impl Board {
             if can_leave_iceberg {
                 continue;
             }
-            has_done_anything = has_done_anything || self.fill(&player, penguin);
+            has_done_anything = has_done_anything || self.fill(player, penguin);
         }
 
         has_done_anything
@@ -308,13 +305,13 @@ impl Board {
     /// Assuming the given penguin is alone on a connected component,
     /// and if the penguin can touch every tile on that component
     /// exactly once, do so and return true.
-    fn fill(&mut self, player: &Player, penguin: u8) -> bool {
+    fn fill(&mut self, player: Player, penguin: u8) -> bool {
         let moves = self.optimal_path(player, penguin);
 
         if let Some((cells_to_take, _)) = moves {
             let mut penguin = penguin;
             for (_, cell, _) in cells_to_take.into_iter().skip(1) {
-                self.move_penguin(*player, penguin, cell).unwrap();
+                self.move_penguin(player, penguin, cell).unwrap();
                 penguin = cell;
             }
             true
@@ -323,13 +320,9 @@ impl Board {
         }
     }
 
-    fn optimal_path(
-        &self,
-        player: &Player,
-        penguin: u8,
-    ) -> Option<(Vec<(Board, u8, usize)>, usize)> {
+    fn optimal_path(&self, player: Player, penguin: u8) -> Option<(Vec<DFSState>, NumFish)> {
         let best_score_from_start = self.best_score_for_penguin(penguin);
-        match Self::dfs_this_iceberg(*player, best_score_from_start, self.clone(), penguin, 0) {
+        match Self::dfs_this_iceberg(player, best_score_from_start, self.clone(), penguin, 0) {
             Some(moves) => Some((moves, best_score_from_start)),
             _ => None,
         }
@@ -349,11 +342,11 @@ impl Board {
     /// points from this position.
     fn dfs_this_iceberg(
         player: Player,
-        best_score_from_start: usize,
+        best_score_from_start: NumFish,
         board: Board,
         src: u8,
-        score: usize,
-    ) -> Option<Vec<(Board, u8, usize)>> {
+        score: NumFish,
+    ) -> Option<Vec<DFSState>> {
         // Succeed early if we attained a perfect score by
         // touching every cell on our connected component (aka
         // "iceberg")
@@ -379,27 +372,20 @@ impl Board {
                 (new_board, dst, score + claimed_fish)
             });
         for (new_board, new_src, new_score) in new_states {
-            match Self::dfs_this_iceberg(
-                player,
-                best_score_from_start,
-                new_board,
-                new_src,
-                new_score,
-            ) {
-                Some(moves) => {
-                    let mut moves_including_start = vec![(board, src, score)];
-                    moves_including_start.extend(moves.into_iter());
-                    return Some(moves_including_start);
-                }
-                _ => {}
-            };
+            if let Some(moves) =
+                Self::dfs_this_iceberg(player, best_score_from_start, new_board, new_src, new_score)
+            {
+                let mut moves_including_start = vec![(board, src, score)];
+                moves_including_start.extend(moves.into_iter());
+                return Some(moves_including_start);
+            }
         }
         None
     }
 
     /// Return the number of points a penguin at the given location could get,
     /// assuming no other penguins ever move.
-    fn best_score_for_penguin(&self, penguin: u8) -> usize {
+    fn best_score_for_penguin(&self, penguin: u8) -> NumFish {
         // pick the largest adjacent component
         // and assume we can get the whole thing
         self.connected_components()
@@ -421,12 +407,12 @@ impl Board {
 
         while marked.len() < num_unclaimed {
             let mut available = CellSet::full();
-            available.exclude(&claimed_cells);
-            available.exclude(&marked);
+            available.exclude(claimed_cells);
+            available.exclude(marked);
 
             let idx = available.iter().next().unwrap();
             let new_component = self.component(idx);
-            marked.union(&new_component);
+            marked.union(new_component);
             components.push(new_component);
         }
         components
@@ -438,8 +424,8 @@ impl Board {
         while let Some(idx) = queue.pop() {
             marked.insert(idx);
             let mut new_members: CellSet = Board::neighbors(idx).collect();
-            new_members.exclude(&self.all_claimed_cells());
-            new_members.exclude(&marked);
+            new_members.exclude(self.all_claimed_cells());
+            new_members.exclude(marked);
             for x in new_members.iter() {
                 queue.push(x);
             }
@@ -570,7 +556,7 @@ mod tests {
         fn run_test(seed: [u8; 32]) {
             let mut b = Board::new(seed);
 
-            let mut cells = (0..NUM_CELLS).into_iter().collect_vec();
+            let mut cells = (0..NUM_CELLS).collect_vec();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             cells.shuffle(&mut rng);
 
@@ -604,10 +590,7 @@ mod tests {
         let mut b = Board::new([0; 32]);
         b.claim_cell(Player { id: 0 }, 0).unwrap();
         b.prune();
-        let num_claimed_cells = (0..NUM_CELLS as u8)
-            .into_iter()
-            .filter(|&c| b.is_claimed(c))
-            .count();
+        let num_claimed_cells = (0..NUM_CELLS as u8).filter(|&c| b.is_claimed(c)).count();
         assert_eq!(num_claimed_cells, NUM_CELLS);
     }
 
@@ -617,10 +600,7 @@ mod tests {
         b.claim_cell(Player { id: 0 }, 0).unwrap();
         b.claim_cell(Player { id: 1 }, 1).unwrap();
         b.prune();
-        let num_claimed_cells = (0..NUM_CELLS as u8)
-            .into_iter()
-            .filter(|&c| b.is_claimed(c))
-            .count();
+        let num_claimed_cells = (0..NUM_CELLS as u8).filter(|&c| b.is_claimed(c)).count();
         assert_eq!(num_claimed_cells, 2);
     }
 }

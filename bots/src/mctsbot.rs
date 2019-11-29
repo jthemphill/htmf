@@ -24,8 +24,8 @@ struct Tally {
 }
 
 impl Tally {
-    pub fn mark_visit(&mut self, edge: &Move, reward: f64) {
-        if let Some((visits, rewards)) = self.visits.get_mut(edge) {
+    pub fn mark_visit(&mut self, edge: Move, reward: f64) {
+        if let Some((visits, rewards)) = self.visits.get_mut(&edge) {
             *visits += 1;
             *rewards += reward;
         } else {
@@ -33,9 +33,9 @@ impl Tally {
         }
     }
 
-    pub fn get_visit(&self, edge: &Move) -> (u64, f64) {
-        if let Some(ans) = self.visits.get(edge) {
-            ans.clone()
+    pub fn get_visit(&self, edge: Move) -> (u64, f64) {
+        if let Some(&ans) = self.visits.get(&edge) {
+            ans
         } else {
             (0, 0.0)
         }
@@ -75,35 +75,32 @@ impl Game {
             moves
         } else {
             // Cells with one fish and nobody claiming them
-            let mut draftable_cells = self.state.board.fish[0].clone();
-            draftable_cells.exclude(&self.state.board.all_claimed_cells());
-            draftable_cells
-                .iter()
-                .map(|cell| Move::Place(cell))
-                .collect()
+            let mut draftable_cells = self.state.board.fish[0];
+            draftable_cells.exclude(self.state.board.all_claimed_cells());
+            draftable_cells.iter().map(Move::Place).collect()
         }
     }
 
-    fn make_move(&mut self, mov: &Move) {
+    fn make_move(&mut self, mov: Move) {
         match mov {
-            Move::Place(dst) => self.state.place_penguin(*dst).unwrap(),
+            Move::Place(dst) => self.state.place_penguin(dst).unwrap(),
             Move::Move((src, dst)) => {
                 let p = self.state.active_player().unwrap();
-                self.state.board.claimed[p.id].insert(*dst);
-                self.state.board.penguins[p.id].remove(*src);
-                self.state.board.penguins[p.id].insert(*dst);
+                self.state.board.claimed[p.id].insert(dst);
+                self.state.board.penguins[p.id].remove(src);
+                self.state.board.penguins[p.id].insert(dst);
             }
         }
     }
 }
 
-fn choose_child(tally: &Tally, moves: &Vec<Move>, rng: &mut PolicyRng) -> Move {
+fn choose_child(tally: &Tally, moves: &[Move], rng: &mut PolicyRng) -> Move {
     let exploration_constant = 0.5;
 
-    let total_visits = moves.iter().map(|x| tally.get_visit(x).0).sum::<u64>();
+    let total_visits = moves.iter().map(|&x| tally.get_visit(x).0).sum::<u64>();
     let adjusted_total = (total_visits + 1) as f64;
     let ln_adjusted_total = adjusted_total.ln();
-    rng.select_by_key(moves.iter(), |mov| {
+    *rng.select_by_key(moves.iter(), |&&mov| {
         let (child_visits, sum_rewards) = tally.get_visit(mov);
         // http://mcts.ai/pubs/mcts-survey-master.pdf
         let explore_term = if child_visits == 0 {
@@ -115,7 +112,6 @@ fn choose_child(tally: &Tally, moves: &Vec<Move>, rng: &mut PolicyRng) -> Move {
         exploration_constant * explore_term + mean_action_value
     })
     .unwrap()
-    .clone()
 }
 
 #[derive(Clone)]
@@ -165,7 +161,7 @@ impl MCTSBot {
         let mut node = self.root.clone();
         loop {
             let moves = node.available_moves();
-            if moves.len() == 0 {
+            if moves.is_empty() {
                 break;
             }
             let tally = if let Some(tally) = self.tree.get(&node) {
@@ -176,7 +172,7 @@ impl MCTSBot {
             };
             let mov = choose_child(tally, &moves, &mut self.rng);
             path.push(mov);
-            node.make_move(&mov);
+            node.make_move(mov);
             if self.tree.get(&node).is_none() {
                 self.tree.insert(node.clone(), Tally::new());
                 break;
@@ -187,7 +183,6 @@ impl MCTSBot {
         for mov in path {
             let p = node.state.active_player().unwrap();
             let max_opp_score = (0..self.root.state.nplayers)
-                .into_iter()
                 .filter(|&i| i != p.id)
                 .map(|i| scores[i])
                 .max()
@@ -196,25 +191,20 @@ impl MCTSBot {
             self.tree
                 .get_mut(&backprop_node)
                 .unwrap()
-                .mark_visit(&mov, reward);
-            backprop_node.make_move(&mov);
+                .mark_visit(mov, reward);
+            backprop_node.make_move(mov);
         }
     }
 }
 
 #[derive(Clone)]
 pub struct PolicyRng {
-    rng: StdRng,
+    rng: ThreadRng,
 }
 
 impl PolicyRng {
     pub fn new() -> Self {
-        let mut seed = [1; 32];
-        for i in 1..32 {
-            seed[i] = i as u8;
-        }
-        let rng = SeedableRng::from_seed(seed);
-        Self { rng }
+        Self { rng: thread_rng() }
     }
 
     pub fn select_by_key<T, Iter, KeyFn>(&mut self, elts: Iter, mut key_fn: KeyFn) -> Option<T>
@@ -231,7 +221,7 @@ impl PolicyRng {
                 choice = Some(elt);
                 num_optimal = 1;
                 best_so_far = score;
-            } else if score == best_so_far {
+            } else if (score - best_so_far).abs() < std::f64::EPSILON {
                 num_optimal += 1;
                 if self.rng.gen_bool(1.0 / num_optimal as f64) {
                     choice = Some(elt);

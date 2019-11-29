@@ -2,7 +2,7 @@ use std::iter::FromIterator;
 
 use NUM_CELLS;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CellSet {
     pub data: u64,
 }
@@ -24,27 +24,27 @@ impl CellSet {
         self.data &= !(1 << value);
     }
 
-    pub fn contains(&self, value: u8) -> bool {
+    pub fn contains(self, value: u8) -> bool {
         (self.data & (1 << value)) != 0
     }
 
-    pub fn intersect(&mut self, other: &CellSet) {
+    pub fn intersect(&mut self, other: CellSet) {
         self.data &= other.data;
     }
 
-    pub fn exclude(&mut self, other: &CellSet) {
+    pub fn exclude(&mut self, other: CellSet) {
         self.data &= !other.data;
     }
 
-    pub fn union(&mut self, other: &CellSet) {
+    pub fn union(&mut self, other: CellSet) {
         self.data |= other.data;
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub fn is_empty(self) -> bool {
         self.data == 0
     }
 
-    pub fn len(&self) -> usize {
+    pub fn len(self) -> usize {
         let mut data = self.data;
         let mut count = 0;
         while data != 0 {
@@ -54,9 +54,9 @@ impl CellSet {
         count
     }
 
-    pub fn iter<'a>(&'a self) -> Iter {
+    pub fn iter(self) -> Iter {
         Iter {
-            cell_set: self.clone(),
+            cell_set: self,
             value: 0,
         }
     }
@@ -78,7 +78,7 @@ impl Iterator for Iter {
                 return Some(v);
             }
         }
-        return None;
+        None
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

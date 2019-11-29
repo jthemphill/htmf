@@ -51,7 +51,6 @@ impl RandomBot {
             Action::Move(src, dst)
         } else {
             let draftable_cells: Vec<u8> = (0..NUM_CELLS as u8)
-                .into_iter()
                 .filter(|&c| !self.game.board.is_claimed(c) && self.game.board.num_fish(c) == 1)
                 .collect();
             Action::Place(*draftable_cells.choose(&mut self.rng).unwrap())

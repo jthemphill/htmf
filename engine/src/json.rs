@@ -115,7 +115,6 @@ impl<'a> From<&'a Board> for BoardJSON {
 impl<'a> From<&'a BoardJSON> for Board {
     fn from(b: &'a BoardJSON) -> Self {
         let fish = (1..=3)
-            .into_iter()
             .map(|num_fish| {
                 b.fish
                     .iter()
@@ -126,7 +125,6 @@ impl<'a> From<&'a BoardJSON> for Board {
             })
             .collect();
         let penguins = (0..=4)
-            .into_iter()
             .map(|player| {
                 let mut penguin_set = CellSet::new();
                 if let Some(player_penguins) = b.penguins.get(player) {
@@ -166,9 +164,7 @@ mod tests {
     fn after_claiming() {
         let mut game = GameState::new_two_player([0; 32]);
         let eligible_place = (0..NUM_CELLS as u8)
-            .into_iter()
-            .filter(|&cell| game.board.num_fish(cell) == 1)
-            .next()
+            .find(|&cell| game.board.num_fish(cell) == 1)
             .unwrap();
         game.place_penguin(eligible_place).unwrap();
         let game_json = GameStateJSON::from(&game);

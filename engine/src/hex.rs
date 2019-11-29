@@ -215,7 +215,7 @@ mod tests {
     fn inverse_hex_cube() {
         for x in -10..10 {
             for y in -10..10 {
-                let z = -1 * (x + y);
+                let z = -(x + y);
                 assert_eq!(
                     Cube { x: x, y: y, z: z },
                     Cube::from_evenr(&EvenR::from_cube(&Cube { x: x, y: y, z: z }))

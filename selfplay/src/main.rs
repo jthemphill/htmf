@@ -14,7 +14,7 @@ use htmf_bots::mctsbot::*;
 use htmf_bots::randombot::*;
 
 fn main() {
-    let verbose = std::env::args().into_iter().any(|arg| arg == "-v");
+    let verbose = std::env::args().any(|arg| arg == "-v");
     let trials = 1000;
 
     let (logger_tx, logger_rx) = mpsc::channel();
@@ -74,12 +74,12 @@ fn play_game(verbose: bool) -> (i32, Vec<GameState>) {
 
         match action {
             Action::Move(src, dst) => {
-                if let Err(_) = game.move_penguin(src, dst) {
+                if game.move_penguin(src, dst).is_err() {
                     panic!(format!("Player {} made an illegal move", p.id));
                 }
             }
             Action::Place(dst) => {
-                if let Err(_) = game.place_penguin(dst) {
+                if game.place_penguin(dst).is_err() {
                     panic!(format!("Player {} made an illegal move", p.id));
                 }
                 if game.board.is_cut_cell(dst) {

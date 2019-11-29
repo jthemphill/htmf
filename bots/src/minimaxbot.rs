@@ -47,28 +47,27 @@ impl MinimaxBot {
             panic!("{:?} was asked to move, but it is not their turn!", self.me);
         }
         if self.game.finished_drafting() {
-            let (_, (src, dst)) = Self::best_move(&self.game, &self.me, self.ply);
+            let (_, (src, dst)) = Self::best_move(&self.game, self.me, self.ply);
             Action::Move(src, dst)
         } else {
             // Cells with one fish and nobody claiming them
-            let mut draftable_cells = self.game.board.fish[0].clone();
-            draftable_cells.exclude(&self.game.board.all_claimed_cells());
+            let mut draftable_cells = self.game.board.fish[0];
+            draftable_cells.exclude(self.game.board.all_claimed_cells());
             Action::Place(draftable_cells.iter().choose(&mut self.rng).unwrap())
         }
     }
 
-    fn best_move(game: &GameState, p: &Player, ply: i32) -> (Vec<usize>, Move) {
-        Self::all_moves(game, *p)
+    fn best_move(game: &GameState, p: Player, ply: i32) -> (Vec<usize>, Move) {
+        Self::all_moves(game, p)
             .into_par_iter()
-            .map(|mv| (Self::score_move(game, &mv, ply), mv))
+            .map(|mv| (Self::score_move(game, mv, ply), mv))
             .max_by_key(|&(ref scores, _)| Self::negamax_score(scores, p))
             .unwrap()
     }
 
-    fn score_move(game: &GameState, mv: &Move, ply: i32) -> Vec<usize> {
+    fn score_move(game: &GameState, mv: Move, ply: i32) -> Vec<usize> {
         if ply <= 0 {
             return (0..game.nplayers)
-                .into_iter()
                 .map(|i| game.board.get_score(Player { id: i }))
                 .collect();
         }
@@ -78,17 +77,16 @@ impl MinimaxBot {
             game
         };
         if let Some(new_active_player) = game.active_player() {
-            let (scores, _) = Self::best_move(&game, &new_active_player, ply - 1);
+            let (scores, _) = Self::best_move(&game, new_active_player, ply - 1);
             scores
         } else {
             (0..game.nplayers)
-                .into_iter()
                 .map(|i| game.board.get_score(Player { id: i }))
                 .collect()
         }
     }
 
-    fn negamax_score(scores: &[usize], p: &Player) -> i32 {
+    fn negamax_score(scores: &[usize], p: Player) -> i32 {
         let my_score = scores[p.id];
         let best_other_score = scores
             .iter()
