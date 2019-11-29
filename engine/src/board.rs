@@ -1,5 +1,4 @@
 extern crate itertools;
-extern crate pathfinding;
 
 use arrayvec::ArrayVec;
 use rand::prelude::*;
@@ -8,7 +7,6 @@ use cellset::CellSet;
 use {EVEN_ROW_LEN, NUM_CELLS, NUM_ONE_FISH, NUM_THREE_FISH, NUM_TWO_FISH, ODD_ROW_LEN};
 
 use self::itertools::Itertools;
-use self::pathfinding::prelude::dfs;
 
 use errors::IllegalMoveError;
 use hex::{line, EvenR};
@@ -330,56 +328,91 @@ impl Board {
         player: &Player,
         penguin: u8,
     ) -> Option<(Vec<(Board, u8, usize)>, usize)> {
-        let best_remaining_score_fn = |board: &Board, penguin: u8| -> usize {
-            // pick the largest adjacent component
-            // and assume we can get the whole thing
-            board
-                .connected_components()
-                .iter()
-                .filter(|&iceberg| {
-                    Board::neighbors(penguin).any(|adjacency| iceberg.contains(adjacency))
-                })
-                .map(|iceberg| iceberg.iter().map(|idx| board.num_fish(idx)).sum())
-                .max()
-                .unwrap_or(0)
-        };
-        let best_score_from_start = best_remaining_score_fn(self, penguin);
-
-        let soln = dfs(
-            (self.clone(), penguin, 0),
-            |&(ref board, src, score)| {
-                // Fail early if we can't get a perfect score
-                let best_score_from_here = score + best_remaining_score_fn(board, src);
-                if best_score_from_here < best_score_from_start {
-                    return vec![].into_iter();
-                }
-                board
-                    .moves(src)
-                    .into_iter()
-                    .filter(|&c| !board.is_claimed(c))
-                    .map(move |dst| {
-                        let mut new_board = board.clone();
-                        new_board.claim_cell(*player, dst).unwrap();
-                        let claimed_fish = new_board.num_fish(dst);
-                        (new_board, dst, score + claimed_fish)
-                    })
-                    .collect_vec()
-                    .into_iter()
-            },
-            |&(ref b, penguin, score)| {
-                // Stop only when we can't continue on
-                if !b.moves(penguin).is_empty() {
-                    return false;
-                }
-                score >= best_score_from_start
-            },
-        );
-        match soln {
+        let best_score_from_start = self.best_score_for_penguin(penguin);
+        match Self::dfs_this_iceberg(*player, best_score_from_start, self.clone(), penguin, 0) {
             Some(moves) => Some((moves, best_score_from_start)),
             _ => None,
         }
     }
 
+    /// If there is a way for the penguin located at `src` to accrue
+    /// `best_score_from_start` points without interacting with any
+    /// other penguins, return one of the paths by which this may be
+    /// accomplished.
+    ///
+    /// `board` represents the current board state, `src` represents
+    /// the current location of the penguin, and `score` represents
+    /// the number of points the penguin has accumulated.
+    ///
+    /// We succeed when `score` equals `best_score_from_start` and
+    /// fail if we can no longer accumulate `best_score_from_start`
+    /// points from this position.
+    fn dfs_this_iceberg(
+        player: Player,
+        best_score_from_start: usize,
+        board: Board,
+        src: u8,
+        score: usize,
+    ) -> Option<Vec<(Board, u8, usize)>> {
+        // Succeed early if we attained a perfect score by
+        // touching every cell on our connected component (aka
+        // "iceberg")
+        assert!(score <= best_score_from_start);
+        if score == best_score_from_start {
+            return Some(vec![(board, src, score)]);
+        }
+
+        // Fail early if we can't get a perfect score
+        let best_score_from_here = score + board.best_score_for_penguin(src);
+        if best_score_from_here < best_score_from_start {
+            return None;
+        }
+
+        let new_states = board
+            .moves(src)
+            .into_iter()
+            .filter(|&c| !board.is_claimed(c))
+            .map(|dst| {
+                let mut new_board = board.clone();
+                new_board.claim_cell(player, dst).unwrap();
+                let claimed_fish = new_board.num_fish(dst);
+                (new_board, dst, score + claimed_fish)
+            });
+        for (new_board, new_src, new_score) in new_states {
+            match Self::dfs_this_iceberg(
+                player,
+                best_score_from_start,
+                new_board,
+                new_src,
+                new_score,
+            ) {
+                Some(moves) => {
+                    let mut moves_including_start = vec![(board, src, score)];
+                    moves_including_start.extend(moves.into_iter());
+                    return Some(moves_including_start);
+                }
+                _ => {}
+            };
+        }
+        None
+    }
+
+    /// Return the number of points a penguin at the given location could get,
+    /// assuming no other penguins ever move.
+    fn best_score_for_penguin(&self, penguin: u8) -> usize {
+        // pick the largest adjacent component
+        // and assume we can get the whole thing
+        self.connected_components()
+            .iter()
+            .filter(|&iceberg| {
+                Board::neighbors(penguin).any(|adjacency| iceberg.contains(adjacency))
+            })
+            .map(|iceberg| iceberg.iter().map(|idx| self.num_fish(idx)).sum())
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// Return a vector of all connected components on the board, also called "icebergs".
     fn connected_components(&self) -> Vec<CellSet> {
         let claimed_cells = self.all_claimed_cells();
         let num_unclaimed = NUM_CELLS - claimed_cells.len();
