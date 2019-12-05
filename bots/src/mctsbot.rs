@@ -133,6 +133,9 @@ impl MCTSBot {
     }
 
     pub fn update(&mut self, game: htmf::game::GameState) {
+        self.tree.retain(
+            |g, _| g.state.turn >= game.turn
+        );
         self.root = Game { state: game };
     }
 
@@ -140,20 +143,26 @@ impl MCTSBot {
         if self.root.state.active_player() != Some(self.me) {
             panic!("{:?} was asked to move, but it is not their turn!", self.me);
         }
-        for _ in 0..50 {
+        let nplayouts = self.num_playouts();
+        for _ in 0..nplayouts {
             self.playout();
         }
         let tally = self.tree.get(&self.root).unwrap();
-        let best_move = *tally
+        let (best_move, (_visits, _reward)) = tally
             .visits
             .iter()
-            .max_by(|(_, score1), (_, score2)| score1.partial_cmp(score2).unwrap())
-            .map(|(mov, _)| mov)
+            .max_by(|(_, &(visits1, score1)), (_, &(visits2, score2))| {
+                (score1 / visits1 as f64).partial_cmp(&(score2 / visits2 as f64)).unwrap()
+            })
             .unwrap();
-        match best_move {
+        match *best_move {
             Move::Move((src, dst)) => htmf::game::Action::Move(src, dst),
             Move::Place(dst) => htmf::game::Action::Place(dst),
         }
+    }
+
+    fn num_playouts(&self) -> usize {
+        self.root.available_moves().len() * 10
     }
 
     fn playout(&mut self) {
@@ -164,19 +173,14 @@ impl MCTSBot {
             if moves.is_empty() {
                 break;
             }
-            let tally = if let Some(tally) = self.tree.get(&node) {
-                tally
+            if let Some(tally) = self.tree.get(&node) {
+                let mov = choose_child(tally, &moves, &mut self.rng);
+                path.push(mov);
+                node.make_move(mov);
             } else {
                 self.tree.insert(node.clone(), Tally::new());
-                self.tree.get(&node).unwrap()
-            };
-            let mov = choose_child(tally, &moves, &mut self.rng);
-            path.push(mov);
-            node.make_move(mov);
-            if self.tree.get(&node).is_none() {
-                self.tree.insert(node.clone(), Tally::new());
                 break;
-            }
+            };
         }
         let scores = node.state.get_scores();
         let mut backprop_node = self.root.clone();

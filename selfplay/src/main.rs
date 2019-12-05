@@ -15,7 +15,7 @@ use htmf_bots::randombot::*;
 
 fn main() {
     let verbose = std::env::args().any(|arg| arg == "-v");
-    let trials = 1000;
+    let trials = 100;
 
     let (logger_tx, logger_rx) = mpsc::channel();
     std::thread::spawn(move || loop {
