@@ -133,9 +133,7 @@ impl MCTSBot {
     }
 
     pub fn update(&mut self, game: htmf::game::GameState) {
-        self.tree.retain(
-            |g, _| g.state.turn >= game.turn
-        );
+        self.tree.retain(|g, _| g.state.turn >= game.turn);
         self.root = Game { state: game };
     }
 
@@ -152,7 +150,9 @@ impl MCTSBot {
             .visits
             .iter()
             .max_by(|(_, &(visits1, score1)), (_, &(visits2, score2))| {
-                (score1 / visits1 as f64).partial_cmp(&(score2 / visits2 as f64)).unwrap()
+                (score1 / visits1 as f64)
+                    .partial_cmp(&(score2 / visits2 as f64))
+                    .unwrap()
             })
             .unwrap();
         match *best_move {
