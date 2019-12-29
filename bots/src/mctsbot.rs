@@ -42,8 +42,8 @@ impl Tally {
     }
 }
 
-impl Tally {
-    pub fn new() -> Self {
+impl Default for Tally {
+    fn default() -> Self {
         Tally {
             visits: HashMap::new(),
         }
@@ -178,7 +178,7 @@ impl MCTSBot {
                 path.push(mov);
                 node.make_move(mov);
             } else {
-                self.tree.insert(node.clone(), Tally::new());
+                self.tree.insert(node.clone(), Tally::default());
                 break;
             };
         }
