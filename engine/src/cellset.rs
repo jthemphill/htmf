@@ -45,13 +45,7 @@ impl CellSet {
     }
 
     pub fn len(self) -> usize {
-        let mut data = self.data;
-        let mut count = 0;
-        while data != 0 {
-            data &= data - 1;
-            count += 1;
-        }
-        count
+        self.data.count_ones() as usize
     }
 
     pub fn iter(self) -> Iter {
@@ -73,7 +67,12 @@ impl Iterator for Iter {
     fn next(&mut self) -> Option<u8> {
         while self.value < NUM_CELLS as u8 {
             let v = self.value;
+
             self.value += 1;
+            let remainder = self.cell_set.data >> self.value;
+            self.value += remainder.trailing_zeros() as u8;
+            self.value = std::cmp::min(self.value, NUM_CELLS as u8);
+
             if self.cell_set.contains(v) {
                 return Some(v);
             }
