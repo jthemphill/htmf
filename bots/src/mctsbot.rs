@@ -1,3 +1,6 @@
+extern crate arrayvec;
+use self::arrayvec::ArrayVec;
+
 extern crate rand;
 
 extern crate htmf;
@@ -21,9 +24,17 @@ pub enum Move {
 #[derive(Clone)]
 struct Tally {
     pub visits: HashMap<Move, (u64, f64)>,
+    pub untried_moves: Vec<Move>,
 }
 
 impl Tally {
+    pub fn new(game: &Game) -> Self {
+        Self {
+            visits: HashMap::new(),
+            untried_moves: game.available_moves(),
+        }
+    }
+
     pub fn mark_visit(&mut self, edge: Move, reward: f64) {
         if let Some((visits, rewards)) = self.visits.get_mut(&edge) {
             *visits += 1;
@@ -38,14 +49,6 @@ impl Tally {
             ans
         } else {
             (0, 0.0)
-        }
-    }
-}
-
-impl Default for Tally {
-    fn default() -> Self {
-        Tally {
-            visits: HashMap::new(),
         }
     }
 }
@@ -89,29 +92,40 @@ impl Game {
                 self.state.board.claimed[p.id].insert(dst);
                 self.state.board.penguins[p.id].remove(src);
                 self.state.board.penguins[p.id].insert(dst);
+                self.state.board.reap();
             }
         }
     }
 }
 
 fn choose_child(tally: &Tally, moves: &[Move], rng: &mut PolicyRng) -> Move {
-    let exploration_constant = 0.5;
-
     let total_visits = moves.iter().map(|&x| tally.get_visit(x).0).sum::<u64>();
-    let adjusted_total = (total_visits + 1) as f64;
-    let ln_adjusted_total = adjusted_total.ln();
     *rng.select_by_key(moves.iter(), |&&mov| {
         let (child_visits, sum_rewards) = tally.get_visit(mov);
-        // http://mcts.ai/pubs/mcts-survey-master.pdf
-        let explore_term = if child_visits == 0 {
+        // https://www.researchgate.net/publication/235985858_A_Survey_of_Monte_Carlo_Tree_Search_Methods
+        if child_visits == 0 {
             std::f64::INFINITY
         } else {
-            2.0 * (ln_adjusted_total / child_visits as f64).sqrt()
-        };
-        let mean_action_value = sum_rewards as f64 / adjusted_total;
-        exploration_constant * explore_term + mean_action_value
+            let explore_term =
+                (2.0 * (total_visits as f64).ln() / child_visits as f64)
+                .sqrt();
+            let exploit_term = (sum_rewards + 1.0) / (child_visits as f64 + 2.0);
+            explore_term + exploit_term
+        }
     })
     .unwrap()
+}
+
+fn get_reward(game: &htmf::game::GameState, p: usize) -> f64 {
+    let scores = game.get_scores();
+    let winning_score = *scores.iter().max().unwrap();
+    if scores[p] < winning_score {
+        0.0
+    } else if scores.iter().filter(|&&s| s >= winning_score).count() > 1 {
+        0.5
+    } else {
+        1.0
+    }
 }
 
 #[derive(Clone)]
@@ -162,41 +176,48 @@ impl MCTSBot {
     }
 
     fn num_playouts(&self) -> usize {
-        self.root.available_moves().len() * 10
+        self.root.available_moves().len() * 30
     }
 
     fn playout(&mut self) {
         let mut path = vec![];
         let mut node = self.root.clone();
-        loop {
-            let moves = node.available_moves();
-            if moves.is_empty() {
+        while let Some(tally) = self.tree.get(&node) {
+            if tally.untried_moves.is_empty() {
                 break;
             }
-            if let Some(tally) = self.tree.get(&node) {
-                let mov = choose_child(tally, &moves, &mut self.rng);
-                path.push(mov);
-                node.make_move(mov);
-            } else {
-                self.tree.insert(node.clone(), Tally::default());
-                break;
-            };
+            let mov = choose_child(tally, tally.untried_moves.as_slice(), &mut self.rng);
+            path.push(mov);
+            node.make_move(mov);
         }
-        let scores = node.state.get_scores();
+
+        self.tree
+            .entry(node.clone())
+            .or_insert_with(|| Tally::new(&node));
+
+        loop {
+            let available_moves = node.available_moves();
+            if available_moves.is_empty() {
+                break;
+            }
+            let &mov = available_moves.choose(&mut self.rng.rng).unwrap();
+            path.push(mov);
+            node.make_move(mov);
+        }
+
+        assert!(node.state.game_over());
+        let rewards: ArrayVec<[f64; 4]> = (0..self.root.state.nplayers)
+            .map(|p| get_reward(&node.state, p))
+            .collect();
         let mut backprop_node = self.root.clone();
         for mov in path {
-            let p = node.state.active_player().unwrap();
-            let max_opp_score = (0..self.root.state.nplayers)
-                .filter(|&i| i != p.id)
-                .map(|i| scores[i])
-                .max()
-                .unwrap();
-            let reward = scores[p.id] as f64 - max_opp_score as f64;
-            self.tree
-                .get_mut(&backprop_node)
-                .unwrap()
-                .mark_visit(mov, reward);
-            backprop_node.make_move(mov);
+            let p = backprop_node.state.active_player().unwrap();
+            if let Some(tally) = self.tree.get_mut(&backprop_node) {
+                tally.mark_visit(mov, rewards[p.id]);
+                backprop_node.make_move(mov);
+            } else {
+                break;
+            }
         }
     }
 }
@@ -207,10 +228,6 @@ pub struct PolicyRng {
 }
 
 impl PolicyRng {
-    pub fn new() -> Self {
-        Self { rng: thread_rng() }
-    }
-
     pub fn select_by_key<T, Iter, KeyFn>(&mut self, elts: Iter, mut key_fn: KeyFn) -> Option<T>
     where
         Iter: Iterator<Item = T>,
@@ -238,6 +255,6 @@ impl PolicyRng {
 
 impl Default for PolicyRng {
     fn default() -> Self {
-        Self::new()
+        Self { rng: thread_rng() }
     }
 }
