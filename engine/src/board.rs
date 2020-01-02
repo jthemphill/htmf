@@ -292,7 +292,7 @@ impl Board {
             .map(|penguins| {
                 penguins
                     .into_iter()
-                    .filter(|&p| !self.moves(p).is_empty())
+                    .filter(|&p| Board::neighbors(p).any(|n| !self.is_claimed(n)))
                     .collect()
             })
             .collect();
