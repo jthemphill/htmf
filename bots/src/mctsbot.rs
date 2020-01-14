@@ -187,7 +187,7 @@ impl MCTSBot {
                 break;
             }
             let mov = choose_child(tally, tally.untried_moves.as_slice(), &mut self.rng);
-            path.push(mov);
+            path.push((node.clone(), mov));
             node.make_move(mov);
         }
 
@@ -201,7 +201,7 @@ impl MCTSBot {
                 break;
             }
             let &mov = available_moves.choose(&mut self.rng.rng).unwrap();
-            path.push(mov);
+            path.push((node.clone(), mov));
             node.make_move(mov);
         }
 
@@ -209,12 +209,10 @@ impl MCTSBot {
         let rewards: ArrayVec<[f64; 4]> = (0..self.root.state.nplayers)
             .map(|p| get_reward(&node.state, p))
             .collect();
-        let mut backprop_node = self.root.clone();
-        for mov in path {
+        for (backprop_node, mov) in path {
             let p = backprop_node.state.active_player().unwrap();
             if let Some(tally) = self.tree.get_mut(&backprop_node) {
                 tally.mark_visit(mov, rewards[p.id]);
-                backprop_node.make_move(mov);
             } else {
                 break;
             }
