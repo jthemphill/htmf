@@ -6,3 +6,6 @@ members = [
   "selfplay",
   "server",
 ]
+
+[profile.release]
+debug = true
