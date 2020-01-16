@@ -55,14 +55,6 @@ impl Tally {
             (0, 0.0)
         }
     }
-
-    pub fn merge(&mut self, other: Tally) {
-        for (mov, (visits, rewards)) in other.visits.into_iter() {
-            let (my_visits, my_rewards) = self.visits.entry(mov).or_insert((0, 0.0));
-            *my_visits += visits;
-            *my_rewards += rewards;
-        }
-    }
 }
 
 #[derive(Clone, Eq, Hash, PartialEq)]
@@ -205,19 +197,16 @@ impl MCTSBot {
 
     /// Spawn a background thread to process new moves
     pub fn ponder(&mut self) {
-        self.ponderer = Some(Ponderer::new(self.root.clone(), self.tree.clone()));
+        let mut tree = HashMap::new();
+        std::mem::swap(&mut self.tree, &mut tree);
+        self.ponderer = Some(Ponderer::new(self.root.clone(), tree));
     }
 
     /// Join the background thread and process the work it did
     pub fn finish_pondering(&mut self) {
-        if let Some(ponder_tree) = self.ponderer.take().map(|p| p.finish()) {
+        if let Some(mut ponder_tree) = self.ponderer.take().map(|p| p.finish()) {
             println!("Processing {} ponders", ponder_tree.len());
-            for (game, new_tally) in ponder_tree.into_iter() {
-                self.tree
-                    .entry(game.clone())
-                    .or_insert_with(|| Tally::new(&game))
-                    .merge(new_tally);
-            }
+            std::mem::swap(&mut self.tree, &mut ponder_tree);
         }
     }
 
@@ -262,6 +251,9 @@ impl Ponderer {
         let should_run2 = should_run.clone();
         Self {
             thread: Some(std::thread::spawn(move || {
+                if game.state.game_over() {
+                    return tree;
+                }
                 let mut rng = PolicyRng::default();
                 while should_run2.load(atomic::Ordering::Relaxed) {
                     playout(&game, &mut tree, &mut rng);
