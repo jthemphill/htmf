@@ -82,7 +82,6 @@ fn get_action(action_json: ActionJSON) -> Option<Action> {
             Some(Action::Place(place_data.hex))
         }
         ActionType::Setup => {
-            println!("Setting up?");
             let game_state_data: ActionSetupJSON = match serde_json::from_value(action_json.data) {
                 Ok(data) => Some(data),
                 Err(e) => {
