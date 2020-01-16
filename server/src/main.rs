@@ -31,14 +31,15 @@ fn main() {
             let init_msg = String::from(&GameStateJSON::from(&session.game.board));
             websocket.write_message(Message::Text(init_msg)).unwrap();
 
-            loop {
-                let request_msg = websocket.read_message().unwrap();
-
+            while let Ok(request_msg) = websocket.read_message() {
                 if let Message::Text(request_str) = request_msg {
                     let response_str = get_response(&mut session, &request_str);
-                    websocket
+                    if websocket
                         .write_message(Message::Text(response_str))
-                        .unwrap();
+                        .is_err()
+                    {
+                        break;
+                    }
                 }
             }
         });
