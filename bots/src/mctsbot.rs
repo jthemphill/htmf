@@ -7,6 +7,10 @@ extern crate htmf;
 
 use rand::prelude::*;
 use std::collections::HashMap;
+use std::sync::atomic;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+use std::thread::JoinHandle;
 
 /**
  * Games are connected to each other via Moves.
@@ -49,6 +53,14 @@ impl Tally {
             ans
         } else {
             (0, 0.0)
+        }
+    }
+
+    pub fn merge(&mut self, other: Tally) {
+        for (mov, (visits, rewards)) in other.visits.into_iter() {
+            let (my_visits, my_rewards) = self.visits.entry(mov).or_insert((0, 0.0));
+            *my_visits += visits;
+            *my_rewards += rewards;
         }
     }
 }
@@ -107,9 +119,7 @@ fn choose_child(tally: &Tally, moves: &[Move], rng: &mut PolicyRng) -> Move {
         if child_visits == 0 {
             std::f64::INFINITY
         } else {
-            let explore_term =
-                (2.0 * (total_visits as f64).ln() / child_visits as f64)
-                .sqrt();
+            let explore_term = (2.0 * (total_visits as f64).ln() / child_visits as f64).sqrt();
             let exploit_term = (sum_rewards + 1.0) / (child_visits as f64 + 2.0);
             explore_term + exploit_term
         }
@@ -129,12 +139,51 @@ fn get_reward(game: &htmf::game::GameState, p: usize) -> f64 {
     }
 }
 
-#[derive(Clone)]
+fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut PolicyRng) {
+    let mut path = vec![];
+    let mut node = root.clone();
+    while let Some(tally) = tree.get(&node) {
+        if tally.untried_moves.is_empty() {
+            break;
+        }
+        let mov = choose_child(tally, tally.untried_moves.as_slice(), &mut rng);
+        path.push((node.clone(), mov));
+        node.make_move(mov);
+    }
+
+    tree.entry(node.clone())
+        .or_insert_with(|| Tally::new(&node));
+
+    loop {
+        let available_moves = node.available_moves();
+        if available_moves.is_empty() {
+            break;
+        }
+        let &mov = available_moves.choose(&mut rng.rng).unwrap();
+        path.push((node.clone(), mov));
+        node.make_move(mov);
+    }
+
+    assert!(node.state.game_over());
+    let rewards: ArrayVec<[f64; 4]> = (0..root.state.nplayers)
+        .map(|p| get_reward(&node.state, p))
+        .collect();
+    for (backprop_node, mov) in path {
+        let p = backprop_node.state.active_player().unwrap();
+        if let Some(tally) = tree.get_mut(&backprop_node) {
+            tally.mark_visit(mov, rewards[p.id]);
+        } else {
+            break;
+        }
+    }
+}
+
 pub struct MCTSBot {
     pub root: Game,
     pub me: htmf::board::Player,
-    rng: PolicyRng,
     tree: HashMap<Game, Tally>,
+    rng: PolicyRng,
+    ponderer: Option<Ponderer>,
 }
 
 impl MCTSBot {
@@ -142,23 +191,48 @@ impl MCTSBot {
         MCTSBot {
             root: Game { state: game },
             me,
-            rng: PolicyRng::default(),
             tree: HashMap::new(),
+            rng: PolicyRng::default(),
+            ponderer: None,
         }
     }
 
     pub fn update(&mut self, game: htmf::game::GameState) {
         self.tree.retain(|g, _| g.state.turn >= game.turn);
         self.root = Game { state: game };
+        self.finish_pondering();
+    }
+
+    /// Spawn a background thread to process new moves
+    pub fn ponder(&mut self) {
+        self.ponderer = Some(Ponderer::new(self.root.clone(), self.tree.clone()));
+    }
+
+    /// Join the background thread and process the work it did
+    pub fn finish_pondering(&mut self) {
+        if let Some(ponder_tree) = self.ponderer.take().map(|p| p.finish()) {
+            println!("Processing {} ponders", ponder_tree.len());
+            for (game, new_tally) in ponder_tree.into_iter() {
+                self.tree
+                    .entry(game.clone())
+                    .or_insert_with(|| Tally::new(&game))
+                    .merge(new_tally);
+            }
+        }
+    }
+
+    fn num_playouts(&self) -> usize {
+        10 * self.root.available_moves().len()
     }
 
     pub fn take_action(&mut self) -> htmf::game::Action {
         if self.root.state.active_player() != Some(self.me) {
             panic!("{:?} was asked to move, but it is not their turn!", self.me);
         }
+        self.finish_pondering();
         let nplayouts = self.num_playouts();
         for _ in 0..nplayouts {
-            self.playout();
+            playout(&self.root, &mut self.tree, &mut self.rng);
         }
         let tally = self.tree.get(&self.root).unwrap();
         let (best_move, (_visits, _reward)) = tally
@@ -175,54 +249,43 @@ impl MCTSBot {
             Move::Place(dst) => htmf::game::Action::Place(dst),
         }
     }
+}
 
-    fn num_playouts(&self) -> usize {
-        self.root.available_moves().len() * 30
+struct Ponderer {
+    thread: Option<JoinHandle<HashMap<Game, Tally>>>,
+    should_run: Arc<AtomicBool>,
+}
+
+impl Ponderer {
+    pub fn new(game: Game, mut tree: HashMap<Game, Tally>) -> Self {
+        let should_run = Arc::new(AtomicBool::new(true));
+        let should_run2 = should_run.clone();
+        Self {
+            thread: Some(std::thread::spawn(move || {
+                let mut rng = PolicyRng::default();
+                while should_run2.load(atomic::Ordering::Relaxed) {
+                    playout(&game, &mut tree, &mut rng);
+                }
+                tree
+            })),
+            should_run,
+        }
     }
 
-    fn playout(&mut self) {
-        let mut path = vec![];
-        let mut node = self.root.clone();
-        while let Some(tally) = self.tree.get(&node) {
-            if tally.untried_moves.is_empty() {
-                break;
-            }
-            let mov = choose_child(tally, tally.untried_moves.as_slice(), &mut self.rng);
-            path.push((node.clone(), mov));
-            node.make_move(mov);
-        }
+    pub fn finish(mut self) -> HashMap<Game, Tally> {
+        self.should_run.store(false, atomic::Ordering::SeqCst);
+        self.thread.take().unwrap().join().unwrap()
+    }
+}
 
-        self.tree
-            .entry(node.clone())
-            .or_insert_with(|| Tally::new(&node));
-
-        loop {
-            let available_moves = node.available_moves();
-            if available_moves.is_empty() {
-                break;
-            }
-            let &mov = available_moves.choose(&mut self.rng.rng).unwrap();
-            path.push((node.clone(), mov));
-            node.make_move(mov);
-        }
-
-        assert!(node.state.game_over());
-        let rewards: ArrayVec<[f64; 4]> = (0..self.root.state.nplayers)
-            .map(|p| get_reward(&node.state, p))
-            .collect();
-        for (backprop_node, mov) in path {
-            let p = backprop_node.state.active_player().unwrap();
-            if let Some(tally) = self.tree.get_mut(&backprop_node) {
-                tally.mark_visit(mov, rewards[p.id]);
-            } else {
-                break;
-            }
-        }
+impl Drop for Ponderer {
+    fn drop(&mut self) {
+        self.should_run.store(false, atomic::Ordering::Relaxed);
     }
 }
 
 #[derive(Clone)]
-pub struct PolicyRng {
+struct PolicyRng {
     rng: ThreadRng,
 }
 

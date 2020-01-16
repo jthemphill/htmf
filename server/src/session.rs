@@ -6,7 +6,6 @@ use htmf::board::Player;
 use htmf::errors::IllegalMoveError;
 use htmf::game::{Action, GameState};
 
-#[derive(Clone)]
 pub struct Session {
     pub game: GameState,
     bot: MCTSBot,
@@ -46,6 +45,7 @@ impl Session {
                 self.apply_action(&action).unwrap();
             }
         }
+        self.bot.ponder();
         Ok(())
     }
 }
