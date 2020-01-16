@@ -100,20 +100,36 @@ impl Game {
     }
 }
 
-fn choose_child(tally: &Tally, moves: &[Move], rng: &mut PolicyRng) -> Move {
+fn choose_child(tally: &Tally, moves: &[Move], rng: &mut impl rand::Rng) -> Move {
     let total_visits = moves.iter().map(|&x| tally.get_visit(x).0).sum::<u64>();
-    *rng.select_by_key(moves.iter(), |&&mov| {
-        let (child_visits, sum_rewards) = tally.get_visit(mov);
-        // https://www.researchgate.net/publication/235985858_A_Survey_of_Monte_Carlo_Tree_Search_Methods
-        if child_visits == 0 {
-            std::f64::INFINITY
-        } else {
-            let explore_term = (2.0 * (total_visits as f64).ln() / child_visits as f64).sqrt();
-            let exploit_term = (sum_rewards + 1.0) / (child_visits as f64 + 2.0);
-            explore_term + exploit_term
+
+    let mut choice = None;
+    let mut num_optimal: u32 = 0;
+    let mut best_so_far: f64 = std::f64::NEG_INFINITY;
+    for &mov in moves {
+        let score = {
+            let (child_visits, sum_rewards) = tally.get_visit(mov);
+            // https://www.researchgate.net/publication/235985858_A_Survey_of_Monte_Carlo_Tree_Search_Methods
+            if child_visits == 0 {
+                std::f64::INFINITY
+            } else {
+                let explore_term = (2.0 * (total_visits as f64).ln() / child_visits as f64).sqrt();
+                let exploit_term = (sum_rewards + 1.0) / (child_visits as f64 + 2.0);
+                explore_term + exploit_term
+            }
+        };
+        if score > best_so_far {
+            choice = Some(mov);
+            num_optimal = 1;
+            best_so_far = score;
+        } else if (score - best_so_far).abs() < std::f64::EPSILON {
+            num_optimal += 1;
+            if rng.gen_bool(1.0 / num_optimal as f64) {
+                choice = Some(mov);
+            }
         }
-    })
-    .unwrap()
+    }
+    choice.unwrap()
 }
 
 fn get_reward(game: &htmf::game::GameState, p: usize) -> f64 {
@@ -128,7 +144,7 @@ fn get_reward(game: &htmf::game::GameState, p: usize) -> f64 {
     }
 }
 
-fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut PolicyRng) {
+fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut ThreadRng) {
     let mut path = vec![];
     let mut node = root.clone();
     while let Some(tally) = tree.get(&node) {
@@ -148,7 +164,7 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut PolicyRng
         if available_moves.is_empty() {
             break;
         }
-        let &mov = available_moves.choose(&mut rng.rng).unwrap();
+        let &mov = available_moves.choose(&mut rng).unwrap();
         path.push((node.clone(), mov));
         node.make_move(mov);
     }
@@ -173,7 +189,7 @@ pub struct MCTSBot {
     pub root: Game,
     pub me: htmf::board::Player,
     tree: HashMap<Game, Tally>,
-    rng: PolicyRng,
+    rng: ThreadRng,
     ponderer: Option<Ponderer>,
 }
 
@@ -183,7 +199,7 @@ impl MCTSBot {
             root: Game { state: game },
             me,
             tree: HashMap::new(),
-            rng: PolicyRng::default(),
+            rng: thread_rng(),
             ponderer: None,
         }
     }
@@ -257,7 +273,7 @@ impl Ponderer {
         let thread = {
             let should_run = should_run.clone();
             Some(std::thread::spawn(move || {
-                let mut rng = PolicyRng::default();
+                let mut rng = thread_rng();
                 while should_run.load(atomic::Ordering::Relaxed) {
                     playout(&game, &mut tree, &mut rng);
                 }
@@ -276,42 +292,5 @@ impl Ponderer {
 impl Drop for Ponderer {
     fn drop(&mut self) {
         self.should_run.store(false, atomic::Ordering::Relaxed);
-    }
-}
-
-#[derive(Clone)]
-struct PolicyRng {
-    rng: ThreadRng,
-}
-
-impl PolicyRng {
-    pub fn select_by_key<T, Iter, KeyFn>(&mut self, elts: Iter, mut key_fn: KeyFn) -> Option<T>
-    where
-        Iter: Iterator<Item = T>,
-        KeyFn: FnMut(&T) -> f64,
-    {
-        let mut choice = None;
-        let mut num_optimal: u32 = 0;
-        let mut best_so_far: f64 = std::f64::NEG_INFINITY;
-        for elt in elts {
-            let score = key_fn(&elt);
-            if score > best_so_far {
-                choice = Some(elt);
-                num_optimal = 1;
-                best_so_far = score;
-            } else if (score - best_so_far).abs() < std::f64::EPSILON {
-                num_optimal += 1;
-                if self.rng.gen_bool(1.0 / num_optimal as f64) {
-                    choice = Some(elt);
-                }
-            }
-        }
-        choice
-    }
-}
-
-impl Default for PolicyRng {
-    fn default() -> Self {
-        Self { rng: thread_rng() }
     }
 }
