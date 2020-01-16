@@ -81,7 +81,8 @@ impl Iterator for Iter {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(NUM_CELLS - self.value as usize))
+        let size = (self.cell_set.data >> self.value).count_ones() as usize;
+        (size, Some(size))
     }
 }
 
@@ -155,7 +156,8 @@ mod tests {
         assert_eq!(s.len(), vals.len());
 
         let mut iter = s.into_iter();
-        for v in vals.iter() {
+        for (seen, v) in vals.iter().enumerate() {
+            assert_eq!(iter.size_hint().0, vals.len() - seen);
             assert_eq!(iter.next(), Some(*v as u8));
         }
     }
