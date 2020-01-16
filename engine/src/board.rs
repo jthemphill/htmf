@@ -257,7 +257,7 @@ impl Board {
         // that penguin can no longer interact with the rest of the
         // board.
         for iceberg in &components {
-            let penguins_touching_iceberg: Vec<_> = self
+            let penguins_touching_iceberg = self
                 .penguins
                 .iter()
                 .enumerate()
@@ -268,7 +268,7 @@ impl Board {
                         .map(move |p| (Player { id: player }, p))
                 })
                 .take(2)
-                .collect();
+                .collect::<ArrayVec<[_; 2]>>();
             if penguins_touching_iceberg.len() != 1 {
                 continue;
             }
