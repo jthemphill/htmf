@@ -248,6 +248,8 @@ impl Board {
         }
     }
 
+    /// Iff a penguin is alone on the board and can catch every fish on its
+    /// "iceberg", claim all the fish on the iceberg
     pub fn prune(&mut self) -> bool {
         let mut has_done_anything = false;
         let components = self.connected_components();
