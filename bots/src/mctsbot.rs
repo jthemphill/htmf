@@ -22,14 +22,14 @@ pub enum Move {
 #[derive(Clone)]
 struct Tally {
     pub visits: HashMap<Move, (u64, f64)>,
-    pub untried_moves: Vec<Move>,
+    pub available_moves: Vec<Move>,
 }
 
 impl Tally {
     pub fn new(game: &Game) -> Self {
         Self {
             visits: HashMap::new(),
-            untried_moves: game.available_moves().collect(),
+            available_moves: game.available_moves().collect(),
         }
     }
 
@@ -148,10 +148,10 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut ThreadRng
     let mut path = vec![];
     let mut node = root.clone();
     while let Some(tally) = tree.get(&node) {
-        if tally.untried_moves.is_empty() {
+        if tally.available_moves.is_empty() {
             break;
         }
-        let mov = choose_child(tally, tally.untried_moves.as_slice(), &mut rng);
+        let mov = choose_child(tally, tally.available_moves.as_slice(), &mut rng);
         path.push((node.clone(), mov));
         node.make_move(mov);
     }
