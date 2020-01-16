@@ -196,6 +196,12 @@ impl MCTSBot {
 
     /// Spawn a background thread to process new moves
     pub fn ponder(&mut self) {
+        // Don't ponder unless we can actually make a move
+        if self.root.state.finished_drafting()
+            && self.root.state.board.penguins[self.me.id].is_empty()
+        {
+            return;
+        }
         let mut tree = HashMap::new();
         std::mem::swap(&mut self.tree, &mut tree);
         self.ponderer = Some(Ponderer::new(self.root.clone(), tree));
@@ -248,20 +254,17 @@ struct Ponderer {
 impl Ponderer {
     pub fn new(game: Game, mut tree: HashMap<Game, Tally>) -> Self {
         let should_run = Arc::new(AtomicBool::new(true));
-        let should_run2 = should_run.clone();
-        Self {
-            thread: Some(std::thread::spawn(move || {
-                if game.state.game_over() {
-                    return tree;
-                }
+        let thread = {
+            let should_run = should_run.clone();
+            Some(std::thread::spawn(move || {
                 let mut rng = PolicyRng::default();
-                while should_run2.load(atomic::Ordering::Relaxed) {
+                while should_run.load(atomic::Ordering::Relaxed) {
                     playout(&game, &mut tree, &mut rng);
                 }
                 tree
-            })),
-            should_run,
-        }
+            }))
+        };
+        Self { thread, should_run }
     }
 
     pub fn finish(mut self) -> HashMap<Game, Tally> {
