@@ -1,10 +1,4 @@
-extern crate arrayvec;
-use self::arrayvec::ArrayVec;
-
-extern crate rand;
-
-extern crate htmf;
-
+use arrayvec::ArrayVec;
 use rand::prelude::*;
 use std::collections::HashMap;
 use std::sync::atomic;
