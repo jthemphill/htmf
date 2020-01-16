@@ -29,7 +29,7 @@ impl Tally {
     pub fn new(game: &Game) -> Self {
         Self {
             visits: HashMap::new(),
-            untried_moves: game.available_moves(),
+            untried_moves: game.available_moves().collect(),
         }
     }
 
@@ -61,24 +61,27 @@ impl Game {
         self.state.active_player().unwrap()
     }
 
-    fn available_moves(&self) -> Vec<Move> {
+    fn available_moves<'a>(&'a self) -> Box<dyn Iterator<Item = Move> + 'a> {
         if self.state.game_over() {
-            return Vec::new();
-        }
-        let p = self.current_player();
-        if self.state.finished_drafting() {
-            let mut moves = Vec::new();
-            for src in self.state.board.penguins[p.id].into_iter() {
-                for dst in self.state.board.moves(src).into_iter() {
-                    moves.push(Move::Move((src, dst)));
-                }
-            }
-            moves
+            Box::new(std::iter::empty())
+        } else if self.state.finished_drafting() {
+            let p = self.current_player();
+            Box::new(
+                self.state.board.penguins[p.id]
+                    .into_iter()
+                    .flat_map(move |src| {
+                        self.state
+                            .board
+                            .moves(src)
+                            .into_iter()
+                            .map(move |dst| Move::Move((src, dst)))
+                    }),
+            )
         } else {
             // Cells with one fish and nobody claiming them
             let mut draftable_cells = self.state.board.fish[0];
             draftable_cells.exclude(self.state.board.all_claimed_cells());
-            draftable_cells.iter().map(Move::Place).collect()
+            Box::new(draftable_cells.into_iter().map(Move::Place))
         }
     }
 
@@ -141,7 +144,7 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut PolicyRng
         .or_insert_with(|| Tally::new(&node));
 
     loop {
-        let available_moves = node.available_moves();
+        let available_moves = node.available_moves().collect::<Vec<Move>>();
         if available_moves.is_empty() {
             break;
         }
@@ -150,6 +153,7 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut PolicyRng
         node.make_move(mov);
     }
 
+    assert!(path[0].0 == *root);
     assert!(node.state.game_over());
     let rewards: ArrayVec<[f64; 4]> = (0..root.state.nplayers)
         .map(|p| get_reward(&node.state, p))
@@ -162,6 +166,7 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut PolicyRng
             break;
         }
     }
+    assert!(tree.get(root).is_some())
 }
 
 pub struct MCTSBot {
@@ -203,21 +208,22 @@ impl MCTSBot {
         }
     }
 
-    fn num_playouts(&self) -> usize {
-        10 * self.root.available_moves().len()
-    }
-
     pub fn take_action(&mut self) -> htmf::game::Action {
         if self.root.state.active_player() != Some(self.me) {
             panic!("{:?} was asked to move, but it is not their turn!", self.me);
         }
         self.finish_pondering();
-        let nplayouts = self.num_playouts();
-        for _ in 0..nplayouts {
+        while self
+            .tree
+            .get(&self.root)
+            .map(|tally| tally.visits.iter().map(|(_, (v, _))| v).sum())
+            .unwrap_or(0)
+            < 1024
+        {
             playout(&self.root, &mut self.tree, &mut self.rng);
         }
         let tally = self.tree.get(&self.root).unwrap();
-        let (best_move, (_visits, _reward)) = tally
+        let best_move = *tally
             .visits
             .iter()
             .max_by(|(_, &(visits1, score1)), (_, &(visits2, score2))| {
@@ -225,8 +231,9 @@ impl MCTSBot {
                     .partial_cmp(&(score2 / visits2 as f64))
                     .unwrap()
             })
-            .unwrap();
-        match *best_move {
+            .unwrap()
+            .0;
+        match best_move {
             Move::Move((src, dst)) => htmf::game::Action::Move(src, dst),
             Move::Place(dst) => htmf::game::Action::Place(dst),
         }

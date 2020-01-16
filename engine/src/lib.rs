@@ -15,6 +15,7 @@ pub const NUM_ONE_FISH: usize = 30;
 pub const NUM_TWO_FISH: usize = 20;
 pub const NUM_THREE_FISH: usize = 10;
 pub const NUM_FISH: usize = NUM_ONE_FISH + NUM_TWO_FISH + NUM_THREE_FISH;
+pub const MOVE_ARRAY_SIZE: usize = 100;
 
 pub mod board;
 pub mod cellset;
