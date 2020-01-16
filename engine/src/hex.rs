@@ -1,5 +1,12 @@
 use arrayvec::ArrayVec;
 
+/// Barebones library for working with hex grids. Everything good about this
+/// was derived from Amit Patel's indispensable guide.
+/// https://www.redblobgames.com/grids/hexagons/
+
+/// A traditional Hey, That's My Fish! setup is square-ish, with every even
+/// row shoved a little to the right of every odd row. Amit's guide calls this
+/// the "even-r" layout.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct EvenR {
     pub col: i64,
@@ -27,6 +34,10 @@ impl EvenR {
     }
 }
 
+/// You can imagine each hexagon as the shadow of a cube. A hexagon has six
+/// sides, which correspond to a cube's six faces. If you look at a hex grid
+/// this way, you get a number of nice properties that allow you to easily find
+/// the hex's neighbors and elements in line.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Cube {
     pub x: i64,
@@ -82,6 +93,7 @@ impl Cube {
     }
 }
 
+/// Return a ray which passes through both src and dst and extends forever.
 pub fn line(src: &EvenR, dst: &EvenR) -> Iterator {
     if src == dst {
         panic!("Source and destination cells cannot be the same.");
