@@ -62,14 +62,14 @@ class Hex extends React.PureComponent<Props> {
 
     getFill() {
         if (this.props.highlighted) {
-            return 'yellow';
+            return '#f1f09f';
         }
 
         if (this.props.possible) {
-            return 'green';
+            return '#c8f1ca';
         }
 
-        return 'white';
+        return '#e2e2e2';
     }
 
     circles() {

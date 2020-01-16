@@ -28,14 +28,18 @@ fn main() {
             let mut rng = rand::thread_rng();
             let mut session = Session::new(GameState::new_two_player(rng.gen()));
 
-            let init_msg = String::from(&GameStateJSON::from(&session.game.board));
-            websocket.write_message(Message::Text(init_msg)).unwrap();
+            let mut init_json = GameStateJSON::from(&session.game.board);
+            add_possible_moves(&mut init_json);
+            websocket
+                .write_message(Message::Text(String::from(&init_json)))
+                .unwrap();
 
             while let Ok(request_msg) = websocket.read_message() {
                 if let Message::Text(request_str) = request_msg {
-                    let response_str = get_response(&mut session, &request_str);
+                    let mut response_json = get_response(&mut session, &request_str);
+                    add_possible_moves(&mut response_json);
                     if websocket
-                        .write_message(Message::Text(response_str))
+                        .write_message(Message::Text(String::from(&response_json)))
                         .is_err()
                     {
                         break;
@@ -46,13 +50,40 @@ fn main() {
     }
 }
 
-fn get_response(session: &mut Session, action_str: &str) -> String {
+fn add_possible_moves(game_json: &mut htmf::json::GameStateJSON) {
+    if game_json.board.possible_moves.is_some() {
+        return;
+    }
+    game_json.board.possible_moves = match game_json.mode_type {
+        GameModeType::Drafting => {
+            Some(
+                game_json
+                    .board
+                    .fish
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, &fish)| fish == 1)
+                    .map(|(idx, _)| idx as u8)
+                    .collect(),
+            )
+        }
+        GameModeType::Playing => {
+            if let Some(p) = game_json.active_player {
+                Some(game_json.board.penguins[p].clone())
+            } else {
+                None
+            }
+        }
+    }
+}
+
+fn get_response(session: &mut Session, action_str: &str) -> htmf::json::GameStateJSON {
     let action = match protocol::action_from_str(action_str) {
         Some(a) => a,
         None => {
             let mut game_json = GameStateJSON::from(&session.game);
             game_json.last_move_valid = false;
-            return String::from(&game_json);
+            return game_json;
         }
     };
     match action {
@@ -62,7 +93,7 @@ fn get_response(session: &mut Session, action_str: &str) -> String {
             board_json.possible_moves = Some(board.moves(cell_idx).into_iter().collect());
             let mut game_json = GameStateJSON::from(&session.game);
             game_json.board = board_json;
-            String::from(&game_json)
+            game_json
         }
         _ => {
             let res = session.apply_action(&action);
@@ -70,7 +101,7 @@ fn get_response(session: &mut Session, action_str: &str) -> String {
             if res.is_err() {
                 game_json.last_move_valid = false;
             }
-            String::from(&game_json)
+            game_json
         }
     }
 }
