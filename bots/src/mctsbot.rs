@@ -204,6 +204,7 @@ impl MCTSBot {
         }
     }
 
+    /// Tell the bot about the new game state
     pub fn update(&mut self, game: htmf::game::GameState) {
         self.tree.retain(|g, _| g.state.turn >= game.turn);
         self.root = Game { state: game };
@@ -212,6 +213,10 @@ impl MCTSBot {
 
     /// Spawn a background thread to process new moves
     pub fn ponder(&mut self) {
+        // Don't reset the ponderer if we're already pondering
+        if self.ponderer.is_some() {
+            return;
+        }
         // Don't ponder unless we can actually make a move
         if self.root.state.finished_drafting()
             && self.root.state.board.penguins[self.me.id].is_empty()
