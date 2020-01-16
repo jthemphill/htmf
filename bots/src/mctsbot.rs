@@ -205,7 +205,6 @@ impl MCTSBot {
     /// Join the background thread and process the work it did
     pub fn finish_pondering(&mut self) {
         if let Some(mut ponder_tree) = self.ponderer.take().map(|p| p.finish()) {
-            println!("Processing {} ponders", ponder_tree.len());
             std::mem::swap(&mut self.tree, &mut ponder_tree);
         }
     }
