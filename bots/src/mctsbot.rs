@@ -6,6 +6,8 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
+const MIN_PLAYOUTS: u64 = 2048;
+
 /**
  * Games are connected to each other via Moves.
  */
@@ -34,12 +36,9 @@ impl Tally {
     }
 
     pub fn mark_visit(&mut self, edge: Move, reward: f64) {
-        if let Some((visits, rewards)) = self.visits.get_mut(&edge) {
-            *visits += 1;
-            *rewards += reward;
-        } else {
-            self.visits.insert(edge.clone(), (1, reward));
-        }
+        let (ref mut visits, ref mut rewards) = self.visits.entry(edge).or_insert((0, 0.0));
+        *visits += 1;
+        *rewards += reward;
     }
 
     pub fn get_visit(&self, edge: Move) -> (u64, f64) {
@@ -206,9 +205,9 @@ impl MCTSBot {
 
     /// Tell the bot about the new game state
     pub fn update(&mut self, game: htmf::game::GameState) {
+        self.finish_pondering();
         self.tree.retain(|g, _| g.state.turn >= game.turn);
         self.root = Game { state: game };
-        self.finish_pondering();
     }
 
     /// Spawn a background thread to process new moves
@@ -235,18 +234,19 @@ impl MCTSBot {
         }
     }
 
+    fn num_playouts_from_root(&self) -> u64 {
+        self.tree
+            .get(&self.root)
+            .map(|tally| tally.visits.iter().map(|(_, (v, _))| v).sum())
+            .unwrap_or(0)
+    }
+
     pub fn take_action(&mut self) -> htmf::game::Action {
         if self.root.state.active_player() != Some(self.me) {
             panic!("{:?} was asked to move, but it is not their turn!", self.me);
         }
         self.finish_pondering();
-        while self
-            .tree
-            .get(&self.root)
-            .map(|tally| tally.visits.iter().map(|(_, (v, _))| v).sum())
-            .unwrap_or(0)
-            < 1024
-        {
+        while self.num_playouts_from_root() < MIN_PLAYOUTS {
             playout(&self.root, &mut self.tree, &mut self.rng);
         }
         let tally = self.tree.get(&self.root).unwrap();
