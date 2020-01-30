@@ -58,8 +58,7 @@ impl Board {
         self.fish
             .iter()
             .enumerate()
-            .filter(|&(_, cells_with_fish)| cells_with_fish.contains(idx))
-            .nth(0)
+            .find(|&(_, cells_with_fish)| cells_with_fish.contains(idx))
             .unwrap()
             .0
             + 1

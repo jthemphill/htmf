@@ -55,18 +55,16 @@ fn add_possible_moves(game_json: &mut htmf::json::GameStateJSON) {
         return;
     }
     game_json.board.possible_moves = match game_json.mode_type {
-        GameModeType::Drafting => {
-            Some(
-                game_json
-                    .board
-                    .fish
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, &fish)| fish == 1)
-                    .map(|(idx, _)| idx as u8)
-                    .collect(),
-            )
-        }
+        GameModeType::Drafting => Some(
+            game_json
+                .board
+                .fish
+                .iter()
+                .enumerate()
+                .filter(|(_, &fish)| fish == 1)
+                .map(|(idx, _)| idx as u8)
+                .collect(),
+        ),
         GameModeType::Playing => {
             if let Some(p) = game_json.active_player {
                 Some(game_json.board.penguins[p].clone())
