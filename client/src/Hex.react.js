@@ -27,11 +27,11 @@ class Hex extends React.PureComponent<Props> {
         if (!color && this.props.claimed) {
             return (
                 <g transform={transform}>
-                  <polygon
-                    points={this.points().join(' ')}
-                    style={{
-                        fill: '#555555',
-                    }}
+                    <polygon
+                        points={this.points().join(' ')}
+                        style={{
+                            fill: '#555555',
+                        }}
                     />
                 </g>
             );
@@ -40,22 +40,22 @@ class Hex extends React.PureComponent<Props> {
         let penguin = null;
         let circles = null;
         if (color) {
-            penguin = (<Penguin color={color} size={this.props.sideLength}/>);
+            penguin = (<Penguin color={color} size={this.props.sideLength} />);
         } else {
             circles = this.circles();
         }
 
         return (
             <g transform={transform} onClick={this._onClick.bind(this)}>
-              <polygon
-                points={this.points().join(' ')}
-                style={{
-                    stroke: 'blue',
-                    fill: this.getFill(),
-                }}
-              />
-              {circles}
-              {penguin}
+                <polygon
+                    points={this.points().join(' ')}
+                    style={{
+                        stroke: 'blue',
+                        fill: this.getFill(),
+                    }}
+                />
+                {circles}
+                {penguin}
             </g>
         );
     }
@@ -77,51 +77,51 @@ class Hex extends React.PureComponent<Props> {
         const color = '#888888';
         if (this.props.fish === 1) {
             return [
-              <circle
-                key={0}
-                style={{fill: color}}
-                r={r}
-              />,
+                <circle
+                    key={0}
+                    style={{ fill: color }}
+                    r={r}
+                />,
             ];
         } else if (this.props.fish === 2) {
             return [
-              <circle
-                key={0}
-                style={{fill: color}}
-                cx={-r * 2}
-                r={r}
-              />,
-              <circle
-                key={1}
-                style={{fill: color}}
-                cx={r * 2}
-                r={r}
-              />,
+                <circle
+                    key={0}
+                    style={{ fill: color }}
+                    cx={-r * 2}
+                    r={r}
+                />,
+                <circle
+                    key={1}
+                    style={{ fill: color }}
+                    cx={r * 2}
+                    r={r}
+                />,
             ];
         } else if (this.props.fish === 3) {
             const y_offset = r * 2 * Math.sin(Math.PI / 3)
             return [
-              <circle
-                key={0}
-                style={{fill: color}}
-                cx={-r * 2}
-                cy={y_offset}
-                r={r}
-              />,
-              <circle
-                key={1}
-                style={{fill: color}}
-                cx={r * 2}
-                cy={y_offset}
-                r={r}
-               />,
-               <circle
-                key={2}
-                style={{fill: color}}
-                cx={0}
-                cy={-y_offset}
-                r={r}
-              />,
+                <circle
+                    key={0}
+                    style={{ fill: color }}
+                    cx={-r * 2}
+                    cy={y_offset}
+                    r={r}
+                />,
+                <circle
+                    key={1}
+                    style={{ fill: color }}
+                    cx={r * 2}
+                    cy={y_offset}
+                    r={r}
+                />,
+                <circle
+                    key={2}
+                    style={{ fill: color }}
+                    cx={0}
+                    cy={-y_offset}
+                    r={r}
+                />,
             ];
         } else {
             throw new Error(this.props.fish + ' is not a valid fish amount');
@@ -133,19 +133,16 @@ class Hex extends React.PureComponent<Props> {
     }
 
     points(): Array<Array<number>> {
-      const points = [];
-      for (let i = 0; i < 6; ++i) {
-          points.push(this.corner(i));
-      }
-
+        const points = [];
+        for (let i = 0; i < 6; ++i) {
+            points.push(this.corner(i));
+        }
         return points;
     }
 
     corner(i: number): Array<number> {
         const side_length = this.props.sideLength;
-
-        const angle_deg = 60 * i;
-        const angle_rad = angle_deg * Math.PI / 180;
+        const angle_rad = i * Math.PI / 3;
         return [
             side_length * Math.sin(angle_rad),
             side_length * Math.cos(angle_rad),
@@ -153,10 +150,9 @@ class Hex extends React.PureComponent<Props> {
     }
 
     static width(side_length: number): number {
-        const angle_rad_1 = Math.PI / 3;
-        const angle_rad_5 = Math.PI * 5 / 3;
-
-        return side_length * (Math.sin(angle_rad_1) - Math.sin(angle_rad_5));
+        return side_length * (
+            Math.sin(Math.PI / 3) - Math.sin(Math.PI * 5 / 3)
+        );
     }
 }
 

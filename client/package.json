@@ -15,7 +15,7 @@
     "flow": "flow"
   },
   "devDependencies": {
-    "flow-bin": "^0.53.1"
+    "flow-bin": "^0.117.0"
   },
   "main": "index.js",
   "author": "Jeff Hemphill <jthemphill@gmail.com>",

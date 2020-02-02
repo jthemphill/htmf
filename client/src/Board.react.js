@@ -11,7 +11,6 @@ const EVEN_ROW_LEN = 7;
 const ODD_ROW_LEN = 8;
 
 type Props = {
-    socket: WebSocket,
     gameState: GameState,
     minDim: number,
     disablePossibleMoves: bool,
