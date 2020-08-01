@@ -4,14 +4,14 @@ version = "0.1.0"
 authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 
 [dependencies]
-arrayvec = "0.5.1"
-rand = "0.7.2"
-rayon = "1.2.1"
+arrayvec = "0.5"
+rand = "0.7"
+rayon = "1.3"
 
 htmf = { path = "../engine" }
 
 [dev-dependencies]
-criterion = "0.3.0"
+criterion = "0.3"
 
 [[bench]]
 name = "minimax_full_game"

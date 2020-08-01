@@ -4,8 +4,8 @@ version = "0.1.0"
 authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 
 [dependencies]
-arrayvec = "0.5.1"
-rand = "0.7.2"
-serde = "1.0.103"
-serde_derive = "1.0.103"
-serde_json = "1.0.42"
+arrayvec = "0.5"
+rand = "0.7"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
