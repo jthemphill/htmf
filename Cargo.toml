@@ -5,6 +5,7 @@ members = [
   "engine",
   "selfplay",
   "server",
+  "wasm",
 ]
 
 [profile.release]

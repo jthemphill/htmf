@@ -1,0 +1,14 @@
+[package]
+name = "wasm"
+version = "0.1.0"
+authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+htmf = { path = "../engine" }
+js-sys = "0.3.35"
+rand = "0.7.2"
+wasm-bindgen = "0.2"
