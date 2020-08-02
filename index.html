@@ -1,16 +1,53 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="theme-color" content="#000000">
-    <title>Hey, that's my fish!</title>
-    <script src="./index.js" defer></script>
-  </head>
-  <body>
-    <noscript>
-      You need to enable JavaScript to run this app.
-    </noscript>
-    <div id="root"></div>
-  </body>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="theme-color" content="#000000">
+  <title>Hey, that's my fish!</title>
+  <script crossorigin src="https://unpkg.com/react@16/umd/react.production.min.js" defer></script>
+  <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js" defer></script>
+  <script src="./index.js" defer></script>
+  <style>
+    .app {
+      display: flex;
+      flex-direction: row;
+    }
+
+    .board {
+      height: 100vmin;
+      width: 100vmin;
+    }
+
+    .board .cell {
+      fill: #eeeeee;
+      stroke: #7c37dc;
+    }
+
+    .board .cell.highlighted {
+      fill: #fffe9f;
+    }
+
+    .board .cell.possible {
+      fill: #d1fec8;
+    }
+
+    .board .cell.claimed {
+      fill: #555555;
+    }
+
+    .board .fish {
+      fill: #888888;
+    }
+  </style>
+</head>
+
+<body>
+  <noscript>
+    You need to enable JavaScript to run this app.
+  </noscript>
+  <div id="root"></div>
+</body>
+
 </html>
