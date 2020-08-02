@@ -1,5 +1,5 @@
 [package]
-name = "wasm"
+name = "htmf-wasm"
 version = "0.1.0"
 authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 edition = "2018"
@@ -7,8 +7,34 @@ edition = "2018"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = ["console_error_panic_hook"]
+
 [dependencies]
-htmf = { path = "../engine" }
-js-sys = "0.3.35"
-rand = "0.7.2"
 wasm-bindgen = "0.2"
+
+[dependencies.console_error_panic_hook]
+version = "0.1"
+optional = true
+
+[dependencies.htmf]
+path = "../engine"
+features = [
+    "wasm",
+]
+
+[dependencies.htmf-bots]
+path = "../bots"
+features = [
+    "wasm",
+]
+
+[dependencies.rand]
+version = "0.7"
+features = [
+    "wasm-bindgen",
+]
+
+[profile.release]
+# Optimize for small code size
+opt-level = "s"

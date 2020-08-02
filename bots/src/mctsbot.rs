@@ -6,7 +6,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
-const MIN_PLAYOUTS: u64 = 2048;
+const MIN_PLAYOUTS: u64 = 1;
 
 /**
  * Games are connected to each other via Moves.
@@ -52,7 +52,7 @@ impl Tally {
 
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Game {
-    state: htmf::game::GameState,
+    pub state: htmf::game::GameState,
 }
 
 impl Game {
@@ -225,6 +225,13 @@ impl MCTSBot {
         let mut tree = HashMap::new();
         std::mem::swap(&mut self.tree, &mut tree);
         self.ponderer = Some(Ponderer::new(self.root.clone(), tree));
+    }
+
+    pub fn playout(&mut self) {
+        // We can't manually run playouts if the ponderer thread is running
+        if self.ponderer.is_none() {
+            playout(&self.root, &mut self.tree, &mut self.rng)
+        }
     }
 
     /// Join the background thread and process the work it did

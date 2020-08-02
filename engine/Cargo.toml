@@ -3,6 +3,11 @@ name = "htmf"
 version = "0.1.0"
 authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 
+[features]
+wasm = [
+    "rand/wasm-bindgen",
+]
+
 [dependencies]
 arrayvec = "0.5"
 rand = "0.7"

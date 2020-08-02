@@ -1,0 +1,44 @@
+{
+  "name": "htmf",
+  "version": "0.1.0",
+  "description": "MCTS implementation of a neat game",
+  "main": "bootstrap.js",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "start": "webpack-dev-server",
+    "predeploy": "wasm-pack build && npm run build",
+    "deploy": "gh-pages -d ./dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jthemphill/htmf.git"
+  },
+  "keywords": [
+    "mcts",
+    "wasm",
+    "rust"
+  ],
+  "author": "Jeff Hemphill <jthemphill@gmail.com>",
+  "license": "(MIT OR Apache-2.0)",
+  "bugs": {
+    "url": "https://github.com/jthemphill/htmf/issues"
+  },
+  "homepage": "https://jthemphill.github.io/htmf",
+  "dependencies": {
+    "htmf-wasm": "file:../pkg",
+    "react": "^16.13",
+    "react-dom": "^16.13"
+  },
+  "devDependencies": {
+    "@types/react": "^16.9",
+    "@types/react-dom": "^16.9",
+    "copy-webpack-plugin": "^5.0",
+    "gh-pages": "^3.1",
+    "source-map-loader": "^1.0",
+    "ts-loader": "^8.0",
+    "typescript": "^3.9",
+    "webpack": "^4.29",
+    "webpack-cli": "^3.1",
+    "webpack-dev-server": "^3.1"
+  }
+}

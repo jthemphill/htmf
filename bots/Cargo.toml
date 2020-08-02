@@ -13,6 +13,11 @@ htmf = { path = "../engine" }
 [dev-dependencies]
 criterion = "0.3"
 
+[features]
+wasm = [
+    "rand/wasm-bindgen",
+]
+
 [[bench]]
 name = "minimax_full_game"
 harness = false
