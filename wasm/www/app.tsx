@@ -63,7 +63,6 @@ function getPossibleMoves(game: wasm.Game, chosenCell?: number): number[] {
 type State = {
     gameState: GameState,
     inputText: string,
-    minDim: number,
     chosenCell?: number,
     lastMoveInvalid?: boolean,
 };
@@ -98,7 +97,6 @@ class App extends React.Component<Props, State> {
         this.state = {
             gameState: getGameState(this.game),
             inputText: '',
-            minDim: Math.min(window.innerWidth, window.innerHeight),
             chosenCell: null,
         };
     }
@@ -125,10 +123,9 @@ class App extends React.Component<Props, State> {
         }
 
         return (
-            <div className="App" style={{ 'display': 'grid' }}>
+            <div className="app">
                 <Board
                     gameState={this.state.gameState}
-                    minDim={this.state.minDim}
                     possibleMoves={getPossibleMoves(this.game, this.state.chosenCell)}
                     chosenCell={this.state.chosenCell}
                     handleCellClick={this.handleCellClick}
@@ -155,7 +152,6 @@ class App extends React.Component<Props, State> {
     }
 
     componentDidMount() {
-        window.addEventListener('resize', this.updateWindowDimensions.bind(this));
         this.ponderer = window.setInterval(
             () => {
                 if (this.game.game_over()) {
@@ -173,14 +169,7 @@ class App extends React.Component<Props, State> {
     }
 
     componentWillUnmount() {
-        window.removeEventListener('resize', this.updateWindowDimensions.bind(this));
         window.clearInterval(this.ponderer);
-    }
-
-    updateWindowDimensions() {
-        this.setState({
-            minDim: Math.min(window.innerWidth, window.innerHeight),
-        });
     }
 
     _handleCellClick(key: number) {

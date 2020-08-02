@@ -29,9 +29,7 @@ class Hex extends React.PureComponent<Props> {
                 <g transform={transform}>
                     <polygon
                         points={this.points().join(' ')}
-                        style={{
-                            fill: '#555555',
-                        }}
+                        className="cell claimed"
                     />
                 </g>
             );
@@ -44,15 +42,18 @@ class Hex extends React.PureComponent<Props> {
         } else {
             circles = this.circles();
         }
-
+        const cellClasses = ["cell"];
+        if (this.props.highlighted) {
+            cellClasses.push("highlighted");
+        }
+        if (this.props.possible) {
+            cellClasses.push("possible");
+        }
         return (
             <g transform={transform} onClick={this._onClick.bind(this)}>
                 <polygon
+                    className={cellClasses.join(" ")}
                     points={this.points().join(' ')}
-                    style={{
-                        stroke: 'blue',
-                        fill: this.getFill(),
-                    }}
                 />
                 {circles}
                 {penguin}
@@ -60,26 +61,13 @@ class Hex extends React.PureComponent<Props> {
         );
     }
 
-    getFill() {
-        if (this.props.highlighted) {
-            return '#fffe9f';
-        }
-
-        if (this.props.possible) {
-            return '#d1fec8';
-        }
-
-        return '#eeeeee';
-    }
-
     circles() {
         const r = this.props.sideLength / 10;
-        const color = '#888888';
         if (this.props.fish === 1) {
             return [
                 <circle
                     key={0}
-                    style={{ fill: color }}
+                    className="fish"
                     r={r}
                 />,
             ];
@@ -87,13 +75,13 @@ class Hex extends React.PureComponent<Props> {
             return [
                 <circle
                     key={0}
-                    style={{ fill: color }}
+                    className="fish"
                     cx={-r * 2}
                     r={r}
                 />,
                 <circle
                     key={1}
-                    style={{ fill: color }}
+                    className="fish"
                     cx={r * 2}
                     r={r}
                 />,
@@ -103,21 +91,21 @@ class Hex extends React.PureComponent<Props> {
             return [
                 <circle
                     key={0}
-                    style={{ fill: color }}
+                    className="fish"
                     cx={-r * 2}
                     cy={y_offset}
                     r={r}
                 />,
                 <circle
                     key={1}
-                    style={{ fill: color }}
+                    className="fish"
                     cx={r * 2}
                     cy={y_offset}
                     r={r}
                 />,
                 <circle
                     key={2}
-                    style={{ fill: color }}
+                    className="fish"
                     cx={0}
                     cy={-y_offset}
                     r={r}

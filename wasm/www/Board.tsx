@@ -10,7 +10,6 @@ const ODD_ROW_LEN = 8;
 
 type Props = {
     gameState: GameState,
-    minDim: number,
     possibleMoves: number[],
     chosenCell?: number,
     handleCellClick: ((idx: number) => void),
@@ -25,7 +24,8 @@ class Board extends React.Component<Props, State> {
     handleCellClick: (key: number) => void;
 
     render() {
-        const side_length = this.props.minDim / 16;
+        const size = 400;
+        const side_length = size / 16;
 
         const start_x = 2 * side_length;
         const start_y = 2 * side_length;
@@ -90,17 +90,12 @@ class Board extends React.Component<Props, State> {
             }
         }
 
-        const style = {
-            'height': this.props.minDim,
-            'width': this.props.minDim,
-            'gridColumn': '1 / auto',
-        };
-
         return (
             <svg version="1.1"
-                style={style}
                 baseProfile="full"
-                xmlns="http://www.w3.org/2000/svg">
+                xmlns="http://www.w3.org/2000/svg"
+                className="board"
+                viewBox={`0 0 ${size} ${size}`}>
                 {hexes}
             </svg>
         );
