@@ -24,7 +24,7 @@ class Board extends React.Component<Props, State> {
     handleCellClick: (key: number) => void;
 
     render() {
-        const size = 400;
+        const size = 1000;
         const side_length = size / 16;
 
         const start_x = 2 * side_length;
