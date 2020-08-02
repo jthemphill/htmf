@@ -130,22 +130,10 @@ class App extends React.Component<Props, State> {
                     chosenCell={this.state.chosenCell}
                     handleCellClick={this.handleCellClick}
                 />
-                <div className="info-col" style={{ 'gridColumn': '12 / auto' }}>
+                <div className="info-col">
                     <p>{this.state.gameState.modeType}</p>
                     <p>{invalid_move_block}</p>
                     <div>{scores_block}</div>
-                    <input value={this.state.inputText}
-                        type="text"
-                        onChange={(e) => {
-                            this.setState({ inputText: e.target.value });
-                        }}
-                        onBlur={(e) => {
-                            try {
-                                const input_data = JSON.parse(this.state.inputText);
-                            } catch (_) {
-                                return;
-                            }
-                        }} />
                 </div>
             </div>
         );
