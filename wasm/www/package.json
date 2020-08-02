@@ -2,11 +2,11 @@
   "name": "htmf",
   "version": "0.1.0",
   "description": "MCTS implementation of a neat game",
-  "main": "bootstrap.js",
+  "main": "index.js",
   "scripts": {
-    "build": "webpack --config webpack.config.js",
-    "start": "webpack-dev-server",
-    "predeploy": "wasm-pack build && npm run build",
+    "build": "wasm-pack build && webpack --config webpack.config.js",
+    "start": "wasm-pack build && webpack-dev-server",
+    "predeploy": "npm run build",
     "deploy": "gh-pages -d ./dist"
   },
   "repository": {
