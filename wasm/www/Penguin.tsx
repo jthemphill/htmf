@@ -7,7 +7,7 @@ type Props = {
    color: string,
 };
 
-const Penguin = React.memo(function Penguin(props: Props) {
+export default React.memo(function Penguin(props: Props) {
    const black_parts_style = {
       "fill": props.color,
       "fillOpacity": 1,
@@ -97,5 +97,3 @@ const Penguin = React.memo(function Penguin(props: Props) {
       </g>
    );
 });
-
-export default Penguin;
