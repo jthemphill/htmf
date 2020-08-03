@@ -4,27 +4,7 @@ import * as wasm from "htmf-wasm";
 
 import Board from "./Board";
 import GameState from "./GameState";
-
-const NPLAYERS = 2;
-const NUM_ROWS = 8;
-const EVEN_ROW_LEN = 7;
-const ODD_ROW_LEN = 8;
-const NUM_CELLS = EVEN_ROW_LEN * (NUM_ROWS / 2) + ODD_ROW_LEN * (NUM_ROWS / 2);
-
-const PLAYOUT_MS = 100;
-const PONDER_INTERVAL_MS = 1000;
-
-// duplicated in board.react.js
-const PLAYER_COLORS = ['blue', 'red', 'orange', 'green'];
-
-function shuffle<T>(a: T[]): void {
-    for (let i = a.length; i; i--) {
-        const j = Math.floor(Math.random() * i);
-        const tmp = a[i - 1];
-        a[i - 1] = a[j];
-        a[j] = tmp;
-    }
-}
+import { NPLAYERS, NUM_CELLS, PLAYER_COLORS, PONDER_INTERVAL_MS, PLAYOUT_MS } from "./constants";
 
 function getGameState(game: wasm.Game): GameState {
     const fish = [];
@@ -62,7 +42,6 @@ function getPossibleMoves(game: wasm.Game, chosenCell?: number): number[] {
 
 type State = {
     gameState: GameState,
-    inputText: string,
     chosenCell?: number,
     lastMoveInvalid?: boolean,
 };
@@ -80,23 +59,8 @@ class App extends React.Component<Props, State> {
         super(props);
         this.handleCellClick = this._handleCellClick.bind(this);
         this.game = wasm.Game.new();
-
-        const fish = [];
-
-        for (let i = 0; i < 30; ++i) {
-            fish.push(1);
-        }
-        for (let i = 30; i < 50; ++i) {
-            fish.push(2);
-        }
-        for (let i = 50; i < 60; ++i) {
-            fish.push(3);
-        }
-
-        shuffle(fish);
         this.state = {
             gameState: getGameState(this.game),
-            inputText: '',
             chosenCell: null,
         };
     }
@@ -158,6 +122,8 @@ class App extends React.Component<Props, State> {
 
     componentWillUnmount() {
         window.clearInterval(this.ponderer);
+        this.game.free();
+        this.game = null;
     }
 
     _handleCellClick(key: number) {

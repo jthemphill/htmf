@@ -4,9 +4,7 @@ import Hex from "./Hex";
 
 import GameState from "./GameState";
 
-const NUM_ROWS = 8;
-const EVEN_ROW_LEN = 7;
-const ODD_ROW_LEN = 8;
+import { NUM_ROWS, EVEN_ROW_LEN, ODD_ROW_LEN } from "./constants";
 
 type Props = {
     gameState: GameState,
