@@ -13,8 +13,7 @@ pub struct Session {
 
 impl Session {
     pub fn new(game: GameState) -> Session {
-        let mut bot = MCTSBot::new(game.clone(), Player { id: 1 });
-        bot.ponder();
+        let bot = MCTSBot::new(game.clone(), Player { id: 1 });
         Session { game, bot }
     }
 
@@ -46,7 +45,6 @@ impl Session {
                 self.apply_action(&action).unwrap();
             }
         }
-        self.bot.ponder();
         Ok(())
     }
 }

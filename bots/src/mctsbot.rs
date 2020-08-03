@@ -1,12 +1,6 @@
 use arrayvec::ArrayVec;
 use rand::prelude::*;
 use std::collections::HashMap;
-use std::sync::atomic;
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
-use std::thread::JoinHandle;
-
-const MIN_PLAYOUTS: u64 = 1;
 
 /**
  * Games are connected to each other via Moves.
@@ -189,7 +183,6 @@ pub struct MCTSBot {
     pub me: htmf::board::Player,
     tree: HashMap<Game, Tally>,
     rng: ThreadRng,
-    ponderer: Option<Ponderer>,
 }
 
 impl MCTSBot {
@@ -199,63 +192,24 @@ impl MCTSBot {
             me,
             tree: HashMap::new(),
             rng: thread_rng(),
-            ponderer: None,
         }
     }
 
     /// Tell the bot about the new game state
     pub fn update(&mut self, game: htmf::game::GameState) {
-        self.finish_pondering();
         self.tree.retain(|g, _| g.state.turn >= game.turn);
         self.root = Game { state: game };
     }
 
-    /// Spawn a background thread to process new moves
-    pub fn ponder(&mut self) {
-        // Don't reset the ponderer if we're already pondering
-        if self.ponderer.is_some() {
-            return;
-        }
-        // Don't ponder unless we can actually make a move
-        if self.root.state.finished_drafting()
-            && self.root.state.board.penguins[self.me.id].is_empty()
-        {
-            return;
-        }
-        let mut tree = HashMap::new();
-        std::mem::swap(&mut self.tree, &mut tree);
-        self.ponderer = Some(Ponderer::new(self.root.clone(), tree));
-    }
-
     pub fn playout(&mut self) {
-        // We can't manually run playouts if the ponderer thread is running
-        if self.ponderer.is_none() {
-            playout(&self.root, &mut self.tree, &mut self.rng)
-        }
-    }
-
-    /// Join the background thread and process the work it did
-    pub fn finish_pondering(&mut self) {
-        if let Some(mut ponder_tree) = self.ponderer.take().map(|p| p.finish()) {
-            std::mem::swap(&mut self.tree, &mut ponder_tree);
-        }
-    }
-
-    fn num_playouts_from_root(&self) -> u64 {
-        self.tree
-            .get(&self.root)
-            .map(|tally| tally.visits.iter().map(|(_, (v, _))| v).sum())
-            .unwrap_or(0)
+        playout(&self.root, &mut self.tree, &mut self.rng)
     }
 
     pub fn take_action(&mut self) -> htmf::game::Action {
         if self.root.state.active_player() != Some(self.me) {
             panic!("{:?} was asked to move, but it is not their turn!", self.me);
         }
-        self.finish_pondering();
-        while self.num_playouts_from_root() < MIN_PLAYOUTS {
-            playout(&self.root, &mut self.tree, &mut self.rng);
-        }
+        playout(&self.root, &mut self.tree, &mut self.rng);
         let tally = self.tree.get(&self.root).unwrap();
         let best_move = *tally
             .visits
@@ -271,38 +225,5 @@ impl MCTSBot {
             Move::Move((src, dst)) => htmf::game::Action::Move(src, dst),
             Move::Place(dst) => htmf::game::Action::Place(dst),
         }
-    }
-}
-
-struct Ponderer {
-    thread: Option<JoinHandle<HashMap<Game, Tally>>>,
-    should_run: Arc<AtomicBool>,
-}
-
-impl Ponderer {
-    pub fn new(game: Game, mut tree: HashMap<Game, Tally>) -> Self {
-        let should_run = Arc::new(AtomicBool::new(true));
-        let thread = {
-            let should_run = should_run.clone();
-            Some(std::thread::spawn(move || {
-                let mut rng = thread_rng();
-                while should_run.load(atomic::Ordering::Relaxed) {
-                    playout(&game, &mut tree, &mut rng);
-                }
-                tree
-            }))
-        };
-        Self { thread, should_run }
-    }
-
-    pub fn finish(mut self) -> HashMap<Game, Tally> {
-        self.should_run.store(false, atomic::Ordering::SeqCst);
-        self.thread.take().unwrap().join().unwrap()
-    }
-}
-
-impl Drop for Ponderer {
-    fn drop(&mut self) {
-        self.should_run.store(false, atomic::Ordering::Relaxed);
     }
 }
