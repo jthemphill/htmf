@@ -1,5 +1,5 @@
 type GameState = {
-    activePlayer: number,
+    activePlayer?: number,
     modeType: "drafting" | "playing",
     scores: number[],
     turn: number,

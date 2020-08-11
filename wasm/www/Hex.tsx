@@ -115,8 +115,7 @@ export default React.memo(function (props: Props) {
     const cellClasses = ["cell"];
     if (props.highlighted) {
         cellClasses.push("highlighted");
-    }
-    if (props.possible) {
+    } else if (props.possible) {
         cellClasses.push("possible");
     }
     return (

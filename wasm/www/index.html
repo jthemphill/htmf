@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <meta name="theme-color" content="#000000">
   <title>Hey, that's my fish!</title>
-  <script crossorigin src="https://unpkg.com/react@16/umd/react.production.min.js" defer></script>
-  <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js" defer></script>
+  <script crossorigin src="https://unpkg.com/react@16/umd/react.development.js" defer></script>
+  <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" defer></script>
   <script src="./index.js" defer></script>
   <style>
     .app {
@@ -29,12 +29,12 @@
       stroke: #7c37dc;
     }
 
-    .board .cell.highlighted {
-      fill: #fffe9f;
-    }
-
     .board .cell.possible {
       fill: #d1fec8;
+    }
+
+    .board .cell.highlighted {
+      fill: #fffe9f;
     }
 
     .board .cell.claimed {

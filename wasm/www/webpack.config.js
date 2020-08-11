@@ -25,7 +25,14 @@ module.exports = {
             loader: "ts-loader"
           }
         ]
-      }
+      },
+      {
+        test: /bot\.worker\.ts$/,
+        use: [
+          { loader: "worker-loader" },
+          { loader: "ts-loader" },
+        ]
+      },
     ]
   },
   externals: {

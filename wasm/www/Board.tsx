@@ -36,7 +36,7 @@ export default React.memo(function (props: Props) {
 
     const any_possible_moves = props.possibleMoves.length > 0;
 
-    const claimed = new Set([]);
+    const claimed: Set<number> = new Set([]);
     for (let player_claimed of props.gameState.board.claimed) {
         for (let cell of player_claimed) {
             claimed.add(cell);

@@ -1,47 +1,15 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import * as wasm from "htmf-wasm";
+import Worker from "worker-loader!./bot.worker";
+import { WorkerRequest, WorkerResponse } from "./WorkerProtocol";
 
 import Board from "./Board";
 import GameState from "./GameState";
-import { NPLAYERS, NUM_CELLS, PLAYER_COLORS, PONDER_INTERVAL_MS, PLAYOUT_MS } from "./constants";
-
-function getGameState(game: wasm.Game): GameState {
-    const fish = [];
-    for (let idx = 0; idx < NUM_CELLS; ++idx) {
-        fish.push(game.num_fish(idx));
-    }
-    const scores: number[] = [];
-    const penguins = [];
-    const claimed = [];
-    for (let p = 0; p < NPLAYERS; ++p) {
-        scores.push(game.score(p));
-        penguins.push([...game.penguins(p)]);
-        claimed.push([...game.claimed(p)]);
-    }
-    return {
-        activePlayer: game.active_player(),
-        modeType: game.finished_drafting() ? "playing" : "drafting",
-        scores,
-        turn: game.turn(),
-        board: {
-            fish,
-            penguins,
-            claimed,
-        }
-    };
-}
-
-function getPossibleMoves(game: wasm.Game, chosenCell?: number): number[] {
-    if (game.finished_drafting()) {
-        return chosenCell == null ? [] : [...game.possible_moves(chosenCell)];
-    } else {
-        return [...game.draftable_cells()];
-    }
-}
+import { BOT_PLAYER, NPLAYERS, NUM_CELLS, PLAYER_COLORS, PONDER_INTERVAL_MS, PLAYOUT_MS } from "./constants";
 
 type State = {
-    gameState: GameState,
+    gameState?: GameState,
+    possibleMoves?: number[],
     chosenCell?: number,
     lastMoveInvalid?: boolean,
 };
@@ -52,21 +20,18 @@ class App extends React.Component<Props, State> {
 
     handleCellClick: ((idx: number) => void);
     state: State;
-    game: wasm.Game;
-    ponderer?: number;
+    worker: Worker;
 
     constructor(props: Props) {
         super(props);
         this.handleCellClick = this._handleCellClick.bind(this);
-        this.game = wasm.Game.new();
-        this.state = {
-            gameState: getGameState(this.game),
-            chosenCell: null,
-        };
+        this.worker = new Worker();
+        this.worker.onmessage = this.onMessage.bind(this);
+        this.state = {};
     }
 
-    activePlayer(): number {
-        return this.state.gameState.activePlayer;
+    activePlayer() {
+        return this.state.gameState?.activePlayer;
     }
 
     render() {
@@ -81,21 +46,26 @@ class App extends React.Component<Props, State> {
             let active = active_player === p ? '(Active Player)' : null;
             scores_block.push(
                 <p key={"score_" + p}><span style={color}>
-                    Score: {this.state.gameState.scores[p]} {active}
+                    Score: {this.state.gameState?.scores[p]} {active}
                 </span></p>
             );
         }
 
+        let board = null;
+        if (this.state.gameState) {
+            board = <Board
+                gameState={this.state.gameState}
+                possibleMoves={this.state.possibleMoves || []}
+                chosenCell={this.state.chosenCell}
+                handleCellClick={this.handleCellClick}
+            />;
+        }
+
         return (
             <div className="app">
-                <Board
-                    gameState={this.state.gameState}
-                    possibleMoves={getPossibleMoves(this.game, this.state.chosenCell)}
-                    chosenCell={this.state.chosenCell}
-                    handleCellClick={this.handleCellClick}
-                />
+                {board}
                 <div className="info-col">
-                    <p>{this.state.gameState.modeType}</p>
+                    <p>{this.state.gameState?.modeType}</p>
                     <p>{invalid_move_block}</p>
                     <div>{scores_block}</div>
                 </div>
@@ -104,26 +74,13 @@ class App extends React.Component<Props, State> {
     }
 
     componentDidMount() {
-        this.ponderer = window.setInterval(
-            () => {
-                if (this.game.game_over()) {
-                    return;
-                }
-                const t0 = performance.now();
-                let nplayouts = 0;
-                while (performance.now() - t0 < PLAYOUT_MS) {
-                    this.game.playout();
-                    ++nplayouts;
-                }
-                console.log(`${nplayouts} playouts in ${performance.now() - t0} ms`);
-            }, PONDER_INTERVAL_MS
-        );
+        this.postMessage({ type: "get" });
+        this.postMessage({ type: "possibleMoves" });
+        this.postMessage({ type: "startPondering" });
     }
 
     componentWillUnmount() {
-        window.clearInterval(this.ponderer);
-        this.game.free();
-        this.game = null;
+        this.worker.terminate();
     }
 
     _handleCellClick(key: number) {
@@ -131,65 +88,75 @@ class App extends React.Component<Props, State> {
         if (activePlayer == null) {
             return;
         }
-        if (this.state.gameState.modeType === "drafting") {
+        if (this.state.gameState?.modeType === "drafting") {
             this._placePenguin(key);
             return;
         }
-        if (this.state.gameState.board.penguins[activePlayer].includes(key)) {
+        if (this.state.gameState?.board.penguins[activePlayer].includes(key)) {
             this._toggleCellHighlight(key);
             return;
         }
         if (this.state.chosenCell == null) {
             return;
         }
-        if (this.game.possible_moves(this.state.chosenCell).includes(key)) {
+        if (this.state.possibleMoves?.includes(key)) {
             this._movePenguinToCell(key);
             return;
         }
     }
 
-    _placePenguin(key: number) {
-        let lastMoveInvalid = false
-        let chosenCell = this.state.chosenCell;
-        try {
-            this.game.place_penguin(key);
-            chosenCell = null;
-            const t0 = performance.now();
-            while (performance.now() - t0 < PLAYOUT_MS) {
-                this.game.playout();
-            }
-            this.game.take_action();
-        } catch (e) {
-            lastMoveInvalid = true;
+    postMessage(request: WorkerRequest) {
+        console.log(`sent request ${request}`);
+        this.worker.postMessage(request);
+    }
+
+    onMessage(event: MessageEvent) {
+        const response = event.data as WorkerResponse;
+        switch (response.type) {
+            case "possibleMoves":
+                this.setState({ possibleMoves: response.possibleMoves });
+                break;
+            case "state":
+                this.setState({ gameState: response.gameState });
+                this.postMessage({ type: "possibleMoves" });
+                if (response.gameState.activePlayer === BOT_PLAYER) {
+                    this.postMessage({ type: "takeAction" });
+                }
+                break;
+            case "illegalMove":
+            case "illegalPlacement":
+                this.setState({ lastMoveInvalid: true });
+                break;
         }
-        this.setState({ lastMoveInvalid, gameState: getGameState(this.game), chosenCell: null });
+    }
+
+    _placePenguin(key: number) {
+        this.postMessage({
+            type: "place",
+            dst: key,
+        });
     }
 
     _movePenguinToCell(key: number) {
-        let lastMoveInvalid = false;
-        let chosenCell = this.state.chosenCell;
-        try {
-            this.game.move_penguin(this.state.chosenCell, key);
-            chosenCell = null;
-            const t0 = performance.now();
-            while (performance.now() - t0 < PLAYOUT_MS) {
-                this.game.playout();
-            }
-            this.game.take_action();
-        } catch (e) {
-            lastMoveInvalid = true;
+        if (this.state.chosenCell) {
+            this.postMessage({
+                type: "move",
+                src: this.state.chosenCell,
+                dst: key,
+            });
         }
-        this.setState({ lastMoveInvalid, gameState: getGameState(this.game), chosenCell });
     }
 
     _toggleCellHighlight(key: number) {
         if (this.state.chosenCell === key) {
             this.setState({
-                chosenCell: null,
+                chosenCell: undefined,
             });
+            this.postMessage({ type: "possibleMoves" });
             return;
         }
 
+        this.postMessage({ type: "possibleMoves", src: key });
         this.setState({
             chosenCell: key,
         });
