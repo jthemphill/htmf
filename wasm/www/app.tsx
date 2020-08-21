@@ -106,7 +106,7 @@ class App extends React.Component<Props, State> {
     }
 
     postMessage(request: WorkerRequest) {
-        console.log(`sent request ${request}`);
+        console.log(`sent request ${request.type}`);
         this.worker.postMessage(request);
     }
 
