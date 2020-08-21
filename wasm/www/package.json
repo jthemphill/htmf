@@ -26,20 +26,20 @@
   "homepage": "https://jthemphill.github.io/htmf",
   "dependencies": {
     "htmf-wasm": "file:../pkg",
-    "react": "^16.13",
-    "react-dom": "^16.13"
+    "react": "^16",
+    "react-dom": "^16"
   },
   "devDependencies": {
-    "@types/react": "^16.13",
-    "@types/react-dom": "^16.13",
-    "copy-webpack-plugin": "^5.0",
-    "gh-pages": "^3.1",
-    "source-map-loader": "^1.0",
+    "@types/react": "^16",
+    "@types/react-dom": "^16",
+    "copy-webpack-plugin": "^6",
+    "gh-pages": "^3",
+    "source-map-loader": "^1",
     "ts-loader": "^8.0",
-    "typescript": "^3.9",
-    "webpack": "^4.29",
-    "webpack-cli": "^3.1",
-    "webpack-dev-server": "^3.1",
-    "worker-loader": "^3.0.1"
+    "typescript": "^4.0",
+    "webpack": "^4",
+    "webpack-cli": "^3",
+    "webpack-dev-server": "^3",
+    "worker-loader": "^3"
   }
 }

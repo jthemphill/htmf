@@ -9,7 +9,7 @@ module.exports = {
   },
   mode: "production",
   plugins: [
-    new CopyWebpackPlugin(["index.html"])
+    new CopyWebpackPlugin({ patterns: ["index.html"] })
   ],
   resolve: {
     extensions: [".js", ".ts", ".tsx"],
