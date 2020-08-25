@@ -35,6 +35,8 @@ features = [
     "wasm-bindgen",
 ]
 
-[profile.release]
-# Optimize for small code size
-opt-level = "s"
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = [
+    "-O3",
+    "--enable-mutable-globals",
+]
