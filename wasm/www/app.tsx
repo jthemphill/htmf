@@ -5,7 +5,7 @@ import { WorkerRequest, WorkerResponse } from "./WorkerProtocol";
 
 import Board from "./Board";
 import GameState from "./GameState";
-import { BOT_PLAYER, NPLAYERS, NUM_CELLS, PLAYER_COLORS, PONDER_INTERVAL_MS, PLAYOUT_MS } from "./constants";
+import { BOT_PLAYER, NPLAYERS, PLAYER_COLORS } from "./constants";
 
 type State = {
     gameState?: GameState,
