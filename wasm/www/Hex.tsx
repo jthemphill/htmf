@@ -1,5 +1,3 @@
-// @flow
-
 import * as React from 'react';
 
 import Penguin from './Penguin';
@@ -15,7 +13,7 @@ type Props = {
     sideLength: number,
     highlighted: boolean,
     possible: boolean,
-    color?: string,
+    player?: number,
 };
 
 function points(props: Props): Array<Array<number>> {
@@ -93,8 +91,8 @@ function draw_circles(props: Props) {
 export default React.memo(function (props: Props) {
     const transform = `translate(${props.cx},${props.cy})`;
 
-    const color = props.color;
-    if (!color && props.claimed) {
+    const player = props.player;
+    if (player == null && props.claimed) {
         return (
             <g transform={transform}>
                 <polygon
@@ -107,8 +105,8 @@ export default React.memo(function (props: Props) {
 
     let penguin = null;
     let circles = null;
-    if (color) {
-        penguin = (<Penguin color={color} size={props.sideLength} />);
+    if (player != null) {
+        penguin = (<Penguin player={player} size={props.sideLength} />);
     } else {
         circles = draw_circles(props);
     }

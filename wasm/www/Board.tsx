@@ -4,7 +4,7 @@ import Hex from "./Hex";
 
 import GameState from "./GameState";
 
-import { NUM_ROWS, EVEN_ROW_LEN, ODD_ROW_LEN } from "./constants";
+import { NUM_ROWS, EVEN_ROW_LEN, ODD_ROW_LEN, HUMAN_PLAYER, BOT_PLAYER } from "./constants";
 
 type Props = {
     gameState: GameState,
@@ -20,17 +20,10 @@ export default React.memo(function (props: Props) {
     const start_x = 2 * side_length;
     const start_y = 2 * side_length;
 
-    // duplicated in app.react.js
-    const player_colors = ['blue', 'red', 'orange', 'green'];
-    const colors = [];
-    for (
-        let p = 0;
-        p < props.gameState.board.penguins.length;
-        ++p
-    ) {
-        let player_penguins = props.gameState.board.penguins[p];
-        for (let c of player_penguins) {
-            colors[c] = player_colors[p];
+    const players: Map<number, number> = new Map();
+    for (let p of [HUMAN_PLAYER, BOT_PLAYER]) {
+        for (let c of props.gameState.board.penguins[p]) {
+            players.set(c, p);
         }
     }
 
@@ -56,7 +49,6 @@ export default React.memo(function (props: Props) {
 
             const key = hexes.length;
             const fish = props.gameState.board.fish[key];
-            const color = colors[key];
             const possible = props.possibleMoves.includes(key);
 
             const is_highlighted = any_possible_moves &&
@@ -73,7 +65,7 @@ export default React.memo(function (props: Props) {
                     sideLength={side_length}
                     highlighted={is_highlighted}
                     possible={possible}
-                    color={color}
+                    player={players.get(key)}
                     claimed={claimed.has(key)}
                 />
             );
