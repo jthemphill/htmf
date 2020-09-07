@@ -129,7 +129,7 @@ impl<'a> From<&'a BoardJSON> for Board {
                 let mut penguin_set = CellSet::new();
                 if let Some(player_penguins) = b.penguins.get(player) {
                     for &p in player_penguins {
-                        penguin_set.insert(p as u8);
+                        penguin_set = penguin_set.insert(p as u8);
                     }
                 }
                 penguin_set

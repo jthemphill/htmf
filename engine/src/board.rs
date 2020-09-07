@@ -44,7 +44,7 @@ impl Board {
             fish.push(CellSet::new());
         }
         for i in 0..NUM_CELLS {
-            fish[cell_to_fish[i] - 1].insert(i as u8);
+            fish[cell_to_fish[i] - 1] = fish[cell_to_fish[i] - 1].insert(i as u8);
         }
 
         Board {
@@ -67,7 +67,7 @@ impl Board {
     pub fn all_claimed_cells(&self) -> CellSet {
         let mut ret = CellSet::new();
         for &cells in self.claimed.iter() {
-            ret.union(cells);
+            ret = ret.union(cells);
         }
         ret
     }
@@ -84,16 +84,15 @@ impl Board {
             ));
         }
 
-        self.claimed[p.id].insert(idx);
-        self.penguins[p.id].insert(idx as u8);
+        self.claimed[p.id] = self.claimed[p.id].insert(idx);
+        self.penguins[p.id] = self.penguins[p.id].insert(idx as u8);
         Ok(())
     }
 
     pub fn get_score(&self, p: Player) -> NumFish {
         (1..=3)
             .map(|num_fish| {
-                let mut claimed_with_fish = self.claimed[p.id];
-                claimed_with_fish.intersect(self.fish[num_fish - 1]);
+                let claimed_with_fish = self.claimed[p.id].intersect(self.fish[num_fish - 1]);
                 claimed_with_fish.len() * num_fish
             })
             .sum()
@@ -109,9 +108,9 @@ impl Board {
                 ),
             ));
         }
-        self.claimed[p.id].insert(dst);
-        self.penguins[p.id].remove(src as u8);
-        self.penguins[p.id].insert(dst as u8);
+        self.claimed[p.id] = self.claimed[p.id].insert(dst);
+        self.penguins[p.id] = self.penguins[p.id].remove(src as u8);
+        self.penguins[p.id] = self.penguins[p.id].insert(dst as u8);
         Ok(self)
     }
 
@@ -140,7 +139,7 @@ impl Board {
     pub fn claimed_cells(&self) -> CellSet {
         let mut ret = CellSet::new();
         for &cells in self.claimed.iter() {
-            ret.union(cells);
+            ret = ret.union(cells);
         }
         ret
     }
@@ -179,10 +178,7 @@ impl Board {
         cell.neighbors()
             .into_iter()
             .map(|n| self.legal_moves_in_line(&cell, &n))
-            .fold(CellSet::new(), |mut acc, moves| {
-                acc.union(moves);
-                acc
-            })
+            .fold(CellSet::new(), |acc, moves| acc.union(moves))
     }
 
     pub fn is_legal_move(&self, p: Player, src: u8, dst: u8) -> bool {
@@ -403,13 +399,11 @@ impl Board {
         let mut components = vec![];
 
         while marked.len() < num_unclaimed {
-            let mut available = CellSet::full();
-            available.exclude(claimed_cells);
-            available.exclude(marked);
+            let available = CellSet::full().exclude(claimed_cells).exclude(marked);
 
             let idx = available.iter().next().unwrap();
             let new_component = self.component(idx);
-            marked.union(new_component);
+            marked = marked.union(new_component);
             components.push(new_component);
         }
         components
@@ -419,10 +413,11 @@ impl Board {
         let mut marked = CellSet::new();
         let mut queue = vec![start];
         while let Some(idx) = queue.pop() {
-            marked.insert(idx);
-            let mut new_members: CellSet = Board::neighbors(idx).collect();
-            new_members.exclude(self.all_claimed_cells());
-            new_members.exclude(marked);
+            marked = marked.insert(idx);
+            let new_members: CellSet = Board::neighbors(idx)
+                .collect::<CellSet>()
+                .exclude(self.all_claimed_cells())
+                .exclude(marked);
             for x in new_members.iter() {
                 queue.push(x);
             }
@@ -568,11 +563,11 @@ mod tests {
             let mut all_cells = CellSet::new();
             for component in components {
                 for cell in component.iter() {
-                    all_cells.insert(cell);
+                    all_cells = all_cells.insert(cell);
                 }
             }
             for cell in b.claimed_cells().iter() {
-                all_cells.insert(cell);
+                all_cells = all_cells.insert(cell);
             }
             assert_eq!(all_cells.len(), NUM_CELLS);
         }

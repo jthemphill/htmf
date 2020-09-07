@@ -61,9 +61,10 @@ impl Game {
     }
 
     pub fn draftable_cells(&self) -> Vec<u8> {
-        let mut draftable_cells = self.bot.root.state.board.fish[0];
-        draftable_cells.exclude(self.bot.root.state.board.all_claimed_cells());
-        draftable_cells.into_iter().collect()
+        self.bot.root.state.board.fish[0]
+            .exclude(self.bot.root.state.board.all_claimed_cells())
+            .into_iter()
+            .collect()
     }
 
     pub fn possible_moves(&self, src: u8) -> Vec<u8> {

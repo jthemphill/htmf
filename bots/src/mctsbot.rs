@@ -72,8 +72,8 @@ impl Game {
             )
         } else {
             // Cells with one fish and nobody claiming them
-            let mut draftable_cells = self.state.board.fish[0];
-            draftable_cells.exclude(self.state.board.all_claimed_cells());
+            let draftable_cells =
+                self.state.board.fish[0].exclude(self.state.board.all_claimed_cells());
             Box::new(draftable_cells.into_iter().map(Move::Place))
         }
     }
@@ -83,9 +83,9 @@ impl Game {
             Move::Place(dst) => self.state.place_penguin(dst).unwrap(),
             Move::Move((src, dst)) => {
                 let p = self.state.active_player().unwrap();
-                self.state.board.claimed[p.id].insert(dst);
-                self.state.board.penguins[p.id].remove(src);
-                self.state.board.penguins[p.id].insert(dst);
+                self.state.board.claimed[p.id] = self.state.board.claimed[p.id].insert(dst);
+                self.state.board.penguins[p.id] = self.state.board.penguins[p.id].remove(src);
+                self.state.board.penguins[p.id] = self.state.board.penguins[p.id].insert(dst);
                 self.state.board.reap();
                 self.state.turn += 1;
             }

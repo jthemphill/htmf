@@ -3,52 +3,63 @@ use std::iter::FromIterator;
 use NUM_CELLS;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[must_use]
 pub struct CellSet {
     pub data: u64,
 }
 
 impl CellSet {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         CellSet { data: 0 }
     }
 
-    pub fn full() -> Self {
+    pub const fn full() -> Self {
         CellSet { data: !0 >> 4 }
     }
 
-    pub fn insert(&mut self, value: u8) {
-        self.data |= 1 << value;
+    pub const fn insert(self, value: u8) -> Self {
+        CellSet {
+            data: self.data | 1 << value,
+        }
     }
 
-    pub fn remove(&mut self, value: u8) {
-        self.data &= !(1 << value);
+    pub const fn remove(self, value: u8) -> Self {
+        CellSet {
+            data: self.data & !(1 << value),
+        }
     }
 
-    pub fn contains(self, value: u8) -> bool {
+    pub const fn contains(self, value: u8) -> bool {
         (self.data & (1 << value)) != 0
     }
 
-    pub fn intersect(&mut self, other: CellSet) {
-        self.data &= other.data;
+    pub const fn intersect(self, other: CellSet) -> Self {
+        CellSet {
+            data: self.data & other.data,
+        }
     }
 
-    pub fn exclude(&mut self, other: CellSet) {
-        self.data &= !other.data;
+    pub const fn exclude(self, other: CellSet) -> Self {
+        CellSet {
+            data: self.data & !other.data,
+        }
     }
 
-    pub fn union(&mut self, other: CellSet) {
-        self.data |= other.data;
+    pub const fn union(self, other: CellSet) -> Self {
+        CellSet {
+            data: self.data | other.data,
+        }
     }
 
-    pub fn is_empty(self) -> bool {
+    pub const fn is_empty(self) -> bool {
         self.data == 0
     }
 
-    pub fn len(self) -> usize {
+    pub const fn len(self) -> usize {
         self.data.count_ones() as usize
     }
 
-    pub fn iter(self) -> Iter {
+    pub const fn iter(self) -> Iter {
         Iter {
             cell_set: self,
             value: 0,
@@ -99,7 +110,7 @@ impl FromIterator<u8> for CellSet {
     fn from_iter<I: IntoIterator<Item = u8>>(iter: I) -> CellSet {
         let mut ret = CellSet::new();
         for i in iter {
-            ret.insert(i);
+            ret = ret.insert(i);
         }
         ret
     }
@@ -113,7 +124,7 @@ mod tests {
     fn insert_then_contains() {
         let mut s = CellSet::new();
         assert!(!s.contains(0));
-        s.insert(0);
+        s = s.insert(0);
         assert!(s.contains(0));
         assert_eq!(s.len(), 1);
     }
@@ -122,9 +133,9 @@ mod tests {
     fn insert_then_remove() {
         let mut s = CellSet::new();
         assert!(!s.contains(0));
-        s.insert(0);
+        s = s.insert(0);
         assert!(s.contains(0));
-        s.remove(0);
+        s = s.remove(0);
         assert!(!s.contains(0));
     }
 
@@ -132,14 +143,14 @@ mod tests {
     fn insert_then_is_empty() {
         let mut s = CellSet::new();
         assert!(s.is_empty());
-        s.insert(0);
+        s = s.insert(0);
         assert!(!s.is_empty());
     }
 
     #[test]
     fn insert_then_iter() {
         let mut s = CellSet::new();
-        s.insert(0);
+        s = s.insert(0);
         assert_eq!(s.into_iter().next(), Some(0));
     }
 
@@ -150,7 +161,7 @@ mod tests {
         let vals = [0, 30, 46];
 
         for v in vals.iter() {
-            s.insert(*v as u8);
+            s = s.insert(*v as u8);
         }
 
         assert_eq!(s.len(), vals.len());
