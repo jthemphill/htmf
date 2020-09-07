@@ -6,8 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <meta name="theme-color" content="#000000">
   <title>Hey, that's my fish!</title>
-  <script crossorigin src="https://unpkg.com/react@16/umd/react.production.min.js" defer></script>
-  <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js" defer></script>
   <script src="./index.js" defer></script>
   <style>
     .app {
@@ -43,6 +41,32 @@
 
     .board .fish {
       fill: #888888;
+    }
+
+    .penguin {
+      fill-opacity: 1;
+      stroke: none;
+    }
+
+    .penguin.beak {
+      fill: #fb8b00;
+    }
+
+
+    .penguin.eyes {
+      fill: #ffffff;
+    }
+
+    .penguin.foot {
+      fill: #fb8b00;
+    }
+    
+    .penguin.human {
+      fill: blue;
+    }
+
+    .penguin.bot {
+      fill: red;
     }
   </style>
 </head>
