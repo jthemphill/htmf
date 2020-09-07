@@ -114,19 +114,20 @@ impl Board {
         Ok(self)
     }
 
-    fn neighbors(c: u8) -> impl Iterator<Item = u8> {
+    fn neighbors(c: u8) -> ArrayVec<[u8; 6]> {
         Board::index_to_evenr(c)
             .neighbors()
-            .into_iter()
+            .iter()
             .filter(|neighbor| Board::in_bounds(neighbor))
             .map(|evenr| Board::evenr_to_index(&evenr))
+            .collect()
     }
 
-    fn in_bounds(c: &EvenR) -> bool {
+    const fn in_bounds(c: &EvenR) -> bool {
         c.row >= 0 && Board::in_column_bounds(c) && Board::evenr_to_index(c) < NUM_CELLS as u8
     }
 
-    fn in_column_bounds(c: &EvenR) -> bool {
+    const fn in_column_bounds(c: &EvenR) -> bool {
         if c.col < 0 {
             false
         } else if c.row & 1 == 0 {
@@ -154,10 +155,10 @@ impl Board {
     /// number of connected components. The function which actually
     /// determines a board's connected components is quite expensive!
     pub fn is_cut_cell(&self, cell_idx: u8) -> bool {
-        let neighbors = Board::index_to_evenr(cell_idx).neighbors().into_iter();
+        let neighbors = Board::index_to_evenr(cell_idx).neighbors();
         let mut saw_live = false;
         let mut crossings = 0;
-        for neighbor in neighbors {
+        for neighbor in neighbors.iter() {
             if Board::in_bounds(&neighbor) && !self.is_claimed(Board::evenr_to_index(&neighbor)) {
                 saw_live = true;
             } else {
@@ -176,7 +177,7 @@ impl Board {
     pub fn moves(&self, cell_idx: u8) -> CellSet {
         let cell = Board::index_to_evenr(cell_idx);
         cell.neighbors()
-            .into_iter()
+            .iter()
             .map(|n| self.legal_moves_in_line(&cell, &n))
             .fold(CellSet::new(), |acc, moves| acc.union(moves))
     }
@@ -216,13 +217,13 @@ impl Board {
             .all(|idx| !self.is_claimed(idx))
     }
 
-    pub fn evenr_to_index(c: &EvenR) -> u8 {
+    pub const fn evenr_to_index(c: &EvenR) -> u8 {
         let paired_offset = (EVEN_ROW_LEN + ODD_ROW_LEN) as u8 * (c.row / 2) as u8;
         let unpaired_offset = if c.row % 2 == 1 { EVEN_ROW_LEN } else { 0 } as u8;
         paired_offset + unpaired_offset + c.col as u8
     }
 
-    pub fn index_to_evenr(idx: u8) -> EvenR {
+    pub const fn index_to_evenr(idx: u8) -> EvenR {
         let mut idx = idx as i64;
         let mut row = 0;
         loop {
@@ -261,7 +262,11 @@ impl Board {
                 .flat_map(|(player, penguins)| {
                     penguins
                         .into_iter()
-                        .filter(|&p| Board::neighbors(p).any(|neighbor| iceberg.contains(neighbor)))
+                        .filter(|&p| {
+                            Board::neighbors(p)
+                                .into_iter()
+                                .any(|neighbor| iceberg.contains(neighbor))
+                        })
                         .map(move |p| (Player { id: player }, p))
                 })
                 .take(2)
@@ -271,6 +276,7 @@ impl Board {
             }
             let (player, penguin) = penguins_touching_iceberg[0];
             let can_leave_iceberg = Board::neighbors(penguin)
+                .into_iter()
                 .any(|neighbor| !iceberg.contains(neighbor) && !self.is_claimed(neighbor));
             if can_leave_iceberg {
                 continue;
@@ -289,7 +295,7 @@ impl Board {
             .map(|penguins| {
                 penguins
                     .into_iter()
-                    .filter(|&p| Board::neighbors(p).any(|n| !self.is_claimed(n)))
+                    .filter(|&p| Board::neighbors(p).into_iter().any(|n| !self.is_claimed(n)))
                     .collect()
             })
             .collect();
@@ -384,7 +390,9 @@ impl Board {
         self.connected_components()
             .iter()
             .filter(|&iceberg| {
-                Board::neighbors(penguin).any(|adjacency| iceberg.contains(adjacency))
+                Board::neighbors(penguin)
+                    .into_iter()
+                    .any(|adjacency| iceberg.contains(adjacency))
             })
             .map(|iceberg| iceberg.iter().map(|idx| self.num_fish(idx)).sum())
             .max()
@@ -415,6 +423,7 @@ impl Board {
         while let Some(idx) = queue.pop() {
             marked = marked.insert(idx);
             let new_members: CellSet = Board::neighbors(idx)
+                .into_iter()
                 .collect::<CellSet>()
                 .exclude(self.all_claimed_cells())
                 .exclude(marked);
@@ -501,9 +510,9 @@ mod tests {
     fn empty_legal_moves() {
         let mut b = Board::new([0; 32]);
         let c = EvenR { col: 1, row: 2 };
-        for x in c.neighbors() {
-            if Board::in_bounds(&x) {
-                b.claim_cell(Player { id: 1 }, Board::evenr_to_index(&x))
+        for x in c.neighbors().iter() {
+            if Board::in_bounds(x) {
+                b.claim_cell(Player { id: 1 }, Board::evenr_to_index(x))
                     .unwrap();
             }
         }

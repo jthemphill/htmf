@@ -1,5 +1,3 @@
-use arrayvec::ArrayVec;
-
 /// Barebones library for working with hex grids. Everything good about this
 /// was derived from Amit Patel's indispensable guide.
 /// https://www.redblobgames.com/grids/hexagons/
@@ -14,23 +12,27 @@ pub struct EvenR {
 }
 
 impl EvenR {
-    pub fn from_cube(cube: &Cube) -> EvenR {
+    pub const fn from_cube(cube: &Cube) -> EvenR {
         EvenR {
             col: cube.x + (cube.z + (cube.z & 1)) / 2,
             row: cube.z,
         }
     }
 
-    pub fn in_line(&self, rhs: &EvenR) -> bool {
+    pub const fn in_line(&self, rhs: &EvenR) -> bool {
         Cube::from_evenr(self).in_line(&Cube::from_evenr(rhs))
     }
 
-    pub fn neighbors(&self) -> ArrayVec<[EvenR; 6]> {
-        Cube::from_evenr(self)
-            .neighbors()
-            .iter()
-            .map(|&x| EvenR::from_cube(&x))
-            .collect()
+    pub const fn neighbors(&self) -> [EvenR; 6] {
+        let cube_neighbors = Cube::from_evenr(self).neighbors();
+        let mut neighbors = [EvenR { col: 0, row: 0 }; 6];
+        neighbors[0] = EvenR::from_cube(&cube_neighbors[0]);
+        neighbors[1] = EvenR::from_cube(&cube_neighbors[1]);
+        neighbors[2] = EvenR::from_cube(&cube_neighbors[2]);
+        neighbors[3] = EvenR::from_cube(&cube_neighbors[3]);
+        neighbors[4] = EvenR::from_cube(&cube_neighbors[4]);
+        neighbors[5] = EvenR::from_cube(&cube_neighbors[5]);
+        neighbors
     }
 }
 
@@ -46,19 +48,19 @@ pub struct Cube {
 }
 
 impl Cube {
-    pub fn from_evenr(hex: &EvenR) -> Cube {
+    pub const fn from_evenr(hex: &EvenR) -> Cube {
         let x = hex.col - (hex.row + (hex.row & 1)) / 2;
         let z = hex.row;
         let y = -(x + z);
         Cube { x, y, z }
     }
 
-    pub fn in_line(&self, rhs: &Cube) -> bool {
+    pub const fn in_line(&self, rhs: &Cube) -> bool {
         self.x == rhs.x || self.y == rhs.y || self.z == rhs.z
     }
 
-    pub fn neighbors(&self) -> ArrayVec<[Cube; 6]> {
-        ArrayVec::from([
+    pub const fn neighbors(&self) -> [Cube; 6] {
+        [
             Cube {
                 x: self.x + 1,
                 y: self.y - 1,
@@ -89,7 +91,7 @@ impl Cube {
                 y: self.y - 1,
                 z: self.z + 1,
             },
-        ])
+        ]
     }
 }
 
@@ -240,7 +242,7 @@ mod tests {
     fn cube_neighbors_distinct() {
         let c = Cube::from_evenr(&EvenR { col: 1, row: 2 });
         let neighbors = c.neighbors();
-        for x in neighbors {
+        for &x in neighbors.iter() {
             assert!(x != c);
         }
     }
@@ -249,7 +251,7 @@ mod tests {
     fn neighbors_distinct() {
         let c = EvenR { col: 1, row: 2 };
         let neighbors = c.neighbors();
-        for x in neighbors {
+        for &x in neighbors.iter() {
             assert!(x != c);
         }
     }
