@@ -30,13 +30,10 @@ exports.default = React.memo(function (props) {
     const side_length = size / 16;
     const start_x = 2 * side_length;
     const start_y = 2 * side_length;
-    // duplicated in app.react.js
-    const player_colors = ['blue', 'red', 'orange', 'green'];
-    const colors = [];
-    for (let p = 0; p < props.gameState.board.penguins.length; ++p) {
-        let player_penguins = props.gameState.board.penguins[p];
-        for (let c of player_penguins) {
-            colors[c] = player_colors[p];
+    const players = new Map();
+    for (let p of [constants_1.HUMAN_PLAYER, constants_1.BOT_PLAYER]) {
+        for (let c of props.gameState.board.penguins[p]) {
+            players.set(c, p);
         }
     }
     const any_possible_moves = props.possibleMoves.length > 0;
@@ -56,11 +53,10 @@ exports.default = React.memo(function (props) {
             const x = start_x + c * hex_width + x_bobble;
             const key = hexes.length;
             const fish = props.gameState.board.fish[key];
-            const color = colors[key];
             const possible = props.possibleMoves.includes(key);
             const is_highlighted = any_possible_moves &&
                 props.chosenCell === key;
-            hexes.push(React.createElement(Hex_1.default, { key: key, _key: key, onClick: props.handleCellClick, fish: fish, cx: x, cy: y, sideLength: side_length, highlighted: is_highlighted, possible: possible, color: color, claimed: claimed.has(key) }));
+            hexes.push(React.createElement(Hex_1.default, { key: key, _key: key, onClick: props.handleCellClick, fish: fish, cx: x, cy: y, sideLength: side_length, highlighted: is_highlighted, possible: possible, player: players.get(key), claimed: claimed.has(key) }));
         }
     }
     return (React.createElement("svg", { version: "1.1", baseProfile: "full", xmlns: "http://www.w3.org/2000/svg", className: "board", viewBox: `0 0 ${size} ${size}` }, hexes));

@@ -39,6 +39,16 @@ class App extends react_1.default.Component {
         if (this.state.gameState) {
             board = react_1.default.createElement(Board_1.default, { gameState: this.state.gameState, possibleMoves: this.state.possibleMoves || [], chosenCell: this.state.chosenCell, handleCellClick: this.handleCellClick });
         }
+        const moveScores = this.state.moveScores;
+        if (moveScores != null) {
+            let totalVisits = 0;
+            let totalRewards = 0;
+            for (let mov of moveScores) {
+                totalVisits += mov.visits;
+                totalRewards += mov.rewards;
+            }
+            console.log(`${totalRewards} / ${totalVisits} ~= ${totalRewards / totalVisits}`);
+        }
         return (react_1.default.createElement("div", { className: "app" },
             board,
             react_1.default.createElement("div", { className: "info-col" },
@@ -95,6 +105,12 @@ class App extends react_1.default.Component {
             case "illegalMove":
             case "illegalPlacement":
                 this.setState({ lastMoveInvalid: true });
+                break;
+            case "moveScores":
+                this.setState({ moveScores: response.moveScores });
+                break;
+            case "placeScores":
+                this.setState({ moveScores: response.placeScores });
                 break;
         }
     }

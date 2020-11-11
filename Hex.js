@@ -1,5 +1,4 @@
 "use strict";
-// @flow
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
@@ -67,15 +66,15 @@ function draw_circles(props) {
 }
 exports.default = React.memo(function (props) {
     const transform = `translate(${props.cx},${props.cy})`;
-    const color = props.color;
-    if (!color && props.claimed) {
+    const player = props.player;
+    if (player == null && props.claimed) {
         return (React.createElement("g", { transform: transform },
             React.createElement("polygon", { points: points(props).join(' '), className: "cell claimed" })));
     }
     let penguin = null;
     let circles = null;
-    if (color) {
-        penguin = (React.createElement(Penguin_1.default, { color: color, size: props.sideLength }));
+    if (player != null) {
+        penguin = (React.createElement(Penguin_1.default, { player: player, size: props.sideLength }));
     }
     else {
         circles = draw_circles(props);
