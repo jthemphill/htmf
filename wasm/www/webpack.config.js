@@ -15,6 +15,7 @@ module.exports = {
     extensions: [".js", ".ts", ".tsx"],
     modules: ["src", "node_modules"],
   },
+  target: ["web", "es2020"],
   module: {
     rules: [
       {
