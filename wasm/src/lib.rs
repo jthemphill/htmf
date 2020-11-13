@@ -14,8 +14,8 @@ pub struct MoveInfo {
 
 #[wasm_bindgen]
 impl MoveInfo {
-    pub fn get_visits(&self) -> u64 {
-        self.visits
+    pub fn get_visits(&self) -> f64 {
+        self.visits as f64
     }
 
     pub fn get_rewards(&self) -> f64 {

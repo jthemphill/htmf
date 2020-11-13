@@ -91,6 +91,17 @@ class Bot {
                 while (performance.now() - t0 < PLAYOUT_MS) {
                     this.playout();
                 }
+
+                let activePlayer = this.game.active_player();
+                if (activePlayer != null) {
+                    if (this.game.is_drafting()) {
+                        this.postPlaceScores(activePlayer);
+                    } else {
+                        this.postMoveScores(activePlayer);
+                    }
+                }
+
+                // console.log(`Finished ${nplayouts} in ${performance.now() - t0} ms.`);
             },
             PONDER_INTERVAL_MS,
         );
@@ -197,6 +208,45 @@ class Bot {
         postMessage({
             type: "state",
             gameState: this.getState(),
+        });
+    }
+
+    postPlaceScores(activePlayer: number) {
+        const placeScores = [];
+        for (let dst of this.game.draftable_cells()) {
+            const info = this.game.place_info(dst);
+            placeScores.push({
+                dst,
+                visits: info.get_visits(),
+                rewards: info.get_rewards(),
+            });
+        }
+        const postMessage = this.postMessage;
+        postMessage({
+            type: "placeScores",
+            activePlayer,
+            placeScores,
+        });
+    }
+
+    postMoveScores(activePlayer: number) {
+        const moveScores = [];
+        for (let src of this.game.penguins(activePlayer)) {
+            for (let dst of this.game.possible_moves(src)) {
+                const info = this.game.move_info(src, dst);
+                moveScores.push({
+                    src,
+                    dst,
+                    visits: info.get_visits(),
+                    rewards: info.get_rewards(),
+                });
+            }
+        }
+        const postMessage = this.postMessage;
+        postMessage({
+            type: "moveScores",
+            activePlayer,
+            moveScores,
         });
     }
 }

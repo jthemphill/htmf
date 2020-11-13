@@ -4,13 +4,17 @@ import { WorkerRequest, WorkerResponse } from "./WorkerProtocol";
 
 import Board from "./Board";
 import GameState from "./GameState";
-import { BOT_PLAYER, NPLAYERS, PLAYER_COLORS } from "./constants";
+import { BOT_PLAYER, HUMAN_PLAYER, NPLAYERS, PLAYER_COLORS } from "./constants";
 
 type State = {
     gameState?: GameState,
     possibleMoves?: number[],
     chosenCell?: number,
     lastMoveInvalid?: boolean,
+    moveScores?: {
+        player: number,
+        tally: { src?: number, dst: number, visits: number, rewards: number }[]
+    },
 };
 type Props = {
 
@@ -58,6 +62,23 @@ class App extends React.Component<Props, State> {
                 chosenCell={this.state.chosenCell}
                 handleCellClick={this.handleCellClick}
             />;
+        }
+
+        const moveScores = this.state.moveScores;
+        if (moveScores != null) {
+            let totalVisits = 0;
+            let totalRewards = 0;
+            for (let mov of moveScores.tally) {
+                totalVisits += mov.visits;
+                totalRewards += mov.rewards;
+            }
+
+            let chance = totalRewards / totalVisits;
+            if (moveScores.player !== HUMAN_PLAYER) {
+                chance = 1 - chance;
+            }
+
+            console.log(`${totalRewards} / ${totalVisits} ~= ${chance}`);
         }
 
         return (
@@ -125,6 +146,22 @@ class App extends React.Component<Props, State> {
             case "illegalMove":
             case "illegalPlacement":
                 this.setState({ lastMoveInvalid: true });
+                break;
+            case "moveScores":
+                this.setState({
+                    moveScores: {
+                        player: response.activePlayer,
+                        tally: response.moveScores
+                    }
+                });
+                break;
+            case "placeScores":
+                this.setState({
+                    moveScores: {
+                        player: response.activePlayer,
+                        tally: response.placeScores
+                    }
+                });
                 break;
         }
     }

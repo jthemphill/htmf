@@ -33,6 +33,23 @@ type WorkerResponse = {
 } | {
     type: "illegalPlacement",
     dst: number,
+} | {
+    type: "placeScores",
+    activePlayer: number,
+    placeScores: {
+        dst: number,
+        visits: number,
+        rewards: number,
+    }[],
+} | {
+    type: "moveScores",
+    activePlayer: number,
+    moveScores: {
+        src: number,
+        dst: number,
+        visits: number,
+        rewards: number,
+    }[],
 };
 
 export { WorkerRequest, WorkerResponse };
