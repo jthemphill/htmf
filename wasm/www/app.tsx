@@ -1,6 +1,5 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import Worker from "worker-loader!./bot.worker";
 import { WorkerRequest, WorkerResponse } from "./WorkerProtocol";
 
 import Board from "./Board";
@@ -25,7 +24,7 @@ class App extends React.Component<Props, State> {
     constructor(props: Props) {
         super(props);
         this.handleCellClick = this._handleCellClick.bind(this);
-        this.worker = new Worker();
+        this.worker = new Worker(new URL("./bot.worker.js", import.meta.url));
         this.worker.onmessage = this.onMessage.bind(this);
         this.state = {};
     }

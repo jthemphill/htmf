@@ -4,7 +4,8 @@
         "sourceMap": true,
         "strict": true,
         "lib": ["DOM", "ES2016"],
-        "module": "commonjs",
+        "module": "esnext",
+        "moduleResolution": "node",
         "esModuleInterop": true,
         "target": "es6",
         "jsx": "react"
