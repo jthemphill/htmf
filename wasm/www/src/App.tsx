@@ -24,7 +24,7 @@ class App extends React.Component<Props, State> {
     constructor(props: Props) {
         super(props);
         this.handleCellClick = this._handleCellClick.bind(this);
-        this.worker = new Worker(new URL("./bot.worker.js", import.meta.url));
+        this.worker = new Worker(new URL("./bot.worker.ts", import.meta.url));
         this.worker.onmessage = this.onMessage.bind(this);
         this.state = {};
     }

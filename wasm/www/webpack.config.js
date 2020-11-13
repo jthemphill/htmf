@@ -30,5 +30,6 @@ module.exports = {
   },
   experiments: {
     syncWebAssembly: true,
+    topLevelAwait: true,
   },
 };
