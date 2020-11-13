@@ -2,7 +2,7 @@
   "name": "htmf",
   "version": "0.1.0",
   "description": "MCTS implementation of a neat game",
-  "main": "index.js",
+  "main": "src/App.tsx",
   "scripts": {
     "build": "wasm-pack build && webpack --config webpack.config.js",
     "predeploy": "npm run build",
