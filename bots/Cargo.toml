@@ -6,7 +6,7 @@ authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 [dependencies]
 arrayvec = "0.5"
 rand = "0.7"
-rayon = "1.4"
+rayon = "1.5"
 
 htmf = { path = "../engine" }
 
