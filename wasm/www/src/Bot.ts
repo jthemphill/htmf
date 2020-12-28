@@ -1,6 +1,6 @@
 import * as wasm from "htmf-wasm";
 
-import { NPLAYERS, NUM_CELLS, PLAYOUT_MS, PONDER_INTERVAL_MS, MAX_PLAYOUTS, HUMAN_PLAYER } from "./constants";
+import { NPLAYERS, NUM_CELLS, PLAYOUT_MS, PONDER_INTERVAL_MS, MIN_PLAYOUTS, MAX_PLAYOUTS, HUMAN_PLAYER } from "./constants";
 import GameState from "./GameState";
 import { WorkerRequest, WorkerResponse } from "./WorkerProtocol";
 
@@ -55,6 +55,7 @@ class Bot {
         this.game = wasm.Game.new();
         this.postMessage = postMessage;
         this.nplayouts = 0;
+        this.ponder();
     }
 
     free() {
@@ -90,7 +91,6 @@ class Bot {
                 while (performance.now() - t0 < PLAYOUT_MS) {
                     this.playout();
                 }
-                // console.log(`Finished ${nplayouts} in ${performance.now() - t0} ms.`);
             },
             PONDER_INTERVAL_MS,
         );
@@ -120,7 +120,7 @@ class Bot {
 
     takeAction() {
         this.stopPondering();
-        while (this.nplayouts < MAX_PLAYOUTS) {
+        while (this.nplayouts < MIN_PLAYOUTS) {
             this.playout();
         }
         this.game.take_action();
