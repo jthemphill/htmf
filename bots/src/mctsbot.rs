@@ -16,7 +16,7 @@ pub enum Move {
  * given Move and how well that's worked out for us.
  */
 #[derive(Clone)]
-struct Tally {
+pub struct Tally {
     pub visits: HashMap<Move, (u64, f64)>,
     pub available_moves: Vec<Move>,
 }
@@ -181,7 +181,7 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut ThreadRng
 pub struct MCTSBot {
     pub root: Game,
     pub me: htmf::board::Player,
-    tree: HashMap<Game, Tally>,
+    pub tree: HashMap<Game, Tally>,
     rng: ThreadRng,
 }
 

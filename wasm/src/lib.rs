@@ -7,6 +7,23 @@ use htmf_bots::MCTSBot;
 mod utils;
 
 #[wasm_bindgen]
+pub struct MoveInfo {
+    visits: u64,
+    rewards: f64,
+}
+
+#[wasm_bindgen]
+impl MoveInfo {
+    pub fn get_visits(&self) -> u64 {
+        self.visits
+    }
+
+    pub fn get_rewards(&self) -> f64 {
+        self.rewards
+    }
+}
+
+#[wasm_bindgen]
 pub struct Game {
     bot: MCTSBot,
 }
@@ -90,6 +107,43 @@ impl Game {
             return;
         }
         self.bot.playout()
+    }
+
+    /**
+     * Number of times we've tried and won by placing a penguin at `dst` on the current board
+     */
+    pub fn place_info(&self, dst: u8) -> MoveInfo {
+        let &(visits, rewards) = self
+            .bot
+            .tree
+            .get(&self.bot.root)
+            .map(|tally| {
+                tally
+                    .visits
+                    .get(&htmf_bots::mctsbot::Move::Place(dst))
+                    .unwrap_or(&(0, 0.0))
+            })
+            .unwrap_or(&(0, 0.0));
+        MoveInfo { visits, rewards }
+    }
+
+    /**
+     * Number of times we've tried and won by moving a penguin from `src` to `dst` on the current
+     * board
+     */
+    pub fn move_info(&self, src: u8, dst: u8) -> MoveInfo {
+        let &(visits, rewards) = self
+            .bot
+            .tree
+            .get(&self.bot.root)
+            .map(|tally| {
+                tally
+                    .visits
+                    .get(&htmf_bots::mctsbot::Move::Move((src, dst)))
+                    .unwrap_or(&(0, 0.0))
+            })
+            .unwrap_or(&(0, 0.0));
+        MoveInfo { visits, rewards }
     }
 
     pub fn take_action(&mut self) -> Result<(), JsValue> {
