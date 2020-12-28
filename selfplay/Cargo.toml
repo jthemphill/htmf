@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Jeff Hemphill <jhemphill@fb.com>"]
 
 [dependencies]
-rand = "0.7"
+rand = "0.8"
 rayon = "1.5"
 
 htmf-bots = { path = "../bots" }
