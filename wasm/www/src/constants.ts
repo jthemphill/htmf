@@ -11,9 +11,6 @@ const PONDER_INTERVAL_MS = 0;
 const MIN_PLAYOUTS = 6000;
 const MAX_PLAYOUTS = 60_000;
 
-// duplicated in board.react.js
-const PLAYER_COLORS = ['blue', 'red', 'orange', 'green'];
-
 export {
     NPLAYERS,
     HUMAN_PLAYER,
@@ -22,7 +19,6 @@ export {
     EVEN_ROW_LEN,
     ODD_ROW_LEN,
     NUM_CELLS,
-    PLAYER_COLORS,
     PLAYOUT_MS,
     MIN_PLAYOUTS,
     MAX_PLAYOUTS,

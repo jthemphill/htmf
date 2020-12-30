@@ -4,7 +4,7 @@ import { WorkerRequest, WorkerResponse } from "./WorkerProtocol";
 
 import Board from "./Board";
 import GameState from "./GameState";
-import { BOT_PLAYER, HUMAN_PLAYER, NPLAYERS, PLAYER_COLORS } from "./constants";
+import { BOT_PLAYER, HUMAN_PLAYER, NPLAYERS } from "./constants";
 
 type State = {
     gameState?: GameState,
@@ -45,10 +45,10 @@ class App extends React.Component<Props, State> {
         const scores_block = [];
         const active_player = this.activePlayer();
         for (let p = 0; p < NPLAYERS; ++p) {
-            let color = { color: PLAYER_COLORS[p] };
+            let playerClass = p === HUMAN_PLAYER ? "human" : "bot";
             let active = active_player === p ? '(Active Player)' : null;
             scores_block.push(
-                <p key={"score_" + p}><span style={color}>
+                <p key={"score_" + p}><span className={playerClass}>
                     Score: {this.state.gameState?.scores[p]} {active}
                 </span></p>
             );
