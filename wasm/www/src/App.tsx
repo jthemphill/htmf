@@ -65,6 +65,7 @@ class App extends React.Component<Props, State> {
         }
 
         const moveScores = this.state.moveScores;
+        let winChanceMeter = undefined;
         if (moveScores != null) {
             let totalVisits = 0;
             let totalRewards = 0;
@@ -78,7 +79,7 @@ class App extends React.Component<Props, State> {
                 chance = 1 - chance;
             }
 
-            console.log(`${totalRewards} / ${totalVisits} ~= ${chance}`);
+            winChanceMeter = <meter min={0} max={1} low={0.49} high={0.5} optimum={1} value={chance} />;
         }
 
         return (
@@ -88,6 +89,7 @@ class App extends React.Component<Props, State> {
                     <p>{this.state.gameState?.modeType}</p>
                     <p>{invalid_move_block}</p>
                     <div>{scores_block}</div>
+                    {winChanceMeter}
                 </div>
             </div>
         );
@@ -116,7 +118,7 @@ class App extends React.Component<Props, State> {
             this._toggleCellHighlight(key);
             return;
         }
-        if (this.state.chosenCell == null) {
+        if (this.state.chosenCell === undefined) {
             return;
         }
         if (this.state.possibleMoves?.includes(key)) {
