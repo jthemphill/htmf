@@ -22,7 +22,7 @@ export default React.memo(function (props: Props) {
 
     const players: Map<number, number> = new Map();
     for (let p of [HUMAN_PLAYER, BOT_PLAYER]) {
-        for (let c of props.gameState.board.penguins[p]) {
+        for (let c of props.gameState.board.penguins[p] || []) {
             players.set(c, p);
         }
     }
@@ -48,7 +48,7 @@ export default React.memo(function (props: Props) {
             const x = start_x + c * hex_width + x_bobble;
 
             const key = hexes.length;
-            const fish = props.gameState.board.fish[key];
+            const fish = props.gameState.board.fish[key] || 0;
             const possible = props.possibleMoves.includes(key);
 
             const is_highlighted = any_possible_moves &&

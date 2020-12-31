@@ -5,6 +5,7 @@
         "strict": true,
         "noFallthroughCasesInSwitch": true,
         "noImplicitReturns": true,
+        "noUncheckedIndexedAccess": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "useDefineForClassFields": true,

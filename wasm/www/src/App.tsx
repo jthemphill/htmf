@@ -114,7 +114,7 @@ class App extends React.Component<Props, State> {
             this._placePenguin(key);
             return;
         }
-        if (this.state.gameState?.board.penguins[activePlayer].includes(key)) {
+        if (this.state.gameState?.board.penguins[activePlayer]?.includes(key)) {
             this._toggleCellHighlight(key);
             return;
         }
