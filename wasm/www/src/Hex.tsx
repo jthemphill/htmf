@@ -92,7 +92,7 @@ export default React.memo(function (props: Props) {
     const transform = `translate(${props.cx},${props.cy})`;
 
     const player = props.player;
-    if (player == null && props.claimed) {
+    if (player === undefined && props.claimed) {
         return (
             <g transform={transform}>
                 <polygon
@@ -103,9 +103,9 @@ export default React.memo(function (props: Props) {
         );
     }
 
-    let penguin = null;
-    let circles = null;
-    if (player != null) {
+    let penguin = undefined;
+    let circles = undefined;
+    if (player !== undefined) {
         penguin = (<Penguin player={player} size={props.sideLength} />);
     } else {
         circles = draw_circles(props);

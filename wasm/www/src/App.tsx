@@ -40,13 +40,13 @@ class App extends React.Component<Props, State> {
     render() {
         const invalid_move_block = this.state.lastMoveInvalid
             ? "Invalid move!"
-            : null;
+            : undefined;
 
         const scores_block = [];
         const active_player = this.activePlayer();
         for (let p = 0; p < NPLAYERS; ++p) {
             let playerClass = p === HUMAN_PLAYER ? "human" : "bot";
-            let active = active_player === p ? '(Active Player)' : null;
+            let active = active_player === p ? '(Active Player)' : undefined;
             scores_block.push(
                 <p key={"score_" + p}><span className={playerClass}>
                     Score: {this.state.gameState?.scores[p]} {active}
@@ -54,7 +54,7 @@ class App extends React.Component<Props, State> {
             );
         }
 
-        let board = null;
+        let board = undefined;
         if (this.state.gameState) {
             board = <Board
                 gameState={this.state.gameState}
@@ -66,7 +66,7 @@ class App extends React.Component<Props, State> {
 
         const moveScores = this.state.moveScores;
         let winChanceMeter = undefined;
-        if (moveScores != null) {
+        if (moveScores !== undefined) {
             let totalVisits = 0;
             let totalRewards = 0;
             for (let mov of moveScores.tally) {
@@ -107,7 +107,7 @@ class App extends React.Component<Props, State> {
 
     _handleCellClick(key: number) {
         const activePlayer = this.activePlayer();
-        if (activePlayer == null) {
+        if (activePlayer === undefined) {
             return;
         }
         if (this.state.gameState?.modeType === "drafting") {
@@ -176,7 +176,7 @@ class App extends React.Component<Props, State> {
     }
 
     _movePenguinToCell(key: number) {
-        if (this.state.chosenCell) {
+        if (this.state.chosenCell !== undefined) {
             this.postMessage({
                 type: "move",
                 src: this.state.chosenCell,

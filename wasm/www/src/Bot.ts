@@ -35,11 +35,11 @@ function getPossibleMoves(game: wasm.Game, src?: number): number[] {
         return [];
     }
     if (game.finished_drafting()) {
-        if (src != null) {
+        if (src !== undefined) {
             return [...game.possible_moves(src)];
         }
         const active_player = game.active_player();
-        return active_player == null ? [] : [...game.penguins(active_player)];
+        return active_player === undefined ? [] : [...game.penguins(active_player)];
     } else {
         return [...game.draftable_cells()];
     }
@@ -78,7 +78,7 @@ class Bot {
     ponder() {
         this.nplayouts = 0;
 
-        if (this.ponderer != null) {
+        if (this.ponderer !== undefined) {
             return;
         }
         this.ponderer = self.setInterval(
@@ -93,7 +93,7 @@ class Bot {
                 }
 
                 let activePlayer = this.game.active_player();
-                if (activePlayer != null) {
+                if (activePlayer !== undefined) {
                     if (this.game.is_drafting()) {
                         this.postPlaceScores(activePlayer);
                     } else {
@@ -108,7 +108,7 @@ class Bot {
     }
 
     stopPondering() {
-        if (this.ponderer != undefined) {
+        if (this.ponderer !== undefined) {
             self.clearInterval(this.ponderer);
             this.ponderer = undefined;
         }
