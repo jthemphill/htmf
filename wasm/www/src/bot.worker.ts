@@ -1,4 +1,4 @@
-import Bot from "./Bot";
+const Bot = (await import("./Bot")).default;
 
 const ctx: Worker = self as any;
 
