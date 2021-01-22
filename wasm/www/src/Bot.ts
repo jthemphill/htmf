@@ -131,8 +131,16 @@ class Bot {
 
     takeAction() {
         this.stopPondering();
+        const postMessage = this.postMessage;
         while (this.nplayouts < MIN_PLAYOUTS) {
             this.playout();
+            if (this.nplayouts % 100 === 0) {
+                postMessage({
+                    type: "thinkingProgress",
+                    completed: this.nplayouts,
+                    required: MIN_PLAYOUTS,
+                });
+            }
         }
         this.game.take_action();
         this.ponder();

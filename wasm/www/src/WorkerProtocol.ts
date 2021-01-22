@@ -50,6 +50,10 @@ type WorkerResponse = {
         visits: number,
         rewards: number,
     }[],
+} | {
+    type: "thinkingProgress",
+    completed: number,
+    required: number,
 };
 
 export { WorkerRequest, WorkerResponse };

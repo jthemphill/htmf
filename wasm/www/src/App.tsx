@@ -15,6 +15,10 @@ type State = {
         player: number,
         tally: { src?: number, dst: number, visits: number, rewards: number }[]
     },
+    thinkingProgress?: {
+        completed: number,
+        required: number,
+    },
 };
 type Props = {
 
@@ -82,6 +86,12 @@ class App extends React.Component<Props, State> {
             winChanceMeter = <meter min={0} max={1} low={0.49} high={0.5} optimum={1} value={chance} />;
         }
 
+        const thinkingProgress = this.state.thinkingProgress;
+        let thinkingProgressBar = undefined;
+        if (thinkingProgress !== undefined) {
+            thinkingProgressBar = <progress value={thinkingProgress.completed} max={thinkingProgress.required} />;
+        }
+
         return (
             <div className="app">
                 {board}
@@ -90,6 +100,7 @@ class App extends React.Component<Props, State> {
                     <p>{invalid_move_block}</p>
                     <div>{scores_block}</div>
                     {winChanceMeter}
+                    {thinkingProgressBar}
                 </div>
             </div>
         );
@@ -139,7 +150,10 @@ class App extends React.Component<Props, State> {
                 this.setState({ possibleMoves: response.possibleMoves });
                 break;
             case "state":
-                this.setState({ gameState: response.gameState });
+                this.setState({
+                    gameState: response.gameState,
+                    thinkingProgress: undefined,
+                });
                 this.postMessage({ type: "possibleMoves" });
                 if (response.gameState.activePlayer === BOT_PLAYER) {
                     this.postMessage({ type: "takeAction" });
@@ -163,6 +177,14 @@ class App extends React.Component<Props, State> {
                         player: response.activePlayer,
                         tally: response.placeScores
                     }
+                });
+                break;
+            case "thinkingProgress":
+                this.setState({
+                    thinkingProgress: {
+                        completed: response.completed,
+                        required: response.required,
+                    },
                 });
                 break;
         }
