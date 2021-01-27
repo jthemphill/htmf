@@ -109,6 +109,15 @@ impl Game {
         self.bot.playout()
     }
 
+    pub fn get_visits(&self) -> f64 {
+        self.bot
+            .tree
+            .get(&self.bot.root)
+            .iter()
+            .map(|tally| tally.visits.values().map(|(v, _)| v).sum::<u64>())
+            .sum::<u64>() as f64
+    }
+
     /**
      * Number of times we've tried and won by placing a penguin at `dst` on the current board
      */

@@ -49,12 +49,11 @@ class Bot {
     game: wasm.Game;
     postMessage: (msg: WorkerResponse) => void
     ponderer?: number;
-    nplayouts: number;
+    nplayouts: number = 0;
 
     constructor(postMessage: (msg: WorkerResponse) => void) {
         this.game = wasm.Game.new();
         this.postMessage = postMessage;
-        this.nplayouts = 0;
         this.ponder();
     }
 
@@ -76,7 +75,8 @@ class Bot {
     }
 
     ponder() {
-        this.nplayouts = 0;
+        this.nplayouts = this.game.get_visits();
+        if (this.nplayouts > 0) console.log(`Wow! ${this.nplayouts}`);
 
         if (this.ponderer !== undefined) {
             return;
@@ -132,13 +132,14 @@ class Bot {
     takeAction() {
         this.stopPondering();
         const postMessage = this.postMessage;
-        while (this.nplayouts < MIN_PLAYOUTS) {
+        const min_playouts = this.game.turn() < 2 ? 2 * MIN_PLAYOUTS : MIN_PLAYOUTS;
+        while (this.nplayouts < min_playouts) {
             this.playout();
             if (this.nplayouts % 100 === 0) {
                 postMessage({
                     type: "thinkingProgress",
                     completed: this.nplayouts,
-                    required: MIN_PLAYOUTS,
+                    required: min_playouts,
                 });
             }
         }
