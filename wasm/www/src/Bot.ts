@@ -76,7 +76,6 @@ class Bot {
 
     ponder() {
         this.nplayouts = this.game.get_visits();
-        if (this.nplayouts > 0) console.log(`Wow! ${this.nplayouts}`);
 
         if (this.ponderer !== undefined) {
             return;
@@ -100,8 +99,6 @@ class Bot {
                         this.postMoveScores(activePlayer);
                     }
                 }
-
-                // console.log(`Finished ${nplayouts} in ${performance.now() - t0} ms.`);
             },
             PONDER_INTERVAL_MS,
         );
