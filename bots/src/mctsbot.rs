@@ -18,14 +18,12 @@ pub enum Move {
 #[derive(Clone)]
 pub struct Tally {
     pub visits: HashMap<Move, (u64, f64)>,
-    pub available_moves: Vec<Move>,
 }
 
 impl Tally {
     pub fn new(game: &Game) -> Self {
         Self {
-            visits: HashMap::new(),
-            available_moves: game.available_moves().collect(),
+            visits: game.available_moves().map(|mov| (mov, (0, 0.0))).collect(),
         }
     }
 
@@ -93,15 +91,18 @@ impl Game {
     }
 }
 
-fn choose_child(tally: &Tally, moves: &[Move], rng: &mut impl rand::Rng) -> Move {
-    let total_visits = moves.iter().map(|&x| tally.get_visit(x).0).sum::<u64>();
+fn choose_child(tally: &Tally, rng: &mut impl rand::Rng) -> Move {
+    let total_visits = tally
+        .visits
+        .iter()
+        .map(|(_, (visits, _))| visits)
+        .sum::<u64>();
 
     let mut choice = None;
     let mut num_optimal: u32 = 0;
     let mut best_so_far: f64 = std::f64::NEG_INFINITY;
-    for &mov in moves {
+    for (&mov, &(child_visits, sum_rewards)) in tally.visits.iter() {
         let score = {
-            let (child_visits, sum_rewards) = tally.get_visit(mov);
             // https://www.researchgate.net/publication/235985858_A_Survey_of_Monte_Carlo_Tree_Search_Methods
             if child_visits == 0 {
                 std::f64::INFINITY
@@ -141,10 +142,10 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut ThreadRng
     let mut path = vec![];
     let mut node = root.clone();
     while let Some(tally) = tree.get(&node) {
-        if tally.available_moves.is_empty() {
+        if tally.visits.is_empty() {
             break;
         }
-        let mov = choose_child(tally, tally.available_moves.as_slice(), &mut rng);
+        let mov = choose_child(tally, &mut rng);
         path.push((node.clone(), mov));
         node.make_move(mov);
     }
@@ -178,6 +179,7 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut ThreadRng
     assert!(tree.get(root).is_some())
 }
 
+#[derive(Clone)]
 pub struct MCTSBot {
     pub root: Game,
     pub me: htmf::board::Player,
