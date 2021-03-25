@@ -165,7 +165,7 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut ThreadRng
 
     assert!(path[0].0 == *root);
     assert!(node.state.game_over());
-    let rewards: ArrayVec<[f64; 4]> = (0..root.state.nplayers)
+    let rewards: ArrayVec<f64, 4> = (0..root.state.nplayers)
         .map(|p| get_reward(&node.state, p))
         .collect();
     for (backprop_node, mov) in path {
