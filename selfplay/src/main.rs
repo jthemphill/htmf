@@ -75,12 +75,12 @@ fn play_game(verbose: bool) -> (i32, Vec<GameState>) {
         match action {
             Action::Move(src, dst) => {
                 if game.move_penguin(src, dst).is_err() {
-                    panic!(format!("Player {} made an illegal move", p.id));
+                    panic!("Illegal move");
                 }
             }
             Action::Place(dst) => {
                 if game.place_penguin(dst).is_err() {
-                    panic!(format!("Player {} made an illegal move", p.id));
+                    panic!("Illegal placement");
                 }
                 if game.board.is_cut_cell(dst) {
                     game.board.prune();

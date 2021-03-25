@@ -9,7 +9,7 @@ wasm = [
 ]
 
 [dependencies]
-arrayvec = "0.5"
+arrayvec = "0.6"
 getrandom = "0.2"
 rand = "0.8"
 serde = "1.0"

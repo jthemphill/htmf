@@ -17,9 +17,9 @@ pub struct Player {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Board {
-    pub penguins: ArrayVec<[CellSet; 4]>,
-    pub fish: ArrayVec<[CellSet; 3]>,
-    pub claimed: ArrayVec<[CellSet; 4]>,
+    pub penguins: ArrayVec<CellSet, 4>,
+    pub fish: ArrayVec<CellSet, 3>,
+    pub claimed: ArrayVec<CellSet, 4>,
 }
 
 impl Board {
@@ -39,7 +39,7 @@ impl Board {
         let mut rng: StdRng = SeedableRng::from_seed(seed);
         cell_to_fish.shuffle(&mut rng);
 
-        let mut fish: ArrayVec<[CellSet; 3]> = ArrayVec::new();
+        let mut fish: ArrayVec<CellSet, 3> = ArrayVec::new();
         for _ in 0..3 {
             fish.push(CellSet::new());
         }
@@ -114,7 +114,7 @@ impl Board {
         Ok(self)
     }
 
-    fn neighbors(c: u8) -> ArrayVec<[u8; 6]> {
+    fn neighbors(c: u8) -> ArrayVec<u8, 6> {
         Board::index_to_evenr(c)
             .neighbors()
             .iter()
@@ -270,7 +270,7 @@ impl Board {
                         .map(move |p| (Player { id: player }, p))
                 })
                 .take(2)
-                .collect::<ArrayVec<[_; 2]>>();
+                .collect::<ArrayVec<_, 2>>();
             if penguins_touching_iceberg.len() != 1 {
                 continue;
             }

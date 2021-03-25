@@ -67,7 +67,7 @@ impl GameState {
         }
     }
 
-    pub fn get_scores(&self) -> ArrayVec<[usize; 4]> {
+    pub fn get_scores(&self) -> ArrayVec<usize, 4> {
         (0..self.nplayers)
             .map(|i| self.board.get_score(Player { id: i }))
             .collect()
