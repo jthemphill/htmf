@@ -2,6 +2,8 @@ use arrayvec::ArrayVec;
 use rand::prelude::*;
 use std::collections::HashMap;
 
+use htmf::{NUM_ONE_FISH, NUM_THREE_FISH, NUM_TWO_FISH};
+
 /**
  * Games are connected to each other via Moves.
  */
@@ -50,6 +52,11 @@ pub struct Game {
 impl Game {
     fn current_player(&self) -> htmf::board::Player {
         self.state.active_player().unwrap()
+    }
+
+    fn is_won(&self) -> bool {
+        let total_fish = NUM_ONE_FISH + 2 * NUM_TWO_FISH + 3 * NUM_THREE_FISH;
+        self.state.get_scores().into_iter().max().unwrap() > total_fish / self.state.nplayers
     }
 
     fn available_moves<'a>(&'a self) -> Box<dyn Iterator<Item = Move> + 'a> {
@@ -154,6 +161,9 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut ThreadRng
         .or_insert_with(|| Tally::new(&node));
 
     loop {
+        if node.is_won() {
+            break;
+        }
         let available_moves = node.available_moves().collect::<Vec<Move>>();
         if available_moves.is_empty() {
             break;
@@ -164,7 +174,6 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut ThreadRng
     }
 
     assert!(path[0].0 == *root);
-    assert!(node.state.game_over());
     let rewards: ArrayVec<f64, 4> = (0..root.state.nplayers)
         .map(|p| get_reward(&node.state, p))
         .collect();
