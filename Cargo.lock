@@ -7,6 +7,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "682f88bd1270f264991da8922b89ee1fb520b0da73f97c9f73cda54980123017"
 
 [[package]]
+name = "arrayvec"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a2f58b0bb10c380af2b26e57212856b8c9a59e0925b4c20f4a174a49734eaf7"
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -236,7 +242,7 @@ dependencies = [
 name = "htmf"
 version = "0.1.0"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.7.0",
  "getrandom",
  "rand",
  "serde",
@@ -248,7 +254,7 @@ dependencies = [
 name = "htmf-bots"
 version = "0.1.0"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.6.0",
  "criterion",
  "getrandom",
  "htmf",
