@@ -164,13 +164,12 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut ThreadRng
         if node.is_won() {
             break;
         }
-        let available_moves = node.available_moves().collect::<Vec<Move>>();
-        if available_moves.is_empty() {
+        if let Some(mov) = node.available_moves().choose(&mut rng) {
+            path.push((node.clone(), mov));
+            node.make_move(mov);
+        } else {
             break;
         }
-        let &mov = available_moves.choose(&mut rng).unwrap();
-        path.push((node.clone(), mov));
-        node.make_move(mov);
     }
 
     assert!(path[0].0 == *root);
