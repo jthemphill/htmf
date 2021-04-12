@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 
 [dependencies]
-arrayvec = "0.6"
+arrayvec = "0.7"
 getrandom = "0.2"
 rand = "0.8"
 rayon = "1.5"
