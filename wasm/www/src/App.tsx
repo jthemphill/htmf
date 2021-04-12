@@ -121,20 +121,20 @@ class App extends React.Component<Props, State> {
         if (activePlayer === undefined) {
             return;
         }
-        if (this.state.gameState?.modeType === "drafting") {
-            this._placePenguin(key);
+        const gameState = this.state.gameState;
+        if (gameState === undefined) {
             return;
         }
-        if (this.state.gameState?.board.penguins[activePlayer]?.includes(key)) {
-            this._toggleCellHighlight(key);
-            return;
-        }
-        if (this.state.chosenCell === undefined) {
-            return;
-        }
-        if (this.state.possibleMoves?.includes(key)) {
-            this._movePenguinToCell(key);
-            return;
+        if (gameState.modeType === "drafting") {
+            if (this.state.possibleMoves?.includes(key)) {
+                this._placePenguin(key);
+            }
+        } else {
+            if (this.state.chosenCell !== undefined && this.state.possibleMoves?.includes(key)) {
+                this._movePenguinToCell(key);
+            } else if (gameState.board.penguins[activePlayer]?.includes(key)) {
+                this._toggleCellHighlight(key);
+            }
         }
     }
 
