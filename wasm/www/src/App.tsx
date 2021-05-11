@@ -153,6 +153,7 @@ class App extends React.Component<Props, State> {
                 this.setState({
                     gameState: response.gameState,
                     thinkingProgress: undefined,
+                    chosenCell: undefined,
                 });
                 this.postMessage({ type: "possibleMoves" });
                 if (response.gameState.activePlayer === BOT_PLAYER) {

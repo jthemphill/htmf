@@ -41,3 +41,6 @@ wasm-opt = [
     "-O3",
     "--enable-mutable-globals",
 ]
+
+[profile.release]
+debug = true
