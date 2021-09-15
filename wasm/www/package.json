@@ -5,6 +5,7 @@
   "main": "src/App.tsx",
   "scripts": {
     "build": "wasm-pack build && webpack --config webpack.config.js",
+    "start": "npm run build && npx http-server ./dist",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d ./dist"
   },
