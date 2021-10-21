@@ -2,10 +2,10 @@ use std::fmt;
 
 use serde_json;
 
-use board::Board;
-use cellset::CellSet;
-use game::GameState;
-use NUM_CELLS;
+use crate::board::Board;
+use crate::cellset::CellSet;
+use crate::game::GameState;
+use crate::NUM_CELLS;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GameStateJSON {

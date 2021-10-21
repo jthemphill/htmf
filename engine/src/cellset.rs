@@ -1,6 +1,6 @@
 use std::iter::FromIterator;
 
-use NUM_CELLS;
+use crate::NUM_CELLS;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[must_use]

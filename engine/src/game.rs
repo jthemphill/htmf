@@ -2,9 +2,9 @@ use std::fmt;
 
 use arrayvec::ArrayVec;
 
-use board::{Board, Player};
-use errors::IllegalMoveError;
-use json::GameStateJSON;
+use crate::board::{Board, Player};
+use crate::errors::IllegalMoveError;
+use crate::json::GameStateJSON;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct GameState {

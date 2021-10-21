@@ -1,11 +1,10 @@
 use arrayvec::ArrayVec;
 use rand::prelude::*;
 
-use cellset::CellSet;
-use {EVEN_ROW_LEN, NUM_CELLS, NUM_ONE_FISH, NUM_THREE_FISH, NUM_TWO_FISH, ODD_ROW_LEN};
-
-use errors::IllegalMoveError;
-use hex::{line, EvenR};
+use crate::cellset::CellSet;
+use crate::errors::IllegalMoveError;
+use crate::hex::{line, EvenR};
+use crate::{EVEN_ROW_LEN, NUM_CELLS, NUM_ONE_FISH, NUM_THREE_FISH, NUM_TWO_FISH, ODD_ROW_LEN};
 
 type NumFish = usize;
 type DFSState = (Board, u8, NumFish);

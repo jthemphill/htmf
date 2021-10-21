@@ -2,6 +2,7 @@
 name = "htmf"
 version = "0.1.0"
 authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
+edition = "2021"
 
 [features]
 wasm = [

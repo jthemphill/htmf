@@ -2,6 +2,7 @@
 name = "selfplay"
 version = "0.1.0"
 authors = ["Jeff Hemphill <jhemphill@fb.com>"]
+edition = "2021"
 
 [dependencies]
 rand = "0.8"

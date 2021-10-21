@@ -1,4 +1,4 @@
-use board::Player;
+use crate::board::Player;
 
 #[derive(Debug)]
 pub struct IllegalMoveError {
