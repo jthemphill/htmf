@@ -33,13 +33,7 @@ impl GameState {
     }
 
     pub fn game_over(&self) -> bool {
-        self.finished_drafting()
-            && self
-                .board
-                .penguins
-                .iter()
-                .find(|&p| !p.is_empty())
-                .is_none()
+        self.finished_drafting() && self.board.penguins.iter().all(|&p| p.is_empty())
     }
 
     pub fn active_player(&self) -> Option<Player> {
@@ -164,5 +158,26 @@ mod tests {
             .collect();
         let expected = vec![0, 1, 1, 0, 0, 1, 1, 0];
         assert_eq!(actives, expected);
+    }
+
+    #[test]
+    fn game_not_over_after_draft_is_over() {
+        let mut g = GameState::new_two_player([0; 32]);
+
+        for _ in 0..8 {
+            assert!(!g.finished_drafting());
+            assert!(!g.game_over());
+            assert!(g.active_player().is_some());
+            let one_fish_cell = g.board.fish[0]
+                .into_iter()
+                .filter(|&i| !g.board.is_claimed(i))
+                .next()
+                .unwrap();
+            g.place_penguin(one_fish_cell).unwrap();
+        }
+
+        assert!(g.finished_drafting());
+        assert!(!g.game_over());
+        assert!(g.active_player().is_some());
     }
 }

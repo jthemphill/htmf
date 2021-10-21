@@ -118,7 +118,7 @@ impl Board {
             .neighbors()
             .iter()
             .filter(|neighbor| Board::in_bounds(neighbor))
-            .map(|evenr| Board::evenr_to_index(&evenr))
+            .map(|evenr| Board::evenr_to_index(evenr))
             .collect()
     }
 
@@ -158,7 +158,7 @@ impl Board {
         let mut saw_live = false;
         let mut crossings = 0;
         for neighbor in neighbors.iter() {
-            if Board::in_bounds(&neighbor) && !self.is_claimed(Board::evenr_to_index(&neighbor)) {
+            if Board::in_bounds(neighbor) && !self.is_claimed(Board::evenr_to_index(neighbor)) {
                 saw_live = true;
             } else {
                 if saw_live {
@@ -177,7 +177,7 @@ impl Board {
         let cell = Board::index_to_evenr(cell_idx);
         cell.neighbors()
             .iter()
-            .map(|n| self.legal_moves_in_line(&cell, &n))
+            .map(|n| self.legal_moves_in_line(&cell, n))
             .fold(CellSet::new(), |acc, moves| acc.union(moves))
     }
 
@@ -195,7 +195,7 @@ impl Board {
             return CellSet::new();
         }
 
-        line(&src, &dst)
+        line(src, dst)
             .skip(1)
             .take_while(|hex| {
                 let in_bounds = Board::in_bounds(hex);
@@ -320,10 +320,8 @@ impl Board {
 
     fn optimal_path(&self, player: Player, penguin: u8) -> Option<(Vec<DFSState>, NumFish)> {
         let best_score_from_start = self.best_score_for_penguin(penguin);
-        match Self::dfs_this_iceberg(player, best_score_from_start, self.clone(), penguin, 0) {
-            Some(moves) => Some((moves, best_score_from_start)),
-            _ => None,
-        }
+        Self::dfs_this_iceberg(player, best_score_from_start, self.clone(), penguin, 0)
+            .map(|moves| (moves, best_score_from_start))
     }
 
     /// If there is a way for the penguin located at `src` to accrue

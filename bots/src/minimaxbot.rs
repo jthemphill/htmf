@@ -101,15 +101,7 @@ impl MinimaxBot {
     fn all_moves(game: &GameState, p: Player) -> Vec<Move> {
         game.board.penguins[p.id]
             .into_iter()
-            .flat_map(|src| {
-                let move_vec: Vec<Move> = game
-                    .board
-                    .moves(src)
-                    .into_iter()
-                    .map(|dst| (src, dst))
-                    .collect();
-                move_vec.into_iter()
-            })
+            .flat_map(|src| game.board.moves(src).into_iter().map(move |dst| (src, dst)))
             .collect()
     }
 }

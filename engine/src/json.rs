@@ -52,10 +52,7 @@ impl<'a> From<&'a GameState> for GameStateJSON {
             last_move_valid: true,
             mode_type,
             nplayers: state.nplayers,
-            active_player: match state.active_player() {
-                Some(p) => Some(p.id),
-                _ => None,
-            },
+            active_player: state.active_player().map(|p| p.id),
             scores: state.get_scores().to_vec(),
             turn: state.turn,
             board: BoardJSON::from(&state.board),
