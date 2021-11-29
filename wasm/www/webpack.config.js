@@ -9,7 +9,7 @@ module.exports = {
   },
   mode: "production",
   plugins: [
-    new CopyWebpackPlugin({ patterns: ["src/index.html"] })
+    new CopyWebpackPlugin({ patterns: ["src/index.html", "src/favicon.svg"] })
   ],
   resolve: {
     extensions: [".js", ".ts", ".tsx"],
