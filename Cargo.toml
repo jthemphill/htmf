@@ -6,6 +6,3 @@ members = [
   "selfplay",
   "wasm",
 ]
-
-[profile.release]
-debug = true

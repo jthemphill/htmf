@@ -36,7 +36,8 @@ features = [
     "js",
 ]
 
-[package.metadata.wasm-pack.profile.release]
+[package.metadata.wasm-pack.profile.profiling]
 wasm-opt = [
-    "-O3",
+    "-O4",
+    '-g',
 ]
