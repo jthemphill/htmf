@@ -118,7 +118,7 @@ impl Board {
             .neighbors()
             .iter()
             .filter(|neighbor| Board::in_bounds(neighbor))
-            .map(|evenr| Board::evenr_to_index(evenr))
+            .map(Board::evenr_to_index)
             .collect()
     }
 
