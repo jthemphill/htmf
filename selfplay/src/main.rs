@@ -38,9 +38,8 @@ fn main() {
         .map_with(
             mpsc::Sender::clone(&logger_tx),
             |logger_tx, (winner, gamestates)| {
-                match logger_tx.send(Ok((winner, gamestates))) {
-                    Ok(_) => {}
-                    Err(mpsc::SendError(_)) => {}
+                if let Err(mpsc::SendError(_)) = logger_tx.send(Ok((winner, gamestates))) {
+                    // Do nothing
                 };
                 match winner {
                     0 => 0,
