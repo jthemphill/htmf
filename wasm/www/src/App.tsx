@@ -1,5 +1,5 @@
 import React from "react";
-import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 import { WorkerRequest, WorkerResponse } from "./WorkerProtocol";
 
 import Board from "./Board";
@@ -224,4 +224,8 @@ class App extends React.Component<Props, State> {
     }
 }
 
-ReactDOM.render(<App />, document.getElementById('root'));
+const container = document.getElementById('root');
+if (container) {
+    const root = createRoot(container);
+    root.render(<App />);
+}
