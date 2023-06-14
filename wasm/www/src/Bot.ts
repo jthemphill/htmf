@@ -65,11 +65,8 @@ class Bot {
     init() {
         const postMessage = this.postMessage;
         postMessage({
-            type: "state",
+            type: "initialized",
             gameState: this.getState(),
-        });
-        postMessage({
-            type: "possibleMoves",
             possibleMoves: this.getPossibleMoves(),
         });
     }

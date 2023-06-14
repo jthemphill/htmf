@@ -6,223 +6,195 @@ import Board from "./Board";
 import GameState from "./GameState";
 import { BOT_PLAYER, HUMAN_PLAYER, NPLAYERS } from "./constants";
 
-type State = {
-    gameState?: GameState,
-    possibleMoves?: number[],
-    chosenCell?: number,
-    lastMoveInvalid?: boolean,
-    moveScores?: {
-        player: number,
-        tally: { src?: number, dst: number, visits: number, rewards: number }[]
-    },
-    thinkingProgress?: {
-        completed: number,
-        required: number,
-    },
+type MoveScores = {
+    player: number,
+    tally: { src?: number, dst: number, visits: number, rewards: number }[]
 };
-type Props = {
 
+type ThinkingProgress = {
+    completed: number,
+    required: number,
 };
-class App extends React.Component<Props, State> {
 
-    handleCellClick: ((idx: number) => void);
-    state: State;
-    worker: Worker;
+const App = React.memo(function ({ }) {
 
-    constructor(props: Props) {
-        super(props);
-        this.handleCellClick = this._handleCellClick.bind(this);
-        this.worker = new Worker(new URL("./bot.worker.ts", import.meta.url), { name: "Rules engine and AI" });
-        this.worker.onmessage = this.onMessage.bind(this);
-        this.state = {};
-    }
+    const [gameState, setGameState] = React.useState<GameState | undefined>(undefined);
+    const [possibleMoves, setPossibleMoves] = React.useState<number[] | undefined>(undefined);
+    const [chosenCell, setChosenCell] = React.useState<number | undefined>(undefined);
+    const [lastMoveInvalid, setLastMoveInvalid] = React.useState<boolean | undefined>(undefined);
+    const [moveScores, setMoveScores] = React.useState<MoveScores | undefined>(undefined);
+    const [thinkingProgress, setThinkingProgress] = React.useState<ThinkingProgress | undefined>(undefined);
+    const [worker, setWorker] = React.useState<Worker | undefined>(undefined);
 
-    activePlayer() {
-        return this.state.gameState?.activePlayer;
-    }
-
-    render() {
-        const invalid_move_block = this.state.lastMoveInvalid
-            ? "Invalid move!"
-            : undefined;
-
-        const scores_block = [];
-        const active_player = this.activePlayer();
-        for (let p = 0; p < NPLAYERS; ++p) {
-            let playerClass = p === HUMAN_PLAYER ? "human" : "bot";
-            let active = active_player === p ? '(Active Player)' : undefined;
-            scores_block.push(
-                <p key={"score_" + p}><span className={playerClass}>
-                    Score: {this.state.gameState?.scores[p]} {active}
-                </span></p>
-            );
-        }
-
-        let board = undefined;
-        if (this.state.gameState) {
-            board = <Board
-                gameState={this.state.gameState}
-                possibleMoves={this.state.possibleMoves || []}
-                chosenCell={this.state.chosenCell}
-                handleCellClick={this.handleCellClick}
-            />;
-        }
-
-        const moveScores = this.state.moveScores;
-        let winChanceMeter = undefined;
-        if (moveScores !== undefined) {
-            let totalVisits = 0;
-            let totalRewards = 0;
-            for (let mov of moveScores.tally) {
-                totalVisits += mov.visits;
-                totalRewards += mov.rewards;
-            }
-
-            let chance = totalRewards / totalVisits;
-            if (moveScores.player !== HUMAN_PLAYER) {
-                chance = 1 - chance;
-            }
-
-            winChanceMeter = <meter min={0} max={1} low={0.49} high={0.5} optimum={1} value={chance} />;
-        }
-
-        const thinkingProgress = this.state.thinkingProgress;
-        let thinkingProgressBar = undefined;
-        if (thinkingProgress !== undefined) {
-            thinkingProgressBar = <progress value={thinkingProgress.completed} max={thinkingProgress.required} />;
-        }
-
-        return (
-            <div className="app">
-                {board}
-                <div className="info-col">
-                    <p>{this.state.gameState?.modeType}</p>
-                    <p>{invalid_move_block}</p>
-                    <div>{scores_block}</div>
-                    {winChanceMeter}
-                    {thinkingProgressBar}
-                </div>
-            </div>
+    React.useEffect(() => {
+        const initializingWorker = new Worker(
+            new URL("./bot.worker.ts", import.meta.url),
+            { name: "Rules engine and AI" },
         );
-    }
+        setWorker(initializingWorker);
+        return () => {
+            console.log('terminating the worker');
+            initializingWorker.terminate();
+            setWorker(undefined);
+        };
+    }, []);
 
-    componentDidMount() {
-        this.postMessage({ type: "get" });
-        this.postMessage({ type: "possibleMoves" });
-        this.postMessage({ type: "startPondering" });
-    }
+    const postMessage = React.useCallback((request: WorkerRequest) => {
+        if (worker) {
+            console.log("Actually sending message: ", request);
+            worker.postMessage(request);
+        } else {
+            console.log("Not sending message: ", request);
+        }
+    }, [worker]);
 
-    componentWillUnmount() {
-        this.worker.terminate();
-    }
-
-    _handleCellClick(key: number) {
-        const activePlayer = this.activePlayer();
-        if (activePlayer === undefined) {
+    React.useEffect(() => {
+        if (!worker) {
             return;
         }
-        const gameState = this.state.gameState;
+        worker.onmessage = (event: MessageEvent) => {
+            const response = event.data as WorkerResponse;
+            console.log(`Received message from WebWorker: ${response.type}`);
+            switch (response.type) {
+                case "initialized":
+                    console.log("Webworker finished initialization");
+                    setGameState(response.gameState);
+                    setPossibleMoves(response.possibleMoves);
+                    break;
+                case "possibleMoves":
+                    setPossibleMoves(response.possibleMoves);
+                    break;
+                case "state":
+                    setGameState(response.gameState);
+                    setThinkingProgress(undefined);
+                    setChosenCell(undefined);
+                    postMessage({ type: "possibleMoves" });
+                    if (response.gameState.activePlayer === BOT_PLAYER) {
+                        postMessage({ type: "takeAction" });
+                    }
+                    break;
+                case "illegalMove":
+                case "illegalPlacement":
+                    setLastMoveInvalid(true);
+                    break;
+                case "moveScores":
+                    setMoveScores({
+                        player: response.activePlayer,
+                        tally: response.moveScores
+                    });
+                    break;
+                case "placeScores":
+                    setMoveScores({
+                        player: response.activePlayer,
+                        tally: response.placeScores
+                    });
+                    break;
+                case "thinkingProgress":
+                    setThinkingProgress({
+                        completed: response.completed,
+                        required: response.required,
+                    });
+                    break;
+            }
+        };
+    }, [worker]);
+
+    const handleCellClick = React.useCallback((key: number) => {
         if (gameState === undefined) {
             return;
         }
-        if (gameState.modeType === "drafting") {
-            if (this.state.possibleMoves?.includes(key)) {
-                this._placePenguin(key);
-            }
-        } else {
-            if (this.state.chosenCell !== undefined && this.state.possibleMoves?.includes(key)) {
-                this._movePenguinToCell(key);
-            } else if (gameState.board.penguins[activePlayer]?.includes(key)) {
-                this._toggleCellHighlight(key);
-            }
-        }
-    }
-
-    postMessage(request: WorkerRequest) {
-        console.log(`sent request ${request.type}`);
-        this.worker.postMessage(request);
-    }
-
-    onMessage(event: MessageEvent) {
-        const response = event.data as WorkerResponse;
-        switch (response.type) {
-            case "possibleMoves":
-                this.setState({ possibleMoves: response.possibleMoves });
-                break;
-            case "state":
-                this.setState({
-                    gameState: response.gameState,
-                    thinkingProgress: undefined,
-                    chosenCell: undefined,
-                });
-                this.postMessage({ type: "possibleMoves" });
-                if (response.gameState.activePlayer === BOT_PLAYER) {
-                    this.postMessage({ type: "takeAction" });
-                }
-                break;
-            case "illegalMove":
-            case "illegalPlacement":
-                this.setState({ lastMoveInvalid: true });
-                break;
-            case "moveScores":
-                this.setState({
-                    moveScores: {
-                        player: response.activePlayer,
-                        tally: response.moveScores
-                    }
-                });
-                break;
-            case "placeScores":
-                this.setState({
-                    moveScores: {
-                        player: response.activePlayer,
-                        tally: response.placeScores
-                    }
-                });
-                break;
-            case "thinkingProgress":
-                this.setState({
-                    thinkingProgress: {
-                        completed: response.completed,
-                        required: response.required,
-                    },
-                });
-                break;
-        }
-    }
-
-    _placePenguin(key: number) {
-        this.postMessage({
-            type: "place",
-            dst: key,
-        });
-    }
-
-    _movePenguinToCell(key: number) {
-        if (this.state.chosenCell !== undefined) {
-            this.postMessage({
-                type: "move",
-                src: this.state.chosenCell,
-                dst: key,
-            });
-        }
-    }
-
-    _toggleCellHighlight(key: number) {
-        if (this.state.chosenCell === key) {
-            this.setState({
-                chosenCell: undefined,
-            });
-            this.postMessage({ type: "possibleMoves" });
+        if (gameState.activePlayer === undefined) {
             return;
         }
+        if (gameState.modeType === "drafting") {
+            if (possibleMoves?.includes(key)) {
+                postMessage({
+                    type: "place",
+                    dst: key,
+                });
+            }
+        } else {
+            if (chosenCell !== undefined && possibleMoves?.includes(key)) {
+                if (chosenCell !== undefined) {
+                    postMessage({
+                        type: "move",
+                        src: chosenCell,
+                        dst: key,
+                    });
+                };
+            } else if (gameState.board.penguins[gameState.activePlayer]?.includes(key)) {
+                if (chosenCell === key) {
+                    setChosenCell(undefined);
+                    postMessage({ type: "possibleMoves" });
+                    return;
+                }
 
-        this.postMessage({ type: "possibleMoves", src: key });
-        this.setState({
-            chosenCell: key,
-        });
+                setChosenCell(key);
+                postMessage({ type: "possibleMoves", src: key });
+            }
+        }
+    }, [gameState, possibleMoves, chosenCell]);
+
+    const invalidMoveBlock = lastMoveInvalid
+        ? "Invalid move!"
+        : undefined;
+
+    const scoresBlock = [];
+    for (let p = 0; p < NPLAYERS; ++p) {
+        let playerClass = p === HUMAN_PLAYER ? "human" : "bot";
+        let active = gameState?.activePlayer === p ? '(Active Player)' : undefined;
+        scoresBlock.push(
+            <p key={"score_" + p}><span className={playerClass}>
+                Score: {gameState?.scores[p]} {active}
+            </span></p>
+        );
     }
-}
+
+    let board = undefined;
+    if (gameState) {
+        board = <Board
+            gameState={gameState}
+            possibleMoves={possibleMoves || []}
+            chosenCell={chosenCell}
+            handleCellClick={handleCellClick}
+        />;
+    }
+
+    let winChanceMeter = undefined;
+    if (moveScores !== undefined) {
+        let totalVisits = 0;
+        let totalRewards = 0;
+        for (let mov of moveScores.tally) {
+            totalVisits += mov.visits;
+            totalRewards += mov.rewards;
+        }
+
+        let chance = totalRewards / totalVisits;
+        if (moveScores.player !== HUMAN_PLAYER) {
+            chance = 1 - chance;
+        }
+
+        winChanceMeter = <meter min={0} max={1} low={0.49} high={0.5} optimum={1} value={chance} />;
+    }
+
+    let thinkingProgressBar = undefined;
+    if (thinkingProgress !== undefined) {
+        thinkingProgressBar = <progress value={thinkingProgress.completed} max={thinkingProgress.required} />;
+    }
+
+    return (
+        <div className="app">
+            {board}
+            <div className="info-col">
+                <p>{gameState?.modeType}</p>
+                <p>{invalidMoveBlock}</p>
+                <div>{scoresBlock}</div>
+                {winChanceMeter}
+                {thinkingProgressBar}
+            </div>
+        </div>
+    );
+});
 
 const container = document.getElementById('root');
 if (container) {

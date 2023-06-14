@@ -21,6 +21,10 @@ type WorkerRequest = {
 };
 
 type WorkerResponse = {
+    type: "initialized",
+    gameState: GameState,
+    possibleMoves: number[],
+} | {
     type: "state",
     gameState: GameState,
 } | {
