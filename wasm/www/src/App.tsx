@@ -44,7 +44,7 @@ function useWorker(): [Worker | undefined, (r: WorkerRequest) => void] {
     return [worker, postMessage];
 }
 
-const App = React.memo(function ({ }) {
+const App = function ({ }) {
 
     const [gameState, setGameState] = React.useState<GameState | undefined>(undefined);
     const [possibleMoves, setPossibleMoves] = React.useState<number[] | undefined>(undefined);
@@ -201,7 +201,7 @@ const App = React.memo(function ({ }) {
             </div>
         </div>
     );
-});
+};
 
 const container = document.getElementById('root');
 if (container) {
