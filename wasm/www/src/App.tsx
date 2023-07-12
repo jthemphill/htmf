@@ -16,14 +16,7 @@ type ThinkingProgress = {
     required: number,
 };
 
-const App = React.memo(function ({ }) {
-
-    const [gameState, setGameState] = React.useState<GameState | undefined>(undefined);
-    const [possibleMoves, setPossibleMoves] = React.useState<number[] | undefined>(undefined);
-    const [chosenCell, setChosenCell] = React.useState<number | undefined>(undefined);
-    const [lastMoveInvalid, setLastMoveInvalid] = React.useState<boolean | undefined>(undefined);
-    const [moveScores, setMoveScores] = React.useState<MoveScores | undefined>(undefined);
-    const [thinkingProgress, setThinkingProgress] = React.useState<ThinkingProgress | undefined>(undefined);
+function useWorker(): [Worker | undefined, (r: WorkerRequest) => void] {
     const [worker, setWorker] = React.useState<Worker | undefined>(undefined);
 
     React.useEffect(() => {
@@ -47,6 +40,20 @@ const App = React.memo(function ({ }) {
             console.log("Not sending message: ", request);
         }
     }, [worker]);
+
+    return [worker, postMessage];
+}
+
+const App = React.memo(function ({ }) {
+
+    const [gameState, setGameState] = React.useState<GameState | undefined>(undefined);
+    const [possibleMoves, setPossibleMoves] = React.useState<number[] | undefined>(undefined);
+    const [chosenCell, setChosenCell] = React.useState<number | undefined>(undefined);
+    const [lastMoveInvalid, setLastMoveInvalid] = React.useState<boolean | undefined>(undefined);
+    const [moveScores, setMoveScores] = React.useState<MoveScores | undefined>(undefined);
+    const [thinkingProgress, setThinkingProgress] = React.useState<ThinkingProgress | undefined>(undefined);
+
+    const [worker, postMessage] = useWorker();
 
     React.useEffect(() => {
         if (!worker) {
