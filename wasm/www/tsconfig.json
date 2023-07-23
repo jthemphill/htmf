@@ -16,8 +16,8 @@
             "ES2020"
         ],
         "types": [
-            "react/next",
-            "react-dom/next"
+            "react",
+            "react-dom"
         ],
         "module": "ESNext",
         "moduleResolution": "node",
