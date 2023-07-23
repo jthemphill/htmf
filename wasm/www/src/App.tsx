@@ -143,7 +143,7 @@ const App = function () {
     }, [postMessage, gameState, possibleMoves, chosenCell]);
 
     const invalidMoveBlock = lastMoveInvalid
-        ? "Invalid move!"
+        ? <p>"Invalid move!"</p>
         : undefined;
 
     const scoresBlock = [];
@@ -194,7 +194,7 @@ const App = function () {
             {board}
             <div className="info-col">
                 <p>{gameState?.modeType}</p>
-                <p>{invalidMoveBlock}</p>
+                {invalidMoveBlock}
                 <div>{scoresBlock}</div>
                 {winChanceMeter}
                 {thinkingProgressBar}
