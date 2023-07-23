@@ -44,7 +44,7 @@ function useWorker(): [Worker | undefined, (r: WorkerRequest) => void] {
     return [worker, postMessage];
 }
 
-const App = function ({ }) {
+const App = function () {
 
     const [gameState, setGameState] = React.useState<GameState | undefined>(undefined);
     const [possibleMoves, setPossibleMoves] = React.useState<number[] | undefined>(undefined);
@@ -104,7 +104,7 @@ const App = function ({ }) {
                     break;
             }
         };
-    }, [worker]);
+    }, [worker, postMessage]);
 
     const handleCellClick = React.useCallback((key: number) => {
         if (gameState === undefined) {
@@ -140,7 +140,7 @@ const App = function ({ }) {
                 postMessage({ type: "possibleMoves", src: key });
             }
         }
-    }, [gameState, possibleMoves, chosenCell]);
+    }, [postMessage, gameState, possibleMoves, chosenCell]);
 
     const invalidMoveBlock = lastMoveInvalid
         ? "Invalid move!"

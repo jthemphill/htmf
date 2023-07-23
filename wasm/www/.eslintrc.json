@@ -1,0 +1,6 @@
+{
+    "ignorePatterns": [
+        "dist/**"
+    ],
+    "extends": "react-app"
+}

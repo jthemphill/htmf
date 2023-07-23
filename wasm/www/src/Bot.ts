@@ -31,7 +31,7 @@ function getGameState(game: wasm.Game): GameState {
 }
 
 function getPossibleMoves(game: wasm.Game, src?: number): number[] {
-    if (game.active_player() != HUMAN_PLAYER) {
+    if (game.active_player() !== HUMAN_PLAYER) {
         return [];
     }
     if (game.finished_drafting()) {
@@ -77,7 +77,7 @@ class Bot {
         if (this.ponderer !== undefined) {
             return;
         }
-        this.ponderer = self.setInterval(
+        this.ponderer = setInterval(
             () => {
                 if (this.nplayouts >= MAX_PLAYOUTS) {
                     this.stopPondering();
@@ -103,7 +103,7 @@ class Bot {
 
     stopPondering() {
         if (this.ponderer !== undefined) {
-            self.clearInterval(this.ponderer);
+            clearInterval(this.ponderer);
             this.ponderer = undefined;
         }
     }
