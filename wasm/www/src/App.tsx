@@ -21,7 +21,7 @@ function useWorker(): [Worker | undefined, (r: WorkerRequest) => void] {
 
     React.useEffect(() => {
         const initializingWorker = new Worker(
-            new URL("./bot.worker.ts", import.meta.url),
+            new URL("./bot.worker.js", import.meta.url),
             { name: "Rules engine and AI" },
         );
         setWorker(initializingWorker);
