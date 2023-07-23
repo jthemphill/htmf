@@ -7,17 +7,17 @@ type Props = {
    player: number,
 };
 
-export default React.memo(function Penguin(props: Props) {
+export default React.memo(function Penguin({ size, player }: Props) {
    let playerClass = undefined;
-   if (props.player == HUMAN_PLAYER) {
+   if (player === HUMAN_PLAYER) {
       playerClass = "human";
-   } else if (props.player == BOT_PLAYER) {
+   } else if (player === BOT_PLAYER) {
       playerClass = "bot";
    }
 
    const solidPartClass = `penguin ${playerClass}`;
 
-   const scale = props.size / 500;
+   const scale = size / 500;
    const translateX = -307.62496;
    const translateY = -350;
 
