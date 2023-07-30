@@ -1,6 +1,6 @@
 import GameState from "./GameState";
 
-type WorkerRequest = {
+export type WorkerRequest = {
     type: "get",
 } | {
     type: "place",
@@ -20,7 +20,7 @@ type WorkerRequest = {
     type: "takeAction",
 };
 
-type WorkerResponse = {
+export type WorkerResponse = {
     type: "initialized",
     gameState: GameState,
     possibleMoves: number[],
@@ -59,5 +59,3 @@ type WorkerResponse = {
     completed: number,
     required: number,
 };
-
-export { WorkerRequest, WorkerResponse };

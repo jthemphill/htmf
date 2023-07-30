@@ -48,7 +48,7 @@ function getPossibleMoves(game: wasm.Game, src?: number): number[] {
 class Bot {
     game: wasm.Game;
     postMessage: (msg: WorkerResponse) => void
-    ponderer?: number | NodeJS.Timer;
+    ponderer?: number;
     nplayouts = 0;
 
     constructor(postMessage: (msg: WorkerResponse) => void) {
