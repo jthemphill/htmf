@@ -7,7 +7,7 @@ type Props = {
    player: number,
 };
 
-export default React.memo(function Penguin({ size, player }: Props) {
+const Penguin = React.memo(function Penguin({ size, player }: Props) {
    let playerClass = undefined;
    if (player === HUMAN_PLAYER) {
       playerClass = "human";
@@ -82,3 +82,5 @@ export default React.memo(function Penguin({ size, player }: Props) {
       </g>
    );
 });
+
+export default Penguin;

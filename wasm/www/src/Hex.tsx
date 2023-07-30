@@ -88,7 +88,7 @@ function draw_circles(props: Props) {
     }
 }
 
-export default React.memo(function (props: Props) {
+const Hex = React.memo(function (props: Props) {
     const transform = `translate(${props.cx},${props.cy})`;
 
     const player = props.player;
@@ -127,3 +127,5 @@ export default React.memo(function (props: Props) {
         </g>
     );
 });
+
+export default Hex;

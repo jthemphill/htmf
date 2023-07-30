@@ -88,7 +88,7 @@ class Bot {
                     this.playout();
                 }
 
-                let activePlayer = this.game.active_player();
+                const activePlayer = this.game.active_player();
                 if (activePlayer !== undefined) {
                     if (this.game.is_drafting()) {
                         this.postPlaceScores(activePlayer);
@@ -216,7 +216,7 @@ class Bot {
 
     postPlaceScores(activePlayer: number) {
         const placeScores = [];
-        for (let dst of this.game.draftable_cells()) {
+        for (const dst of this.game.draftable_cells()) {
             const info = this.game.place_info(dst);
             placeScores.push({
                 dst,
@@ -234,8 +234,8 @@ class Bot {
 
     postMoveScores(activePlayer: number) {
         const moveScores = [];
-        for (let src of this.game.penguins(activePlayer)) {
-            for (let dst of this.game.possible_moves(src)) {
+        for (const src of this.game.penguins(activePlayer)) {
+            for (const dst of this.game.possible_moves(src)) {
                 const info = this.game.move_info(src, dst);
                 moveScores.push({
                     src,

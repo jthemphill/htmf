@@ -127,7 +127,7 @@ export default function App() {
                         src: chosenCell,
                         dst: key,
                     });
-                };
+                }
             } else if (gameState.board.penguins[gameState.activePlayer]?.includes(key)) {
                 if (chosenCell === key) {
                     setChosenCell(undefined);
@@ -147,8 +147,8 @@ export default function App() {
 
     const scoresBlock = [];
     for (let p = 0; p < NPLAYERS; ++p) {
-        let playerClass = p === HUMAN_PLAYER ? "human" : "bot";
-        let active = gameState?.activePlayer === p ? '(Active Player)' : undefined;
+        const playerClass = p === HUMAN_PLAYER ? "human" : "bot";
+        const active = gameState?.activePlayer === p ? '(Active Player)' : undefined;
         scoresBlock.push(
             <p key={"score_" + p}><span className={playerClass}>
                 Score: {gameState?.scores[p]} {active}
@@ -170,7 +170,7 @@ export default function App() {
     if (moveScores !== undefined) {
         let totalVisits = 0;
         let totalRewards = 0;
-        for (let mov of moveScores.tally) {
+        for (const mov of moveScores.tally) {
             totalVisits += mov.visits;
             totalRewards += mov.rewards;
         }
@@ -200,4 +200,4 @@ export default function App() {
             </div>
         </div>
     );
-};
+}

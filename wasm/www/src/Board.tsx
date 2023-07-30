@@ -13,7 +13,7 @@ type Props = {
     handleCellClick: ((idx: number) => void),
 };
 
-export default React.memo(function (props: Props) {
+const Board = React.memo(function (props: Props) {
     const size = 1000;
     const side_length = size / 16;
 
@@ -21,8 +21,8 @@ export default React.memo(function (props: Props) {
     const start_y = 2 * side_length;
 
     const players: Map<number, number> = new Map();
-    for (let p of [HUMAN_PLAYER, BOT_PLAYER]) {
-        for (let c of props.gameState.board.penguins[p] || []) {
+    for (const p of [HUMAN_PLAYER, BOT_PLAYER]) {
+        for (const c of props.gameState.board.penguins[p] || []) {
             players.set(c, p);
         }
     }
@@ -30,8 +30,8 @@ export default React.memo(function (props: Props) {
     const any_possible_moves = props.possibleMoves.length > 0;
 
     const claimed: Set<number> = new Set([]);
-    for (let player_claimed of props.gameState.board.claimed) {
-        for (let cell of player_claimed) {
+    for (const player_claimed of props.gameState.board.claimed) {
+        for (const cell of player_claimed) {
             claimed.add(cell);
         }
     }
@@ -82,3 +82,5 @@ export default React.memo(function (props: Props) {
         </svg>
     );
 });
+
+export default Board;
