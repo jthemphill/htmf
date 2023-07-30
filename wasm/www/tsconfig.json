@@ -19,7 +19,6 @@
         "noEmit": true,
         "esModuleInterop": true,
         "jsx": "react",
-        "sourceMap": true,
         /* Linting */
         "strict": true,
         "forceConsistentCasingInFileNames": true,
@@ -32,5 +31,10 @@
     },
     "include": [
         "src"
+    ],
+    "references": [
+        {
+            "path": "./tsconfig.node.json"
+        }
     ]
 }
