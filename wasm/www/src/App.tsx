@@ -1,5 +1,4 @@
 import React from "react";
-import { createRoot } from "react-dom/client";
 import { WorkerRequest, WorkerResponse } from "./WorkerProtocol";
 
 import Board from "./Board";
@@ -22,7 +21,7 @@ function useWorker(): [Worker | undefined, (r: WorkerRequest) => void] {
     React.useEffect(() => {
         const initializingWorker = new Worker(
             new URL("./bot.worker.js", import.meta.url),
-            { name: "Rules engine and AI" },
+            { name: "Rules engine and AI", type: "module" },
         );
         setWorker(initializingWorker);
         return () => {
@@ -44,7 +43,7 @@ function useWorker(): [Worker | undefined, (r: WorkerRequest) => void] {
     return [worker, postMessage];
 }
 
-const App = function () {
+export default function App() {
 
     const [gameState, setGameState] = React.useState<GameState | undefined>(undefined);
     const [possibleMoves, setPossibleMoves] = React.useState<number[] | undefined>(undefined);
@@ -202,13 +201,3 @@ const App = function () {
         </div>
     );
 };
-
-const container = document.getElementById('root');
-if (container) {
-    const root = createRoot(container);
-    root.render(
-        <React.StrictMode>
-            <App />
-        </React.StrictMode>
-    );
-}

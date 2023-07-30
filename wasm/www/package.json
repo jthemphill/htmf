@@ -3,9 +3,13 @@
   "version": "0.1.0",
   "description": "MCTS implementation of a neat game",
   "main": "src/App.tsx",
+  "type": "module",
   "scripts": {
-    "build": "wasm-pack build --profiling && webpack --config webpack.config.js",
-    "start": "npm run build && npx http-server ./dist",
+    "wasm-build": "wasm-pack build --target web --profiling",
+    "dev": "npm run wasm-build && vite",
+    "build": "npm run wasm-build & tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "npm run build && vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d ./dist"
   },
@@ -32,14 +36,18 @@
   "devDependencies": {
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@vitejs/plugin-react-swc": "^3",
     "copy-webpack-plugin": "^11",
     "eslint": "^8",
     "eslint-config-react-app": "^7",
+    "eslint-plugin-react-hooks": "^4",
+    "eslint-plugin-react-refresh": "^0",
     "gh-pages": "^5",
     "source-map-loader": "^4",
     "ts-loader": "^9",
     "typescript": "^5",
     "webpack": "^5",
-    "webpack-cli": "^5"
+    "webpack-cli": "^5",
+    "vite": "^4"
   }
 }

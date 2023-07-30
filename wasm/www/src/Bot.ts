@@ -48,8 +48,8 @@ function getPossibleMoves(game: wasm.Game, src?: number): number[] {
 class Bot {
     game: wasm.Game;
     postMessage: (msg: WorkerResponse) => void
-    ponderer?: number;
-    nplayouts: number = 0;
+    ponderer?: number | NodeJS.Timer;
+    nplayouts = 0;
 
     constructor(postMessage: (msg: WorkerResponse) => void) {
         this.game = wasm.Game.new();
