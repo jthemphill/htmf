@@ -7,7 +7,7 @@
   "scripts": {
     "wasm-build": "wasm-pack build --target web --profiling",
     "dev": "vite",
-    "build": "npm run wasm-build & tsc && vite build",
+    "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "npm run build && vite preview",
     "predeploy": "npm run build",
