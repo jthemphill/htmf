@@ -3,6 +3,7 @@ import * as React from 'react'
 import Hex from './Hex'
 
 import type GameState from './GameState'
+import type { MoveScore } from './MoveScores'
 
 import { NUM_ROWS, EVEN_ROW_LEN, ODD_ROW_LEN, HUMAN_PLAYER, BOT_PLAYER } from './constants'
 
@@ -11,6 +12,7 @@ interface Props {
   possibleMoves: number[]
   chosenCell?: number
   handleCellClick: (idx: number) => void
+  topMove?: MoveScore
 }
 
 export default function Board (props: Props): React.JSX.Element {
@@ -67,6 +69,7 @@ export default function Board (props: Props): React.JSX.Element {
           possible={possible}
           player={players.get(key)}
           claimed={claimed.has(key)}
+          topMove={props.topMove}
         />
       )
     }

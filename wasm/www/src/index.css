@@ -31,6 +31,14 @@
     fill: #555555;
 }
 
+.board .cell.top-move-src {
+    fill: #7fec6e;
+}
+
+.board .cell.top-move-dst {
+    fill: #7ed370;
+}
+
 .board .fish {
     fill: #888888;
 }

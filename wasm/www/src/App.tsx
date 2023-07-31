@@ -3,12 +3,8 @@ import { type WorkerRequest, type WorkerResponse } from './WorkerProtocol'
 
 import Board from './Board'
 import type GameState from './GameState'
+import type { MoveScores } from './MoveScores'
 import { BOT_PLAYER, HUMAN_PLAYER, NPLAYERS } from './constants'
-
-interface MoveScores {
-  player: number
-  tally: Array<{ src?: number, dst: number, visits: number, rewards: number }>
-}
 
 interface ThinkingProgress {
   completed: number
@@ -155,6 +151,15 @@ export default function App (): React.JSX.Element {
     )
   }
 
+  let topMove
+  if (moveScores?.player === BOT_PLAYER && moveScores !== undefined) {
+    for (const score of moveScores.tally) {
+      if (topMove === undefined || score.rewards > topMove.rewards) {
+        topMove = score
+      }
+    }
+  }
+
   let board
   if (gameState != null) {
     board = <Board
@@ -162,6 +167,7 @@ export default function App (): React.JSX.Element {
       possibleMoves={possibleMoves ?? []}
       chosenCell={chosenCell}
       handleCellClick={handleCellClick}
+      topMove={topMove}
     />
   }
 

@@ -1,6 +1,7 @@
 import * as React from 'react'
 
 import Penguin from './Penguin'
+import type { MoveScore } from './MoveScores'
 
 interface Props {
   _key: number
@@ -14,6 +15,7 @@ interface Props {
   highlighted: boolean
   possible: boolean
   player?: number
+  topMove?: MoveScore
 }
 
 function points (props: Props): number[][] {
@@ -115,6 +117,11 @@ export default function Hex (props: Props): React.JSX.Element {
     cellClasses.push('highlighted')
   } else if (props.possible) {
     cellClasses.push('possible')
+  }
+  if (props.topMove?.src === props._key) {
+    cellClasses.push('top-move-src')
+  } else if (props.topMove?.dst === props._key) {
+    cellClasses.push('top-move-dst')
   }
   return (
     <g transform={transform} onClick={() => { props.onClick(props._key) }}>

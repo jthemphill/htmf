@@ -1,6 +1,6 @@
 import * as wasm from 'htmf-wasm'
 
-import { NPLAYERS, NUM_CELLS, PLAYOUT_MS, PONDER_INTERVAL_MS, MIN_PLAYOUTS, MAX_PLAYOUTS, HUMAN_PLAYER } from './constants'
+import { NPLAYERS, NUM_CELLS, PLAYOUT_MS, PONDER_INTERVAL_MS, MIN_PLAYOUTS, MAX_PLAYOUTS, HUMAN_PLAYER, BOT_PLAYER } from './constants'
 import type GameState from './GameState'
 import { type WorkerRequest, type WorkerResponse } from './WorkerProtocol'
 
@@ -135,6 +135,11 @@ class Bot {
           completed: this.nplayouts,
           required: minPlayouts
         })
+        if (this.game.is_drafting()) {
+          this.postPlaceScores(BOT_PLAYER)
+        } else {
+          this.postMoveScores(BOT_PLAYER)
+        }
       }
     }
     this.game.take_action()
