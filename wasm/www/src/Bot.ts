@@ -127,13 +127,15 @@ class Bot {
     this.stopPondering()
     const postMessage = this.postMessage
     const minPlayouts = this.game.turn() < 2 ? 2 * MIN_PLAYOUTS : MIN_PLAYOUTS
+    const startTime = performance.now()
     while (this.nplayouts < minPlayouts) {
       this.playout()
       if (this.nplayouts % 100 === 0) {
         postMessage({
           type: 'thinkingProgress',
           completed: this.nplayouts,
-          required: minPlayouts
+          required: minPlayouts,
+          totalTime: performance.now() - startTime
         })
         if (this.game.is_drafting()) {
           this.postPlaceScores(BOT_PLAYER)

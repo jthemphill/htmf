@@ -58,4 +58,5 @@ export type WorkerResponse = {
   type: 'thinkingProgress'
   completed: number
   required: number
+  totalTime: number
 }
