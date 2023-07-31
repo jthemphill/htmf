@@ -8,7 +8,7 @@ export default defineConfig({
   },
   plugins: [react()],
   server: {
-    fs: { allow: [searchForWorkspaceRoot(process.cwd()), "../pkg"], }
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), '../pkg'] }
   },
   worker: {
     format: 'es'
