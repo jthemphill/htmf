@@ -135,7 +135,7 @@ class Bot {
           type: 'thinkingProgress',
           completed: this.nplayouts,
           required: minPlayouts,
-          totalTime: performance.now() - startTime
+          totalTimeMs: performance.now() - startTime
         })
         if (this.game.is_drafting()) {
           this.postPlaceScores(BOT_PLAYER)

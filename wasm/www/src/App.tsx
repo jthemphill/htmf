@@ -9,7 +9,7 @@ import { BOT_PLAYER, HUMAN_PLAYER, NPLAYERS } from './constants'
 interface ThinkingProgress {
   completed: number
   required: number
-  totalTime: number
+  totalTimeMs: number
 }
 
 function useWorker (): [Worker | undefined, (r: WorkerRequest) => void] {
@@ -95,7 +95,7 @@ export default function App (): React.JSX.Element {
           setThinkingProgress({
             completed: response.completed,
             required: response.required,
-            totalTime: response.totalTime
+            totalTimeMs: response.totalTimeMs
           })
           break
       }
@@ -192,10 +192,11 @@ export default function App (): React.JSX.Element {
 
   let thinkingProgressBar
   if (thinkingProgress !== undefined) {
+    const playoutsPerSec = thinkingProgress.completed * 1000 / thinkingProgress.totalTimeMs
     thinkingProgressBar = (
       <div>
         <progress value={thinkingProgress.completed} max={thinkingProgress.required} />
-        <p className="playout-counter">{`${thinkingProgress.completed / thinkingProgress.totalTime} playouts/sec`}</p>
+        <p className="playout-counter">{`${playoutsPerSec.toFixed(0)} playouts/sec`}</p>
       </div>
     )
   }
