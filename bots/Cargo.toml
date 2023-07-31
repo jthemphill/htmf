@@ -5,15 +5,15 @@ authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-arrayvec = "0.7"
-getrandom = "0.2"
-rand = "0.8"
-rayon = "1.5"
+arrayvec = "0"
+getrandom = "0"
+rand = "0"
+rayon = "1"
 
 htmf = { path = "../engine" }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0"
 
 [features]
 wasm = [
