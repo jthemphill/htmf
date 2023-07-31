@@ -88,7 +88,7 @@ function drawCircles (props: Props): React.JSX.Element[] {
   }
 }
 
-const Hex = React.memo(function (props: Props) {
+export default function Hex (props: Props): React.JSX.Element {
   const transform = `translate(${props.cx},${props.cy})`
 
   const player = props.player
@@ -126,6 +126,4 @@ const Hex = React.memo(function (props: Props) {
       {penguin}
     </g>
   )
-})
-
-export default Hex
+}

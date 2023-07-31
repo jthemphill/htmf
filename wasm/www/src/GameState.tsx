@@ -1,4 +1,4 @@
-interface GameState {
+export default interface GameState {
   activePlayer?: number
   modeType: 'drafting' | 'playing'
   scores: number[]
@@ -9,5 +9,3 @@ interface GameState {
     claimed: number[][]
   }
 }
-
-export default GameState

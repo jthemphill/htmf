@@ -7,7 +7,7 @@ interface Props {
   player: number
 }
 
-const Penguin = React.memo(function Penguin ({ size, player }: Props) {
+export default function Penguin ({ size, player }: Props): React.JSX.Element {
   let playerClass = ''
   if (player === HUMAN_PLAYER) {
     playerClass = 'human'
@@ -81,6 +81,4 @@ const Penguin = React.memo(function Penguin ({ size, player }: Props) {
       </g>
     </g>
   )
-})
-
-export default Penguin
+}

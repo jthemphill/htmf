@@ -13,7 +13,7 @@ interface Props {
   handleCellClick: (idx: number) => void
 }
 
-const Board = React.memo(function (props: Props) {
+export default function Board (props: Props): React.JSX.Element {
   const size = 1000
   const sideLength = size / 16
 
@@ -81,6 +81,4 @@ const Board = React.memo(function (props: Props) {
       {hexes}
     </svg>
   )
-})
-
-export default Board
+}

@@ -1,8 +1,8 @@
 import Bot from './Bot'
-import __wbg_init from 'htmf-wasm'
+import htmfWasmInit from 'htmf-wasm'
 
 // Run WebAssembly.instantiateStreaming() to load and initialize the WebAssembly module
-await __wbg_init()
+await htmfWasmInit()
 
 const bot = new Bot(postMessage)
 onmessage = (event) => {
