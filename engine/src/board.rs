@@ -195,14 +195,21 @@ impl Board {
             return CellSet::new();
         }
 
-        line(src, dst)
-            .skip(1)
-            .take_while(|hex| {
-                let in_bounds = Board::in_bounds(hex);
-                in_bounds && !self.is_claimed(Board::evenr_to_index(hex))
-            })
-            .map(|cell| Board::evenr_to_index(&cell))
-            .collect()
+        let mut ret = CellSet::new();
+        for hex in line(src, dst) {
+            if &hex == src {
+                continue;
+            }
+            if !Board::in_bounds(&hex) {
+                break;
+            }
+            let idx = Board::evenr_to_index(&hex);
+            if self.is_claimed(idx) {
+                break;
+            }
+            ret = ret.insert(idx);
+        }
+        ret
     }
 
     fn is_clear_path(&self, src: &EvenR, dst: &EvenR) -> bool {
