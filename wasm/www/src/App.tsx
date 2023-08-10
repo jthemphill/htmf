@@ -56,7 +56,6 @@ export default function App (): React.JSX.Element {
     }
     worker.onmessage = (event: MessageEvent) => {
       const response = event.data as WorkerResponse
-      console.log(`Received message from WebWorker: ${response.type}`)
       switch (response.type) {
         case 'initialized':
           console.log('Webworker finished initialization')

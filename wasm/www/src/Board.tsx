@@ -15,7 +15,7 @@ interface Props {
   topMove?: MoveScore
 }
 
-export default function Board (props: Props): React.JSX.Element {
+const Board = React.memo(function Board (props: Props): React.JSX.Element {
   const size = 1000
   const sideLength = size / 16
 
@@ -69,7 +69,8 @@ export default function Board (props: Props): React.JSX.Element {
           possible={possible}
           player={players.get(key)}
           claimed={claimed.has(key)}
-          topMove={props.topMove}
+          isTopMoveSrc={props.topMove?.src === key}
+          isTopMoveDst={props.topMove?.dst === key}
         />
       )
     }
@@ -84,4 +85,5 @@ export default function Board (props: Props): React.JSX.Element {
       {hexes}
     </svg>
   )
-}
+})
+export default Board

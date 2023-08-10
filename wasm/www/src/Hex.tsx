@@ -1,7 +1,6 @@
 import * as React from 'react'
 
 import Penguin from './Penguin'
-import type { MoveScore } from './MoveScores'
 
 interface Props {
   _key: number
@@ -15,29 +14,25 @@ interface Props {
   highlighted: boolean
   possible: boolean
   player?: number
-  topMove?: MoveScore
+  isTopMoveSrc: boolean
+  isTopMoveDst: boolean
 }
 
-function points (props: Props): number[][] {
+function points (sideLength: number): number[][] {
   const points = []
   for (let i = 0; i < 6; ++i) {
-    points.push(corner(props, i))
+    const angleRadians = i * Math.PI / 3
+    points.push([
+      sideLength * Math.sin(angleRadians),
+      sideLength * Math.cos(angleRadians)
+    ])
   }
   return points
 }
 
-function corner (props: Props, i: number): number[] {
-  const sideLength = props.sideLength
-  const angleRadians = i * Math.PI / 3
-  return [
-    sideLength * Math.sin(angleRadians),
-    sideLength * Math.cos(angleRadians)
-  ]
-}
-
-function drawCircles (props: Props): React.JSX.Element[] {
-  const r = props.sideLength / 10
-  if (props.fish === 1) {
+const Circles = React.memo(function Circles ({ sideLength, fish }: { sideLength: number, fish: number }): React.JSX.Element[] {
+  const r = sideLength / 10
+  if (fish === 1) {
     return [
       <circle
         key={0}
@@ -45,7 +40,7 @@ function drawCircles (props: Props): React.JSX.Element[] {
         r={r}
       />
     ]
-  } else if (props.fish === 2) {
+  } else if (fish === 2) {
     return [
       <circle
         key={0}
@@ -60,7 +55,7 @@ function drawCircles (props: Props): React.JSX.Element[] {
         r={r}
       />
     ]
-  } else if (props.fish === 3) {
+  } else if (fish === 3) {
     const yOffset = r * 2 * Math.sin(Math.PI / 3)
     return [
       <circle
@@ -86,19 +81,34 @@ function drawCircles (props: Props): React.JSX.Element[] {
       />
     ]
   } else {
-    throw new Error(`${props.fish} is not a valid fish amount`)
+    throw new Error(`${fish} is not a valid fish amount`)
   }
-}
+})
 
-export default function Hex (props: Props): React.JSX.Element {
-  const transform = `translate(${props.cx},${props.cy})`
+const Hex = React.memo(function Hex (
+  {
+    _key,
+    sideLength,
+    highlighted,
+    possible,
+    player,
+    fish,
+    claimed,
+    cx,
+    cy,
+    onClick,
+    isTopMoveSrc,
+    isTopMoveDst
+  }: Props): React.JSX.Element {
+  const handleClick = React.useCallback(() => { onClick(_key) }, [onClick, _key])
 
-  const player = props.player
-  if (player === undefined && props.claimed) {
+  const transform = `translate(${cx},${cy})`
+
+  if (player === undefined && claimed) {
     return (
       <g transform={transform}>
         <polygon
-          points={points(props).join(' ')}
+          points={points(sideLength).join(' ')}
           className="cell claimed"
         />
       </g>
@@ -108,29 +118,30 @@ export default function Hex (props: Props): React.JSX.Element {
   let penguin
   let circles
   if (player !== undefined) {
-    penguin = (<Penguin player={player} size={props.sideLength} />)
+    penguin = (<Penguin player={player} size={sideLength} />)
   } else {
-    circles = drawCircles(props)
+    circles = <Circles sideLength={sideLength} fish={fish} />
   }
   const cellClasses = ['cell']
-  if (props.highlighted) {
+  if (highlighted) {
     cellClasses.push('highlighted')
-  } else if (props.possible) {
+  } else if (possible) {
     cellClasses.push('possible')
   }
-  if (props.topMove?.src === props._key) {
+  if (isTopMoveSrc) {
     cellClasses.push('top-move-src')
-  } else if (props.topMove?.dst === props._key) {
+  } else if (isTopMoveDst) {
     cellClasses.push('top-move-dst')
   }
   return (
-    <g transform={transform} onClick={() => { props.onClick(props._key) }}>
+    <g transform={transform} onClick={handleClick}>
       <polygon
         className={cellClasses.join(' ')}
-        points={points(props).join(' ')}
+        points={points(sideLength).join(' ')}
       />
       {circles}
       {penguin}
     </g>
   )
-}
+})
+export default Hex
