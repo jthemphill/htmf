@@ -40,6 +40,13 @@ function useWorker (): [Worker | undefined, (r: WorkerRequest) => void] {
   return [worker, postMessage]
 }
 
+function getMemoryUsageFormatter (): Intl.NumberFormat {
+  return new Intl.NumberFormat(
+    navigator.language,
+    { notation: 'compact', style: 'unit', unit: 'byte', unitDisplay: 'narrow' }
+  )
+}
+
 export default function App (): React.JSX.Element {
   const [gameState, setGameState] = React.useState<GameState | undefined>(undefined)
   const [possibleMoves, setPossibleMoves] = React.useState<number[] | undefined>(undefined)
@@ -47,6 +54,8 @@ export default function App (): React.JSX.Element {
   const [lastMoveInvalid, setLastMoveInvalid] = React.useState<boolean | undefined>(undefined)
   const [moveScores, setMoveScores] = React.useState<MoveScores | undefined>(undefined)
   const [thinkingProgress, setThinkingProgress] = React.useState<ThinkingProgress | undefined>(undefined)
+  const [treeSize, setTreeSize] = React.useState<number>(0)
+  const [memoryUsage, setMemoryUsage] = React.useState<number>(0)
 
   const [worker, postMessage] = useWorker()
 
@@ -83,12 +92,16 @@ export default function App (): React.JSX.Element {
             player: response.activePlayer,
             tally: response.moveScores
           })
+          setTreeSize(response.treeSize)
+          setMemoryUsage(response.memoryUsage)
           break
         case 'placeScores':
           setMoveScores({
             player: response.activePlayer,
             tally: response.placeScores
           })
+          setTreeSize(response.treeSize)
+          setMemoryUsage(response.memoryUsage)
           break
         case 'thinkingProgress':
           setThinkingProgress({
@@ -186,7 +199,12 @@ export default function App (): React.JSX.Element {
       chance = 1 - chance
     }
 
-    winChanceMeter = <meter min={0} max={1} low={0.49} high={0.5} optimum={1} value={chance} />
+    winChanceMeter = (
+      <div className="win-chance">
+        <meter id="win-chance-bar" min={0} max={1} low={0.49} high={0.5} optimum={1} value={chance} />
+        <label htmlFor="win-chance-bar">Who's winning? (higher is better for you)</label>
+      </div>
+    )
   }
 
   let thinkingProgressBar
@@ -200,6 +218,11 @@ export default function App (): React.JSX.Element {
     )
   }
 
+  const memoryUsageFormatter = React.useMemo(
+    getMemoryUsageFormatter,
+    [navigator.language]
+  )
+
   return (
     <div className="app">
       {board}
@@ -208,6 +231,8 @@ export default function App (): React.JSX.Element {
         {invalidMoveBlock}
         <div>{scoresBlock}</div>
         {winChanceMeter}
+        <p className="tree-size">Stored {treeSize.toLocaleString()} game states in memory</p>
+        <p className="memory-usage">Using {memoryUsageFormatter.format(memoryUsage)}</p>
         {thinkingProgressBar}
       </div>
     </div>

@@ -168,6 +168,10 @@ impl Game {
         }
         Ok(())
     }
+
+    pub fn tree_size(&self) -> usize {
+        self.bot.tree_size()
+    }
 }
 
 impl Default for Game {

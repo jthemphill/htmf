@@ -46,12 +46,14 @@ function getPossibleMoves (game: wasm.Game, src?: number): number[] {
 }
 
 class Bot {
+  wasmInternals: wasm.InitOutput
   game: wasm.Game
   postMessage: (msg: WorkerResponse) => void
   ponderer?: number
   nplayouts = 0
 
-  constructor (postMessage: (msg: WorkerResponse) => void) {
+  constructor (wasmInternals: wasm.InitOutput, postMessage: (msg: WorkerResponse) => void) {
+    this.wasmInternals = wasmInternals
     this.game = wasm.Game.new()
     this.postMessage = postMessage
     this.ponder()
@@ -235,7 +237,9 @@ class Bot {
     postMessage({
       type: 'placeScores',
       activePlayer,
-      placeScores
+      placeScores,
+      memoryUsage: this.wasmInternals.memory.buffer.byteLength,
+      treeSize: this.game.tree_size()
     })
   }
 
@@ -256,7 +260,9 @@ class Bot {
     postMessage({
       type: 'moveScores',
       activePlayer,
-      moveScores
+      moveScores,
+      memoryUsage: this.wasmInternals.memory.buffer.byteLength,
+      treeSize: this.game.tree_size()
     })
   }
 }

@@ -2,9 +2,9 @@ import Bot from './Bot'
 import htmfWasmInit from 'htmf-wasm'
 
 // Run WebAssembly.instantiateStreaming() to load and initialize the WebAssembly module
-await htmfWasmInit()
+const wasmInternals = await htmfWasmInit()
 
-const bot = new Bot(postMessage)
+const bot = new Bot(wasmInternals, postMessage)
 onmessage = (event) => {
   bot.onMessage(event.data)
 }

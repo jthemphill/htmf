@@ -236,4 +236,8 @@ impl MCTSBot {
             Move::Place(dst) => htmf::game::Action::Place(dst),
         }
     }
+
+    pub fn tree_size(&self) -> usize {
+        self.tree.len()
+    }
 }

@@ -45,6 +45,8 @@ export type WorkerResponse = {
     visits: number
     rewards: number
   }>
+  memoryUsage: number
+  treeSize: number
 } | {
   type: 'moveScores'
   activePlayer: number
@@ -54,9 +56,14 @@ export type WorkerResponse = {
     visits: number
     rewards: number
   }>
+  memoryUsage: number
+  treeSize: number
 } | {
   type: 'thinkingProgress'
   completed: number
   required: number
   totalTimeMs: number
+} | {
+  type: 'treeSize'
+  treeSize: number
 }
