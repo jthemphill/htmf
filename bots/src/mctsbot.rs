@@ -19,7 +19,7 @@ pub enum Move {
  */
 #[derive(Clone)]
 pub struct Tally {
-    pub visits: HashMap<Move, (u64, f64)>,
+    pub visits: Vec<(Move, (u64, f64))>,
 }
 
 impl Tally {
@@ -30,17 +30,22 @@ impl Tally {
     }
 
     pub fn mark_visit(&mut self, edge: Move, reward: f64) {
-        let (ref mut visits, ref mut rewards) = self.visits.entry(edge).or_insert((0, 0.0));
-        *visits += 1;
-        *rewards += reward;
+        for (mov, (visits, rewards)) in &mut self.visits {
+            if *mov == edge {
+                *visits += 1;
+                *rewards += reward;
+                break;
+            }
+        }
     }
 
     pub fn get_visit(&self, edge: Move) -> (u64, f64) {
-        if let Some(&ans) = self.visits.get(&edge) {
-            ans
-        } else {
-            (0, 0.0)
+        for (mov, (visits, rewards)) in &self.visits {
+            if *mov == edge {
+                return (*visits, *rewards);
+            }
         }
+        (0, 0.0)
     }
 }
 
@@ -108,7 +113,7 @@ fn choose_child(tally: &Tally, rng: &mut impl rand::Rng) -> Move {
     let mut choice = None;
     let mut num_optimal: u32 = 0;
     let mut best_so_far: f64 = std::f64::NEG_INFINITY;
-    for (&mov, &(child_visits, sum_rewards)) in tally.visits.iter() {
+    for &(mov, (child_visits, sum_rewards)) in tally.visits.iter() {
         let score = {
             // https://www.researchgate.net/publication/235985858_A_Survey_of_Monte_Carlo_Tree_Search_Methods
             if child_visits == 0 {
@@ -221,10 +226,10 @@ impl MCTSBot {
         }
         playout(&self.root, &mut self.tree, &mut self.rng);
         let tally = self.tree.get(&self.root).unwrap();
-        let best_move = *tally
+        let best_move = tally
             .visits
             .iter()
-            .max_by(|(_, &(visits1, score1)), (_, &(visits2, score2))| {
+            .max_by(|&&(_, (visits1, score1)), &&(_, (visits2, score2))| {
                 (score1 / visits1 as f64)
                     .partial_cmp(&(score2 / visits2 as f64))
                     .unwrap()

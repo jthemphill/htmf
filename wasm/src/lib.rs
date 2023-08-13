@@ -114,7 +114,7 @@ impl Game {
             .tree
             .get(&self.bot.root)
             .iter()
-            .map(|tally| tally.visits.values().map(|(v, _)| v).sum::<u64>())
+            .map(|tally| tally.visits.iter().map(|(_, (v, _))| v).sum::<u64>())
             .sum::<u64>() as f64
     }
 
@@ -122,17 +122,12 @@ impl Game {
      * Number of times we've tried and won by placing a penguin at `dst` on the current board
      */
     pub fn place_info(&self, dst: u8) -> MoveInfo {
-        let &(visits, rewards) = self
+        let (visits, rewards) = self
             .bot
             .tree
             .get(&self.bot.root)
-            .map(|tally| {
-                tally
-                    .visits
-                    .get(&htmf_bots::mctsbot::Move::Place(dst))
-                    .unwrap_or(&(0, 0.0))
-            })
-            .unwrap_or(&(0, 0.0));
+            .map(|tally| tally.get_visit(htmf_bots::mctsbot::Move::Place(dst)))
+            .unwrap_or((0, 0.0));
         MoveInfo { visits, rewards }
     }
 
@@ -141,17 +136,12 @@ impl Game {
      * board
      */
     pub fn move_info(&self, src: u8, dst: u8) -> MoveInfo {
-        let &(visits, rewards) = self
+        let (visits, rewards) = self
             .bot
             .tree
             .get(&self.bot.root)
-            .map(|tally| {
-                tally
-                    .visits
-                    .get(&htmf_bots::mctsbot::Move::Move((src, dst)))
-                    .unwrap_or(&(0, 0.0))
-            })
-            .unwrap_or(&(0, 0.0));
+            .map(|tally| tally.get_visit(htmf_bots::mctsbot::Move::Move((src, dst))))
+            .unwrap_or((0, 0.0));
         MoveInfo { visits, rewards }
     }
 
