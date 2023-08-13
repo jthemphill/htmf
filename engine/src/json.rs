@@ -121,7 +121,7 @@ impl<'a> From<&'a BoardJSON> for Board {
                     .collect()
             })
             .collect();
-        let penguins = (0..=4)
+        let penguins = (0..4)
             .map(|player| {
                 let mut penguin_set = CellSet::new();
                 if let Some(player_penguins) = b.penguins.get(player) {
