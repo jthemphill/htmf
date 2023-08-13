@@ -161,8 +161,12 @@ impl Game {
         }
         while self.bot.root.state.active_player() == Some(self.bot.me) {
             let action = self.bot.take_action();
-            match self.bot.root.state.apply_action(&action) {
-                Ok(()) => Ok(()),
+            let mut new_game = self.bot.root.state.clone();
+            match new_game.apply_action(&action) {
+                Ok(()) => {
+                    self.bot.update(new_game);
+                    Ok(())
+                }
                 Err(err) => Err(JsValue::from(err.message)),
             }?;
         }
