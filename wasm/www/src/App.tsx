@@ -233,6 +233,7 @@ export default function App (): React.JSX.Element {
         {winChanceMeter}
         <p className="tree-size">Stored {treeSize.toLocaleString()} game states in memory</p>
         <p className="memory-usage">Using {memoryUsageFormatter.format(memoryUsage)}</p>
+        <p className="memory-ratio">Ratio is {memoryUsageFormatter.format(memoryUsage / treeSize)} per state</p>
         {thinkingProgressBar}
       </div>
     </div>
