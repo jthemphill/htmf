@@ -17,7 +17,7 @@ pub enum Move {
  * We keep one Tally per Game node, counting how many times we've tried a
  * given Move and how well that's worked out for us.
  */
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Tally {
     pub visits: Vec<(Move, (u64, f64))>,
 }
@@ -192,6 +192,27 @@ fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut ThreadRng
     assert!(tree.get(root).is_some())
 }
 
+/// Move nodes from `old_tree` to `new_tree` if they're reachable from `game`
+fn move_reachable_nodes(
+    new_tree: &mut HashMap<Game, Tally>,
+    old_tree: &mut HashMap<Game, Tally>,
+    game: Game,
+) {
+    let mut tally_to_add = Tally::default();
+    if let Some(tally) = old_tree.get_mut(&game) {
+        std::mem::swap(tally, &mut tally_to_add);
+    } else {
+        return;
+    }
+
+    for (mov, _) in tally_to_add.visits.iter() {
+        let mut new_game = game.clone();
+        new_game.make_move(*mov);
+        move_reachable_nodes(new_tree, old_tree, new_game);
+    }
+    new_tree.insert(game, tally_to_add);
+}
+
 #[derive(Clone)]
 pub struct MCTSBot {
     pub root: Game,
@@ -212,8 +233,15 @@ impl MCTSBot {
 
     /// Tell the bot about the new game state
     pub fn update(&mut self, game: htmf::game::GameState) {
-        self.tree.retain(|g, _| g.state.turn >= game.turn);
         self.root = Game { state: game };
+        self.prune();
+    }
+
+    /// Keep only entries in self.tree that are reachable from self.root
+    fn prune(&mut self) {
+        let mut new_tree = HashMap::new();
+        move_reachable_nodes(&mut new_tree, &mut self.tree, self.root.clone());
+        self.tree = new_tree;
     }
 
     pub fn playout(&mut self) {
@@ -232,7 +260,7 @@ impl MCTSBot {
             .max_by(|&&(_, (visits1, score1)), &&(_, (visits2, score2))| {
                 (score1 / visits1 as f64)
                     .partial_cmp(&(score2 / visits2 as f64))
-                    .unwrap()
+                    .unwrap_or(visits1.cmp(&visits2))
             })
             .unwrap()
             .0;
