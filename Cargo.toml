@@ -6,3 +6,5 @@ members = [
   "selfplay",
   "wasm",
 ]
+
+resolver = "2"
