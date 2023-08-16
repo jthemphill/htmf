@@ -89,15 +89,23 @@ impl Game {
     }
 
     pub fn place_penguin(&mut self, dst: u8) -> Result<(), JsValue> {
-        match self.bot.root.state.place_penguin(dst) {
-            Ok(()) => Ok(()),
+        let mut new_game = self.bot.root.state.clone();
+        match new_game.place_penguin(dst) {
+            Ok(()) => {
+                self.bot.update(new_game);
+                Ok(())
+            }
             Err(err) => Err(JsValue::from(err.message)),
         }
     }
 
     pub fn move_penguin(&mut self, src: u8, dst: u8) -> Result<(), JsValue> {
-        match self.bot.root.state.move_penguin(src, dst) {
-            Ok(()) => Ok(()),
+        let mut new_game = self.bot.root.state.clone();
+        match new_game.move_penguin(src, dst) {
+            Ok(()) => {
+                self.bot.update(new_game);
+                Ok(())
+            }
             Err(err) => Err(JsValue::from(err.message)),
         }
     }
