@@ -114,41 +114,31 @@ export default function App (): React.JSX.Element {
     }
   }, [worker, postMessage])
 
+  const modeType = gameState?.modeType
   const handleCellClick = React.useCallback((key: number) => {
-    if (gameState === undefined) {
-      return
-    }
-    if (gameState.activePlayer === undefined) {
-      return
-    }
-    if (gameState.modeType === 'drafting') {
-      if (possibleMoves?.includes(key) === true) {
+    if (chosenCell === key) {
+      setChosenCell(undefined)
+      postMessage({ type: 'possibleMoves' })
+    } else if (possibleMoves?.includes(key) === true) {
+      if (modeType === 'drafting') {
         postMessage({
           type: 'place',
           dst: key
         })
-      }
-    } else {
-      if (chosenCell !== undefined && possibleMoves?.includes(key) === true) {
-        if (chosenCell !== undefined) {
+      } else if (modeType === 'playing') {
+        if (chosenCell === undefined) {
+          setChosenCell(key)
+          postMessage({ type: 'possibleMoves', src: key })
+        } else {
           postMessage({
             type: 'move',
             src: chosenCell,
             dst: key
           })
         }
-      } else if (gameState.board.penguins[gameState.activePlayer]?.includes(key) === true) {
-        if (chosenCell === key) {
-          setChosenCell(undefined)
-          postMessage({ type: 'possibleMoves' })
-          return
-        }
-
-        setChosenCell(key)
-        postMessage({ type: 'possibleMoves', src: key })
       }
     }
-  }, [postMessage, gameState, possibleMoves, chosenCell])
+  }, [postMessage, modeType, possibleMoves, chosenCell])
 
   const invalidMoveBlock = lastMoveInvalid === true
     ? <p>"Invalid move!"</p>
