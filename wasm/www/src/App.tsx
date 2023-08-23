@@ -12,34 +12,6 @@ interface ThinkingProgress {
   totalTimeMs: number
 }
 
-function useWorker (): [Worker | undefined, (r: WorkerRequest) => void] {
-  const [worker, setWorker] = React.useState<Worker | undefined>(undefined)
-
-  React.useEffect(() => {
-    const initializingWorker = new Worker(
-      new URL('./bot.worker.ts', import.meta.url),
-      { name: 'Rules engine and AI', type: 'module' }
-    )
-    setWorker(initializingWorker)
-    return () => {
-      console.log('terminating the worker')
-      initializingWorker.terminate()
-      setWorker(undefined)
-    }
-  }, [])
-
-  const postMessage = React.useCallback((request: WorkerRequest) => {
-    if (worker != null) {
-      console.log('Actually sending message: ', request)
-      worker.postMessage(request)
-    } else {
-      console.log('Not sending message: ', request)
-    }
-  }, [worker])
-
-  return [worker, postMessage]
-}
-
 function getMemoryUsageFormatter (): Intl.NumberFormat {
   return new Intl.NumberFormat(
     navigator.language,
@@ -47,7 +19,16 @@ function getMemoryUsageFormatter (): Intl.NumberFormat {
   )
 }
 
-export default function App (): React.JSX.Element {
+export interface AppWorker extends Worker {
+  onmessage: (event: MessageEvent<WorkerResponse>) => void
+  postMessage: (request: WorkerRequest) => void
+}
+
+interface Props {
+  worker: AppWorker
+}
+
+export default function App ({ worker }: Props): React.JSX.Element {
   const [gameState, setGameState] = React.useState<GameState | undefined>(undefined)
   const [possibleMoves, setPossibleMoves] = React.useState<number[] | undefined>(undefined)
   const [chosenCell, setChosenCell] = React.useState<number | undefined>(undefined)
@@ -57,14 +38,9 @@ export default function App (): React.JSX.Element {
   const [treeSize, setTreeSize] = React.useState<number>(0)
   const [memoryUsage, setMemoryUsage] = React.useState<number>(0)
 
-  const [worker, postMessage] = useWorker()
-
   React.useEffect(() => {
-    if (worker == null) {
-      return
-    }
-    worker.onmessage = (event: MessageEvent) => {
-      const response = event.data as WorkerResponse
+    console.log('setting the onmessage')
+    worker.onmessage = ({ data: response }: MessageEvent<WorkerResponse>) => {
       switch (response.type) {
         case 'initialized':
           console.log('Webworker finished initialization')
@@ -78,9 +54,9 @@ export default function App (): React.JSX.Element {
           setGameState(response.gameState)
           setThinkingProgress(undefined)
           setChosenCell(undefined)
-          postMessage({ type: 'possibleMoves' })
+          worker.postMessage({ type: 'possibleMoves' })
           if (response.gameState.activePlayer === BOT_PLAYER) {
-            postMessage({ type: 'takeAction' })
+            worker.postMessage({ type: 'takeAction' })
           }
           break
         case 'illegalMove':
@@ -112,25 +88,35 @@ export default function App (): React.JSX.Element {
           break
       }
     }
-  }, [worker, postMessage])
+  }, [
+    worker,
+    setGameState,
+    setPossibleMoves,
+    setChosenCell,
+    setLastMoveInvalid,
+    setMoveScores,
+    setThinkingProgress,
+    setTreeSize,
+    setMemoryUsage
+  ])
 
   const modeType = gameState?.modeType
   const handleCellClick = React.useCallback((key: number) => {
     if (chosenCell === key) {
       setChosenCell(undefined)
-      postMessage({ type: 'possibleMoves' })
+      worker.postMessage({ type: 'possibleMoves' })
     } else if (possibleMoves?.includes(key) === true) {
       if (modeType === 'drafting') {
-        postMessage({
+        worker.postMessage({
           type: 'place',
           dst: key
         })
       } else if (modeType === 'playing') {
         if (chosenCell === undefined) {
           setChosenCell(key)
-          postMessage({ type: 'possibleMoves', src: key })
+          worker.postMessage({ type: 'possibleMoves', src: key })
         } else {
-          postMessage({
+          worker.postMessage({
             type: 'move',
             src: chosenCell,
             dst: key
@@ -138,7 +124,7 @@ export default function App (): React.JSX.Element {
         }
       }
     }
-  }, [postMessage, modeType, possibleMoves, chosenCell])
+  }, [worker, modeType, possibleMoves, chosenCell])
 
   const invalidMoveBlock = lastMoveInvalid === true
     ? <p>"Invalid move!"</p>
@@ -184,7 +170,7 @@ export default function App (): React.JSX.Element {
       totalRewards += mov.rewards
     }
 
-    let chance = totalRewards / totalVisits
+    let chance = totalVisits > 0 ? totalRewards / totalVisits : 0.5
     if (moveScores.player !== HUMAN_PLAYER) {
       chance = 1 - chance
     }

@@ -1,4 +1,4 @@
-import * as wasm from 'htmf-wasm'
+import * as wasm from '../../pkg/htmf_wasm'
 
 import { NPLAYERS, NUM_CELLS, PLAYOUT_MS, PONDER_INTERVAL_MS, MIN_PLAYOUTS, MAX_PLAYOUTS, HUMAN_PLAYER, BOT_PLAYER } from './constants'
 import type GameState from './GameState'
@@ -54,14 +54,21 @@ class Bot {
 
   constructor (wasmInternals: wasm.InitOutput, postMessage: (msg: WorkerResponse) => void) {
     this.wasmInternals = wasmInternals
-    this.game = wasm.Game.new()
     this.postMessage = postMessage
+    this.game = wasm.Game.new()
     this.ponder()
   }
 
   free (): void {
     this.stopPondering()
     this.game.free()
+  }
+
+  reset (): void {
+    this.free()
+    this.game = wasm.Game.new()
+    this.ponder()
+    this.init()
   }
 
   init (): void {
@@ -79,7 +86,7 @@ class Bot {
     if (this.ponderer !== undefined) {
       return
     }
-    this.ponderer = setInterval(
+    this.ponderer = self.setInterval(
       () => {
         if (this.nplayouts >= MAX_PLAYOUTS) {
           this.stopPondering()

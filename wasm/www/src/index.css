@@ -15,6 +15,9 @@
 
 .board .cell {
     fill: #eeeeee;
+}
+
+.board .cell polygon {
     stroke: #7c37dc;
 }
 

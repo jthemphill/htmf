@@ -2,12 +2,15 @@
   "compilerOptions": {
     "composite": true,
     "skipLibCheck": true,
+    "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "strict": true
   },
   "include": [
-    "vite.config.ts"
+    "vite.config.ts",
+    "setup-vitest.ts",
+    "**/__tests__"
   ]
 }

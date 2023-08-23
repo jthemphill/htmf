@@ -1,3 +1,5 @@
+/// <reference types="vitest" />
+
 import { defineConfig, searchForWorkspaceRoot } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 
@@ -9,8 +11,13 @@ export default defineConfig({
     sourcemap: true
   },
   plugins: [react()],
+  resolve: { dedupe: ["react", "react-dom"] },
   server: {
     fs: { allow: [searchForWorkspaceRoot(process.cwd()), '../pkg'] }
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: 'setup-vitest.ts',
   },
   worker: {
     format: 'es'

@@ -134,11 +134,13 @@ const Hex = React.memo(function Hex (
     cellClasses.push('top-move-dst')
   }
   return (
-    <g transform={transform} onClick={handleClick}>
-      <polygon
-        className={cellClasses.join(' ')}
-        points={points(sideLength).join(' ')}
-      />
+    <g
+      className={cellClasses.join(' ')}
+      role="button"
+      transform={transform}
+      onClick={handleClick}
+    >
+      <polygon points={points(sideLength).join(' ')} />
       {circles}
       {penguin}
     </g>
