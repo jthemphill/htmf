@@ -1,5 +1,7 @@
+import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, test, expect, beforeEach } from 'vitest'
 
 import { NUM_CELLS } from '../constants'
 import App from '../App'
@@ -35,26 +37,36 @@ class MockWorker implements AppWorker {
 }
 
 describe('App', async () => {
-  const wasmInternals = await htmfWasmInit(loadHtmfWasm())
+  beforeEach(async () => {
+    const wasmInternals = await htmfWasmInit(loadHtmfWasm())
 
-  const mockWorker = new MockWorker()
-  const bot = new Bot(wasmInternals, (response: WorkerResponse) => {
-    if (mockWorker.onmessage !== null) {
-      mockWorker.onmessage(new MessageEvent<WorkerResponse>('message', { data: response }))
-    } else {
-      console.error("Mock WebWorker's onmessage property hasn't been initialized yet.")
+    const mockWorker = new MockWorker()
+    const bot = new Bot(wasmInternals, (response: WorkerResponse) => {
+      if (mockWorker.onmessage !== null) {
+        mockWorker.onmessage(new MessageEvent<WorkerResponse>('message', { data: response }))
+      } else {
+        console.error("Mock WebWorker's onmessage property hasn't been initialized yet.")
+      }
+    })
+    mockWorker.postMessage = (request: WorkerRequest) => {
+      bot.onMessage(request)
     }
-  })
-  mockWorker.postMessage = (request: WorkerRequest) => {
-    bot.onMessage(request)
-  }
-
-  it('renders a game board', async () => {
     render(<App worker={mockWorker} />)
     bot.init()
+  })
+
+  test.concurrent('renders a game board', async () => {
+    const buttons = (await screen.findAllByRole('button'))
+    expect(buttons.filter(btn => btn.classList.contains('cell')).length).toEqual(NUM_CELLS)
+  })
+
+  test.concurrent('has clickable buttons', async () => {
+    const user = userEvent.setup()
 
     const buttons = (await screen.findAllByRole('button'))
-
-    expect(buttons.filter(btn => btn.classList.contains('cell')).length).toEqual(NUM_CELLS)
+    const clickableButtons = buttons.filter(btn => btn.classList.contains('possible'))
+    await user.click(
+      clickableButtons[Math.floor(Math.random() * clickableButtons.length)]
+    )
   })
 })
