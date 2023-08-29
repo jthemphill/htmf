@@ -6,6 +6,7 @@ extern crate htmf_bots;
 
 use std::sync::mpsc;
 
+use rand::prelude::*;
 use rayon::prelude::*;
 
 use htmf::board::*;
@@ -57,10 +58,10 @@ fn main() {
 }
 
 fn play_game(verbose: bool) -> (i32, Vec<GameState>) {
-    let seed = rand::random();
-    let mut game = GameState::new_two_player(seed);
+    let mut game = GameState::new_two_player::<StdRng>(&mut SeedableRng::from_entropy());
     let mut random = RandomBot::new(game.clone(), Player { id: 0 });
-    let mut mcts = MCTSBot::new(game.clone(), Player { id: 1 });
+    let mut mcts =
+        MCTSBot::<StdRng>::new(game.clone(), Player { id: 1 }, SeedableRng::from_entropy());
 
     let mut logged_states = vec![];
 

@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn two_players_no_illegal_moves() {
-        let mut game = GameState::new_two_player([0; 32]);
+        let mut game = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(0));
         let mut bots = vec![
             RandomBot::new(game.clone(), Player { id: 0 }),
             RandomBot::new(game.clone(), Player { id: 1 }),

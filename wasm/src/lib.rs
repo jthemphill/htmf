@@ -1,3 +1,4 @@
+use rand::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use htmf::board::Player;
@@ -25,7 +26,7 @@ impl MoveInfo {
 
 #[wasm_bindgen]
 pub struct Game {
-    bot: MCTSBot,
+    bot: MCTSBot<StdRng>,
 }
 
 #[wasm_bindgen]
@@ -33,7 +34,11 @@ impl Game {
     pub fn new() -> Self {
         utils::set_panic_hook();
         Self {
-            bot: MCTSBot::new(GameState::new_two_player(rand::random()), Player { id: 1 }),
+            bot: MCTSBot::<StdRng>::new(
+                GameState::new_two_player::<StdRng>(&mut SeedableRng::from_entropy()),
+                Player { id: 1 },
+                SeedableRng::from_entropy(),
+            ),
         }
     }
 

@@ -112,7 +112,7 @@ mod tests {
 
     #[test]
     fn two_players_no_illegal_moves() {
-        let mut game = GameState::new_two_player([0; 32]);
+        let mut game = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(0));
         let mut bots = vec![
             MinimaxBot::new_with_ply(game.clone(), Player { id: 0 }, 0),
             MinimaxBot::new_with_ply(game.clone(), Player { id: 1 }, 0),

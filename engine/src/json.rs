@@ -148,10 +148,11 @@ impl<'a> From<&'a BoardJSON> for Board {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::prelude::*;
 
     #[test]
     fn initial_state() {
-        let game = GameState::new_two_player([0; 32]);
+        let game = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(0));
         let game_json = GameStateJSON::from(&game);
         let game_again = GameState::from(&game_json);
         assert_eq!(game, game_again);
@@ -159,7 +160,7 @@ mod tests {
 
     #[test]
     fn after_claiming() {
-        let mut game = GameState::new_two_player([0; 32]);
+        let mut game = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(0));
         let eligible_place = (0..NUM_CELLS as u8)
             .find(|&cell| game.board.num_fish(cell) == 1)
             .unwrap();

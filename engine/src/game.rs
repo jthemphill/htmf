@@ -1,3 +1,4 @@
+use rand::prelude::*;
 use std::fmt;
 
 use arrayvec::ArrayVec;
@@ -86,12 +87,12 @@ impl GameState {
         }
     }
 
-    pub fn new_two_player(seed: [u8; 32]) -> GameState {
+    pub fn new_two_player<R: Rng + ?Sized>(rng: &mut R) -> GameState {
         let nplayers = 2;
         GameState {
             nplayers,
             turn: 0,
-            board: Board::new(seed),
+            board: Board::new(rng),
         }
     }
 
@@ -147,7 +148,7 @@ mod tests {
 
     #[test]
     fn draft_turn_sequence_is_good() {
-        let g = GameState::new_two_player([0; 32]);
+        let g = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(0));
 
         let actives: Vec<usize> = (0..8)
             .scan(g, |g, _| {
@@ -162,7 +163,7 @@ mod tests {
 
     #[test]
     fn game_not_over_after_draft_is_over() {
-        let mut g = GameState::new_two_player([0; 32]);
+        let mut g = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(0));
 
         for _ in 0..8 {
             assert!(!g.finished_drafting());

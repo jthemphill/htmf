@@ -150,7 +150,7 @@ fn get_reward(game: &htmf::game::GameState, p: usize) -> f64 {
     }
 }
 
-fn playout(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut ThreadRng) {
+fn playout<R: Rng + ?Sized>(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut R) {
     let mut path = vec![];
     let mut node = root.clone();
     while let Some(tally) = tree.get(&node) {
@@ -214,20 +214,20 @@ fn move_reachable_nodes(
 }
 
 #[derive(Clone)]
-pub struct MCTSBot {
+pub struct MCTSBot<R: Rng> {
     pub root: Game,
     pub me: htmf::board::Player,
     pub tree: HashMap<Game, Tally>,
-    rng: ThreadRng,
+    rng: R,
 }
 
-impl MCTSBot {
-    pub fn new(game: htmf::game::GameState, me: htmf::board::Player) -> Self {
+impl<R: Rng> MCTSBot<R> {
+    pub fn new(game: htmf::game::GameState, me: htmf::board::Player, rng: R) -> Self {
         MCTSBot {
             root: Game { state: game },
             me,
             tree: HashMap::new(),
-            rng: thread_rng(),
+            rng,
         }
     }
 
@@ -273,4 +273,29 @@ impl MCTSBot {
     pub fn tree_size(&self) -> usize {
         self.tree.len()
     }
+}
+
+#[test]
+fn test_run_full_game() {
+    use htmf::board::Player;
+    use htmf::game::GameState;
+
+    let mut game = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(0));
+    let mut bots = (0..=1)
+        .map(|i| {
+            MCTSBot::new(
+                game.clone(),
+                Player { id: i },
+                SeedableRng::seed_from_u64(i as u64),
+            )
+        })
+        .collect::<Vec<MCTSBot<StdRng>>>();
+
+    while let Some(p) = game.active_player() {
+        game.apply_action(&bots[p.id].take_action()).unwrap();
+        for bot in &mut bots {
+            bot.update(game.clone());
+        }
+    }
+    println!("Scores: {}/{}", game.get_scores()[0], game.get_scores()[1]);
 }
