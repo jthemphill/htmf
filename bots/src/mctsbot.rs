@@ -18,12 +18,14 @@ pub enum Move {
 #[derive(Clone, Default)]
 pub struct Tally {
     pub visits: Vec<(Move, (u64, f64))>,
+    reachable: bool,
 }
 
 impl Tally {
     pub fn new(game: &Game) -> Self {
         Self {
             visits: game.available_moves().map(|mov| (mov, (0, 0.0))).collect(),
+            reachable: false,
         }
     }
 
@@ -182,29 +184,6 @@ fn playout<R: Rng + ?Sized>(root: &Game, tree: &mut HashMap<Game, Tally>, mut rn
     assert!(tree.get(root).is_some())
 }
 
-/// Move nodes from `old_tree` to `new_tree` if they're reachable from `root`
-fn move_reachable_nodes(
-    new_tree: &mut HashMap<Game, Tally>,
-    old_tree: &HashMap<Game, Tally>,
-    root: Game,
-) {
-    let mut stack = vec![root];
-    while let Some(node) = stack.pop() {
-        let tally_to_add = if let Some(tally) = old_tree.get(&node) {
-            assert_eq!(node.available_moves().count(), tally.visits.len());
-            tally.clone()
-        } else {
-            continue;
-        };
-        for (mov, _) in tally_to_add.visits.iter() {
-            let mut new_node = node.clone();
-            new_node.make_move(*mov);
-            stack.push(new_node);
-        }
-        new_tree.insert(node, tally_to_add);
-    }
-}
-
 #[derive(Clone)]
 pub struct MCTSBot<R: Rng> {
     pub root: Game,
@@ -224,16 +203,34 @@ impl<R: Rng> MCTSBot<R> {
     }
 
     /// Tell the bot about the new game state
-    pub fn update(&mut self, game: htmf::game::GameState) {
+    pub fn update(&mut self, game: htmf::game::GameState) -> (usize, usize, usize, usize) {
         self.root = Game { state: game };
-        self.prune();
+        // self.tree = HashMap::new();
+        self.prune()
     }
 
     /// Keep only entries in self.tree that are reachable from self.root
-    fn prune(&mut self) {
-        let mut new_tree = HashMap::new();
-        move_reachable_nodes(&mut new_tree, &mut self.tree, self.root.clone());
-        self.tree = new_tree;
+    fn prune(&mut self) -> (usize, usize, usize, usize) {
+        let old_size = self.tree.len();
+        let old_capacity = self.tree.capacity();
+        for (_, tally) in self.tree.iter_mut() {
+            tally.reachable = false;
+        }
+        let mut stack = vec![self.root.clone()];
+        while let Some(node) = stack.pop() {
+            if let Some(tally) = self.tree.get_mut(&node) {
+                tally.reachable = true;
+                for (mov, _) in tally.visits.iter() {
+                    let mut new_node = node.clone();
+                    new_node.make_move(*mov);
+                    stack.push(new_node);
+                }
+            }
+        }
+        self.tree.retain(|_, tally| tally.reachable);
+        let new_size = self.tree.len();
+        let new_capacity = self.tree.capacity();
+        (old_size, old_capacity, new_size, new_capacity)
     }
 
     pub fn playout(&mut self) {

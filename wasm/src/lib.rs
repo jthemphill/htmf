@@ -93,23 +93,29 @@ impl Game {
         self.bot.root.state.board.moves(src).into_iter().collect()
     }
 
-    pub fn place_penguin(&mut self, dst: u8) -> Result<(), JsValue> {
+    pub fn place_penguin(&mut self, dst: u8) -> Result<JsValue, JsValue> {
         let mut new_game = self.bot.root.state.clone();
         match new_game.place_penguin(dst) {
             Ok(()) => {
-                self.bot.update(new_game);
-                Ok(())
+                let (old_size, old_cap, new_size, new_cap) = self.bot.update(new_game);
+                Ok(JsValue::from(format!(
+                    "Old size: {}. New size: {}. Old capacity: {}. New capacity: {}",
+                    old_size, new_size, old_cap, new_cap
+                )))
             }
             Err(err) => Err(JsValue::from(err.message)),
         }
     }
 
-    pub fn move_penguin(&mut self, src: u8, dst: u8) -> Result<(), JsValue> {
+    pub fn move_penguin(&mut self, src: u8, dst: u8) -> Result<JsValue, JsValue> {
         let mut new_game = self.bot.root.state.clone();
         match new_game.move_penguin(src, dst) {
             Ok(()) => {
-                self.bot.update(new_game);
-                Ok(())
+                let (old_size, old_cap, new_size, new_cap) = self.bot.update(new_game);
+                Ok(JsValue::from(format!(
+                    "Old size: {}. New size: {}. Old capacity: {}. New capacity: {}",
+                    old_size, new_size, old_cap, new_cap
+                )))
             }
             Err(err) => Err(JsValue::from(err.message)),
         }
