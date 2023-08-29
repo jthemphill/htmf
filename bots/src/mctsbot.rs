@@ -2,8 +2,6 @@ use arrayvec::ArrayVec;
 use rand::prelude::*;
 use std::collections::HashMap;
 
-use htmf::{NUM_ONE_FISH, NUM_THREE_FISH, NUM_TWO_FISH};
-
 /**
  * Games are connected to each other via Moves.
  */
@@ -59,11 +57,6 @@ impl Game {
         self.state.active_player().unwrap()
     }
 
-    fn is_won(&self) -> bool {
-        let total_fish = NUM_ONE_FISH + 2 * NUM_TWO_FISH + 3 * NUM_THREE_FISH;
-        self.state.get_scores().into_iter().max().unwrap() > total_fish / self.state.nplayers
-    }
-
     fn available_moves<'a>(&'a self) -> Box<dyn Iterator<Item = Move> + 'a> {
         if self.state.game_over() {
             Box::new(std::iter::empty())
@@ -96,7 +89,7 @@ impl Game {
                 self.state.board.claimed[p.id] = self.state.board.claimed[p.id].insert(dst);
                 self.state.board.penguins[p.id] = self.state.board.penguins[p.id].remove(src);
                 self.state.board.penguins[p.id] = self.state.board.penguins[p.id].insert(dst);
-                self.state.board.reap();
+                // self.state.board.reap();
                 self.state.turn += 1;
             }
         }
@@ -166,9 +159,6 @@ fn playout<R: Rng + ?Sized>(root: &Game, tree: &mut HashMap<Game, Tally>, mut rn
         .or_insert_with(|| Tally::new(&node));
 
     loop {
-        if node.is_won() {
-            break;
-        }
         if let Some(mov) = node.available_moves().choose(&mut rng) {
             path.push((node.clone(), mov));
             node.make_move(mov);
@@ -192,25 +182,27 @@ fn playout<R: Rng + ?Sized>(root: &Game, tree: &mut HashMap<Game, Tally>, mut rn
     assert!(tree.get(root).is_some())
 }
 
-/// Move nodes from `old_tree` to `new_tree` if they're reachable from `game`
+/// Move nodes from `old_tree` to `new_tree` if they're reachable from `root`
 fn move_reachable_nodes(
     new_tree: &mut HashMap<Game, Tally>,
-    old_tree: &mut HashMap<Game, Tally>,
-    game: Game,
+    old_tree: &HashMap<Game, Tally>,
+    root: Game,
 ) {
-    let mut tally_to_add = Tally::default();
-    if let Some(tally) = old_tree.get_mut(&game) {
-        std::mem::swap(tally, &mut tally_to_add);
-    } else {
-        return;
+    let mut stack = vec![root];
+    while let Some(node) = stack.pop() {
+        let tally_to_add = if let Some(tally) = old_tree.get(&node) {
+            assert_eq!(node.available_moves().count(), tally.visits.len());
+            tally.clone()
+        } else {
+            continue;
+        };
+        for (mov, _) in tally_to_add.visits.iter() {
+            let mut new_node = node.clone();
+            new_node.make_move(*mov);
+            stack.push(new_node);
+        }
+        new_tree.insert(node, tally_to_add);
     }
-
-    for (mov, _) in tally_to_add.visits.iter() {
-        let mut new_game = game.clone();
-        new_game.make_move(*mov);
-        move_reachable_nodes(new_tree, old_tree, new_game);
-    }
-    new_tree.insert(game, tally_to_add);
 }
 
 #[derive(Clone)]
@@ -297,5 +289,4 @@ fn test_run_full_game() {
             bot.update(game.clone());
         }
     }
-    println!("Scores: {}/{}", game.get_scores()[0], game.get_scores()[1]);
 }
