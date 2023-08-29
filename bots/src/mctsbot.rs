@@ -180,6 +180,14 @@ fn playout<R: Rng + ?Sized>(root: &Game, tree: &mut HashMap<Game, Tally>, mut rn
     assert!(tree.get(root).is_some())
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct UpdateStats {
+    pub old_size: usize,
+    pub old_capacity: usize,
+    pub new_size: usize,
+    pub new_capacity: usize,
+}
+
 #[derive(Clone)]
 pub struct MCTSBot<R: Rng> {
     pub root: Game,
@@ -199,14 +207,14 @@ impl<R: Rng> MCTSBot<R> {
     }
 
     /// Tell the bot about the new game state
-    pub fn update(&mut self, game: htmf::game::GameState) -> (usize, usize, usize, usize) {
+    pub fn update(&mut self, game: htmf::game::GameState) -> UpdateStats {
         self.root = Game { state: game };
         // self.tree = HashMap::new();
         self.prune()
     }
 
     /// Keep only entries in self.tree that are reachable from self.root
-    fn prune(&mut self) -> (usize, usize, usize, usize) {
+    fn prune(&mut self) -> UpdateStats {
         let old_size = self.tree.len();
         let old_capacity = self.tree.capacity();
         for (_, tally) in self.tree.iter_mut() {
@@ -226,7 +234,12 @@ impl<R: Rng> MCTSBot<R> {
         self.tree.retain(|_, tally| tally.reachable);
         let new_size = self.tree.len();
         let new_capacity = self.tree.capacity();
-        (old_size, old_capacity, new_size, new_capacity)
+        UpdateStats {
+            old_size,
+            old_capacity,
+            new_size,
+            new_capacity,
+        }
     }
 
     pub fn playout(&mut self) {

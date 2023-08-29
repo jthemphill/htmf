@@ -97,10 +97,13 @@ impl Game {
         let mut new_game = self.bot.root.state.clone();
         match new_game.place_penguin(dst) {
             Ok(()) => {
-                let (old_size, old_cap, new_size, new_cap) = self.bot.update(new_game);
+                let update_stats = self.bot.update(new_game);
                 Ok(JsValue::from(format!(
                     "Old size: {}. New size: {}. Old capacity: {}. New capacity: {}",
-                    old_size, new_size, old_cap, new_cap
+                    update_stats.old_size,
+                    update_stats.new_size,
+                    update_stats.old_capacity,
+                    update_stats.new_capacity
                 )))
             }
             Err(err) => Err(JsValue::from(err.message)),
@@ -111,10 +114,13 @@ impl Game {
         let mut new_game = self.bot.root.state.clone();
         match new_game.move_penguin(src, dst) {
             Ok(()) => {
-                let (old_size, old_cap, new_size, new_cap) = self.bot.update(new_game);
+                let update_stats = self.bot.update(new_game);
                 Ok(JsValue::from(format!(
                     "Old size: {}. New size: {}. Old capacity: {}. New capacity: {}",
-                    old_size, new_size, old_cap, new_cap
+                    update_stats.old_size,
+                    update_stats.new_size,
+                    update_stats.old_capacity,
+                    update_stats.new_capacity,
                 )))
             }
             Err(err) => Err(JsValue::from(err.message)),
