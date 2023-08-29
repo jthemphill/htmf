@@ -91,7 +91,7 @@ impl Game {
                 self.state.board.claimed[p.id] = self.state.board.claimed[p.id].insert(dst);
                 self.state.board.penguins[p.id] = self.state.board.penguins[p.id].remove(src);
                 self.state.board.penguins[p.id] = self.state.board.penguins[p.id].insert(dst);
-                // self.state.board.reap();
+                self.state.board.reap();
                 self.state.turn += 1;
             }
         }
