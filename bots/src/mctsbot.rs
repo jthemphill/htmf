@@ -160,13 +160,9 @@ fn playout<R: Rng + ?Sized>(root: &Game, tree: &mut HashMap<Game, Tally>, mut rn
     tree.entry(node.clone())
         .or_insert_with(|| Tally::new(&node));
 
-    loop {
-        if let Some(mov) = node.available_moves().choose(&mut rng) {
-            path.push((node.clone(), mov));
-            node.make_move(mov);
-        } else {
-            break;
-        }
+    while let Some(mov) = node.available_moves().choose(&mut rng) {
+        path.push((node.clone(), mov));
+        node.make_move(mov);
     }
 
     assert!(path[0].0 == *root);
