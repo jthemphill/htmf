@@ -108,7 +108,8 @@ fn play_game(nplayouts: usize, verbose: bool) -> (usize, Vec<GameState>) {
         }
 
         random.update(&game);
-        mcts.update(game.clone());
+        mcts.update(&game);
+        assert!(mcts.root.game.state == game);
     }
     let (winner, _score) = game
         .get_scores()

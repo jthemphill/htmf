@@ -134,7 +134,7 @@ impl GameState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Action {
     Move(u8, u8),
     Place(u8),

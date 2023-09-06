@@ -1,6 +1,5 @@
 use arrayvec::ArrayVec;
 use rand::prelude::*;
-use std::collections::HashMap;
 
 /**
  * Games are connected to each other via Moves.
@@ -11,41 +10,71 @@ pub enum Move {
     Move((u8, u8)),
 }
 
-/**
- * We keep one Tally per Game node, counting how many times we've tried a
- * given Move and how well that's worked out for us.
- */
-#[derive(Clone, Default)]
-pub struct Tally {
-    pub visits: Vec<(Move, (u64, f64))>,
-    reachable: bool,
+impl From<htmf::game::Action> for Move {
+    fn from(action: htmf::game::Action) -> Self {
+        match action {
+            htmf::game::Action::Move(src, dst) => Self::Move((src, dst)),
+            htmf::game::Action::Place(dst) => Self::Place(dst),
+            _ => panic!("Can't convert {:?} into a move or place", action),
+        }
+    }
 }
 
-impl Tally {
-    pub fn new(game: &Game) -> Self {
+impl Into<htmf::game::Action> for Move {
+    fn into(self) -> htmf::game::Action {
+        match self {
+            Move::Move((src, dst)) => htmf::game::Action::Move(src, dst),
+            Move::Place(dst) => htmf::game::Action::Place(dst),
+        }
+    }
+}
+
+pub struct TreeNode {
+    pub game: Game,
+    pub visits: u64,
+    pub rewards: f64,
+    pub children: Option<Vec<(Move, TreeNode)>>,
+}
+
+impl TreeNode {
+    pub fn new(game: Game) -> Self {
         Self {
-            visits: game.available_moves().map(|mov| (mov, (0, 0.0))).collect(),
-            reachable: false,
+            game,
+            visits: 0,
+            rewards: 0.0,
+            children: Option::None,
         }
     }
 
-    pub fn mark_visit(&mut self, edge: Move, reward: f64) {
-        for (mov, (visits, rewards)) in &mut self.visits {
-            if *mov == edge {
-                *visits += 1;
-                *rewards += reward;
-                break;
-            }
-        }
+    pub fn is_leaf(&self) -> bool {
+        self.children.is_none()
     }
 
-    pub fn get_visit(&self, edge: Move) -> (u64, f64) {
-        for (mov, (visits, rewards)) in &self.visits {
-            if *mov == edge {
-                return (*visits, *rewards);
-            }
-        }
-        (0, 0.0)
+    pub fn mark_visit(&mut self, reward: f64) {
+        self.visits += 1;
+        self.rewards += reward;
+    }
+
+    pub fn get_mut_child(&mut self, game_move: Move) -> &mut TreeNode {
+        &mut self
+            .iter_mut_children()
+            .find(|(child_move, _)| *child_move == game_move)
+            .unwrap()
+            .1
+    }
+
+    pub fn iter_mut_children(&mut self) -> impl Iterator<Item = &mut (Move, TreeNode)> {
+        let children = self.children.get_or_insert_with(|| {
+            self.game
+                .available_moves()
+                .map(|child_move| {
+                    let mut game = self.game.clone();
+                    game.make_move(child_move);
+                    (child_move, TreeNode::new(game))
+                })
+                .collect()
+        });
+        children.iter_mut()
     }
 }
 
@@ -98,39 +127,38 @@ impl Game {
     }
 }
 
-fn choose_child(tally: &Tally, rng: &mut impl rand::Rng) -> Move {
-    let total_visits = tally
-        .visits
-        .iter()
-        .map(|(_, (visits, _))| visits)
-        .sum::<u64>();
+fn choose_child<'tree, R: Rng + ?Sized>(
+    node: &'tree mut TreeNode,
+    rng: &'_ mut R,
+) -> (Move, &'tree mut TreeNode) {
+    let total_visits = node.visits;
 
-    let mut choice = None;
+    let mut chosen_child = None;
     let mut num_optimal: u32 = 0;
     let mut best_so_far: f64 = std::f64::NEG_INFINITY;
-    for &(mov, (child_visits, sum_rewards)) in tally.visits.iter() {
+    for (child_move, child) in node.iter_mut_children() {
         let score = {
             // https://www.researchgate.net/publication/235985858_A_Survey_of_Monte_Carlo_Tree_Search_Methods
-            if child_visits == 0 {
+            if child.visits == 0 {
                 std::f64::INFINITY
             } else {
-                let explore_term = (2.0 * (total_visits as f64).ln() / child_visits as f64).sqrt();
-                let exploit_term = (sum_rewards + 1.0) / (child_visits as f64 + 2.0);
+                let explore_term = (2.0 * (total_visits as f64).ln() / child.visits as f64).sqrt();
+                let exploit_term = (child.rewards + 1.0) / (child.visits as f64 + 2.0);
                 explore_term + exploit_term
             }
         };
         if score > best_so_far {
-            choice = Some(mov);
+            chosen_child = Some((*child_move, child));
             num_optimal = 1;
             best_so_far = score;
         } else if (score - best_so_far).abs() < std::f64::EPSILON {
             num_optimal += 1;
             if rng.gen_bool(1.0 / num_optimal as f64) {
-                choice = Some(mov);
+                chosen_child = Some((*child_move, child));
             }
         }
     }
-    choice.unwrap()
+    chosen_child.unwrap()
 }
 
 fn get_reward(game: &htmf::game::GameState, p: usize) -> f64 {
@@ -145,39 +173,47 @@ fn get_reward(game: &htmf::game::GameState, p: usize) -> f64 {
     }
 }
 
-fn playout<R: Rng + ?Sized>(root: &Game, tree: &mut HashMap<Game, Tally>, mut rng: &mut R) {
+fn playout<R: Rng + ?Sized>(root: &mut TreeNode, rng: &mut R) -> (Vec<Move>, Game) {
     let mut path = vec![];
-    let mut node = root.clone();
-    while let Some(tally) = tree.get(&node) {
-        if tally.visits.is_empty() {
-            break;
-        }
-        let mov = choose_child(tally, &mut rng);
-        path.push((node.clone(), mov));
-        node.make_move(mov);
+    let mut expand_node = root;
+
+    // Find a leaf node
+    while !expand_node.is_leaf() {
+        let (child_move, child_node) = choose_child(expand_node, rng);
+        expand_node = child_node;
+        path.push(child_move);
     }
 
-    tree.entry(node.clone())
-        .or_insert_with(|| Tally::new(&node));
-
-    while let Some(mov) = node.available_moves().choose(&mut rng) {
-        path.push((node.clone(), mov));
-        node.make_move(mov);
+    // Expand the tree by creating one more node
+    if !expand_node.game.state.game_over() {
+        let (child_move, child_node) = choose_child(expand_node, rng);
+        expand_node = child_node;
+        path.push(child_move);
     }
 
-    assert!(path[0].0 == *root);
-    let rewards: ArrayVec<f64, 4> = (0..root.state.nplayers)
-        .map(|p| get_reward(&node.state, p))
+    // Finish the game
+    let mut game = expand_node.game.clone();
+    while let Some(game_move) = game.available_moves().choose(rng) {
+        path.push(game_move);
+        game.make_move(game_move);
+    }
+
+    (path, game)
+}
+
+fn backprop(root: &mut TreeNode, path: Vec<Move>, game: Game) {
+    let rewards: ArrayVec<f64, 4> = (0..game.state.nplayers)
+        .map(|p| get_reward(&game.state, p))
         .collect();
-    for (backprop_node, mov) in path {
-        let p = backprop_node.state.active_player().unwrap();
-        if let Some(tally) = tree.get_mut(&backprop_node) {
-            tally.mark_visit(mov, rewards[p.id]);
-        } else {
+    let mut backprop_node = root;
+    for backprop_move in path {
+        let p = backprop_node.game.state.active_player().unwrap();
+        backprop_node.mark_visit(rewards[p.id]);
+        if backprop_node.is_leaf() {
             break;
         }
+        backprop_node = backprop_node.get_mut_child(backprop_move);
     }
-    assert!(tree.get(root).is_some())
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -188,88 +224,73 @@ pub struct UpdateStats {
     pub new_capacity: usize,
 }
 
-#[derive(Clone)]
 pub struct MCTSBot<R: Rng> {
-    pub root: Game,
+    pub root: TreeNode,
     pub me: htmf::board::Player,
-    pub tree: HashMap<Game, Tally>,
     rng: R,
 }
 
 impl<R: Rng> MCTSBot<R> {
     pub fn new(game: htmf::game::GameState, me: htmf::board::Player, rng: R) -> Self {
         MCTSBot {
-            root: Game { state: game },
+            root: TreeNode::new(Game { state: game }),
             me,
-            tree: HashMap::new(),
             rng,
         }
     }
 
     /// Tell the bot about the new game state
-    pub fn update(&mut self, game: htmf::game::GameState) -> UpdateStats {
-        self.root = Game { state: game };
-        // self.tree = HashMap::new();
-        self.prune()
-    }
-
-    /// Keep only entries in self.tree that are reachable from self.root
-    fn prune(&mut self) -> UpdateStats {
-        let old_size = self.tree.len();
-        let old_capacity = self.tree.capacity();
-        for (_, tally) in self.tree.iter_mut() {
-            tally.reachable = false;
-        }
-        let mut stack = vec![self.root.clone()];
-        while let Some(node) = stack.pop() {
-            if let Some(tally) = self.tree.get_mut(&node) {
-                tally.reachable = true;
-                for (mov, _) in tally.visits.iter() {
-                    let mut new_node = node.clone();
-                    new_node.make_move(*mov);
-                    stack.push(new_node);
-                }
-            }
-        }
-        self.tree.retain(|_, tally| tally.reachable);
-        let new_size = self.tree.len();
-        let new_capacity = self.tree.capacity();
-        UpdateStats {
-            old_size,
-            old_capacity,
-            new_size,
-            new_capacity,
+    pub fn update(&mut self, game_state: &htmf::game::GameState) {
+        let dummy = TreeNode {
+            game: Game {
+                state: game_state.clone(),
+            },
+            children: None,
+            rewards: 0.0,
+            visits: 0,
+        };
+        let chosen_edge = self
+            .root
+            .iter_mut_children()
+            .find(|(_, child)| child.game.state == *game_state);
+        if let Some((_, chosen_child)) = chosen_edge {
+            self.root = std::mem::replace(chosen_child, dummy);
+        } else {
+            self.root = dummy;
         }
     }
 
     pub fn playout(&mut self) {
-        playout(&self.root, &mut self.tree, &mut self.rng)
+        let (path, game) = playout(&mut self.root, &mut self.rng);
+        backprop(&mut self.root, path, game);
     }
 
     pub fn take_action(&mut self) -> htmf::game::Action {
-        if self.root.state.active_player() != Some(self.me) {
+        if self.root.game.state.active_player() != Some(self.me) {
             panic!("{:?} was asked to move, but it is not their turn!", self.me);
         }
-        playout(&self.root, &mut self.tree, &mut self.rng);
-        let tally = self.tree.get(&self.root).unwrap();
-        let best_move = tally
-            .visits
-            .iter()
-            .max_by(|&&(_, (visits1, score1)), &&(_, (visits2, score2))| {
-                (score1 / visits1 as f64)
-                    .partial_cmp(&(score2 / visits2 as f64))
-                    .unwrap_or(visits1.cmp(&visits2))
+        playout(&mut self.root, &mut self.rng);
+        let (best_move, _) = self
+            .root
+            .iter_mut_children()
+            .max_by(|(_, child1), (_, child2)| {
+                (child1.rewards / child1.visits as f64)
+                    .partial_cmp(&(child2.rewards / child2.visits as f64))
+                    .unwrap_or(child1.visits.cmp(&child2.visits))
             })
-            .unwrap()
-            .0;
-        match best_move {
+            .unwrap();
+        match *best_move {
             Move::Move((src, dst)) => htmf::game::Action::Move(src, dst),
             Move::Place(dst) => htmf::game::Action::Place(dst),
         }
     }
 
     pub fn tree_size(&self) -> usize {
-        self.tree.len()
+        if let Some(children) = &self.root.children {
+            children.len()
+        } else {
+            0
+        }
     }
 }
 
@@ -290,9 +311,10 @@ fn test_run_full_game() {
         .collect::<Vec<MCTSBot<StdRng>>>();
 
     while let Some(p) = game.active_player() {
-        game.apply_action(&bots[p.id].take_action()).unwrap();
+        let action = bots[p.id].take_action();
+        game.apply_action(&action).unwrap();
         for bot in &mut bots {
-            bot.update(game.clone());
+            bot.update(&game);
         }
     }
 }
