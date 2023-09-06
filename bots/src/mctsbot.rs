@@ -202,17 +202,21 @@ fn playout<R: Rng + ?Sized>(root: &mut TreeNode, rng: &mut R) -> (Vec<Move>, Gam
 }
 
 fn backprop(root: &mut TreeNode, path: Vec<Move>, game: Game) {
+    root.visits += 1;
     let rewards: ArrayVec<f64, 4> = (0..game.state.nplayers)
         .map(|p| get_reward(&game.state, p))
         .collect();
     let mut backprop_node = root;
     for backprop_move in path {
-        let p = backprop_node.game.state.active_player().unwrap();
-        backprop_node.mark_visit(rewards[p.id]);
         if backprop_node.is_leaf() {
             break;
         }
-        backprop_node = backprop_node.get_mut_child(backprop_move);
+        if let Some(p) = backprop_node.game.state.active_player() {
+            backprop_node = backprop_node.get_mut_child(backprop_move);
+            backprop_node.mark_visit(rewards[p.id]);
+        } else {
+            break;
+        }
     }
 }
 
