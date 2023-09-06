@@ -14,13 +14,17 @@ use htmf::game::*;
 use htmf_bots::mctsbot::*;
 use htmf_bots::randombot::*;
 
+const RANDOM_PLAYER: usize = 0;
+const MCTS_PLAYER: usize = 1;
+
 fn main() {
+    let ntrials = 10;
+    let nplayouts = 100;
     let verbose = std::env::args().any(|arg| arg == "-v");
-    let trials = 5;
 
     let (logger_tx, logger_rx) = mpsc::channel();
     std::thread::spawn(move || loop {
-        let res: Result<(i32, Vec<GameState>), ()> = logger_rx.recv().unwrap();
+        let res: Result<(usize, Vec<GameState>), ()> = logger_rx.recv().unwrap();
         if let Ok((winner, gamestates)) = res {
             if !gamestates.is_empty() {
                 for g in gamestates {
@@ -33,9 +37,9 @@ fn main() {
         }
     });
 
-    let mcts_wins: usize = (0..trials)
+    let mcts_wins: usize = (0..ntrials)
         .into_par_iter()
-        .map(|_| play_game(verbose))
+        .map(|_| play_game(nplayouts, verbose))
         .map_with(
             mpsc::Sender::clone(&logger_tx),
             |logger_tx, (winner, gamestates)| {
@@ -54,21 +58,29 @@ fn main() {
     // Stop the logger
     logger_tx.send(Err(())).unwrap();
 
-    println!("{} / {} wins.", mcts_wins, trials);
+    println!("{} / {} wins.", mcts_wins, ntrials);
 }
 
-fn play_game(verbose: bool) -> (i32, Vec<GameState>) {
+fn play_game(nplayouts: usize, verbose: bool) -> (usize, Vec<GameState>) {
     let mut game = GameState::new_two_player::<StdRng>(&mut SeedableRng::from_entropy());
-    let mut random = RandomBot::new(game.clone(), Player { id: 0 });
-    let mut mcts =
-        MCTSBot::<StdRng>::new(game.clone(), Player { id: 1 }, SeedableRng::from_entropy());
+    let mut random = RandomBot::new(game.clone(), Player { id: RANDOM_PLAYER });
+    let mut mcts = MCTSBot::<StdRng>::new(
+        game.clone(),
+        Player { id: MCTS_PLAYER },
+        SeedableRng::from_entropy(),
+    );
 
     let mut logged_states = vec![];
 
     while let Some(p) = game.active_player() {
         let action = match p.id {
-            0 => random.take_action(),
-            1 => mcts.take_action(),
+            RANDOM_PLAYER => random.take_action(),
+            MCTS_PLAYER => {
+                for _ in 0..nplayouts {
+                    mcts.playout();
+                }
+                mcts.take_action()
+            }
             _ => panic!("How many players are in this game?"),
         };
 
@@ -104,5 +116,30 @@ fn play_game(verbose: bool) -> (i32, Vec<GameState>) {
         .enumerate()
         .max_by(|(_, score1), (_, score2)| score1.cmp(score2))
         .unwrap();
-    (winner as i32, logged_states)
+    (winner, logged_states)
+}
+
+#[test]
+fn test_mcts_beats_random() {
+    let ntrials = 10;
+    let nplayouts = 100;
+    let verbose = false;
+
+    let mcts_wins: usize = (0..ntrials)
+        .into_par_iter()
+        .map(|_| {
+            let (winner, _) = play_game(nplayouts, verbose);
+            match winner {
+                RANDOM_PLAYER => 0,
+                MCTS_PLAYER => 1,
+                _ => panic!("Expected winning player to be 0 or 1, got {}", winner),
+            }
+        })
+        .sum();
+    assert!(
+        mcts_wins > ntrials * 3 / 4,
+        "Only won {} out of {} games",
+        mcts_wins,
+        ntrials
+    );
 }
