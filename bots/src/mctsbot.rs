@@ -290,11 +290,17 @@ impl<R: Rng> MCTSBot<R> {
     }
 
     pub fn tree_size(&self) -> usize {
-        if let Some(children) = &self.root.children {
-            children.len()
-        } else {
-            0
+        let mut stack = vec![&self.root];
+        let mut sum = 0;
+        while let Some(node) = stack.pop() {
+            sum += 1;
+            if let Some(children) = &node.children {
+                for (_, child) in children {
+                    stack.push(child);
+                }
+            }
         }
+        sum
     }
 }
 
