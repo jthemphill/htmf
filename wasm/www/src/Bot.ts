@@ -118,12 +118,12 @@ class Bot {
   }
 
   placePenguin (dst: number): void {
-    console.log(this.game.place_penguin(dst))
+    this.game.place_penguin(dst)
     this.ponder()
   }
 
   movePenguin (src: number, dst: number): void {
-    console.log(this.game.move_penguin(src, dst))
+    this.game.move_penguin(src, dst)
     this.ponder()
   }
 
