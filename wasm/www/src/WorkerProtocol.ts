@@ -1,6 +1,8 @@
 import type GameState from './GameState'
 
 export type WorkerRequest = {
+  type: 'initialize'
+} | {
   type: 'get'
 } | {
   type: 'place'

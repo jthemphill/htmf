@@ -168,6 +168,9 @@ class Bot {
   onMessage (request: WorkerRequest): void {
     console.log(`received request ${request.type}`)
     switch (request.type) {
+      case 'initialize':
+        this.init()
+        break
       case 'get':
         this.postGameState()
         break

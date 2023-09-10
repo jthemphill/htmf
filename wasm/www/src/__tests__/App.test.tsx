@@ -46,7 +46,6 @@ describe('App', async () => {
       bot.onMessage(request)
     }
     render(<App worker={mockWorker} />)
-    bot.init()
   })
 
   test.concurrent('renders a game board', async () => {

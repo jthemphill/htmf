@@ -39,11 +39,9 @@ export default function App ({ worker }: Props): React.JSX.Element {
   const [memoryUsage, setMemoryUsage] = React.useState<number>(0)
 
   React.useEffect(() => {
-    console.log('setting the onmessage')
     worker.onmessage = ({ data: response }: MessageEvent<WorkerResponse>) => {
       switch (response.type) {
         case 'initialized':
-          console.log('Webworker finished initialization')
           setGameState(response.gameState)
           setPossibleMoves(response.possibleMoves)
           break
@@ -100,6 +98,12 @@ export default function App ({ worker }: Props): React.JSX.Element {
     setMemoryUsage
   ])
 
+  React.useEffect(() => {
+    if (gameState === undefined) {
+      worker.postMessage({ type: 'initialize' })
+    }
+  }, [worker, gameState])
+
   const modeType = gameState?.modeType
   const handleCellClick = React.useCallback((key: number) => {
     if (chosenCell === key) {
@@ -151,7 +155,7 @@ export default function App ({ worker }: Props): React.JSX.Element {
   }
 
   let board
-  if (gameState != null) {
+  if (gameState !== undefined) {
     board = <Board
       gameState={gameState}
       possibleMoves={possibleMoves ?? []}
