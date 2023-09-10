@@ -33,19 +33,34 @@ class MockWorker implements AppWorker {
 describe('App', async () => {
   const wasmFile = await fs.promises.readFile(path.resolve(__dirname, '../../../pkg/htmf_wasm_bg.wasm'))
   beforeEach(async () => {
-    const mockWorker = new MockWorker()
-    const wasmInternals = await htmfWasmInit(wasmFile.buffer)
-    const bot = new Bot(wasmInternals, (response: WorkerResponse) => {
-      if (mockWorker.onmessage !== null) {
-        mockWorker.onmessage(new MessageEvent<WorkerResponse>('message', { data: response }))
-      } else {
-        console.error("Mock WebWorker's onmessage property hasn't been initialized yet.")
+    const cleanupFuncs: Array<() => void> = []
+    try {
+      const mockWorker = new MockWorker()
+      cleanupFuncs.push(() => { mockWorker.terminate() })
+      const wasmInternals = await htmfWasmInit(wasmFile.buffer)
+      const bot = new Bot(wasmInternals, (response: WorkerResponse) => {
+        if (mockWorker.onmessage !== null) {
+          mockWorker.onmessage(new MessageEvent<WorkerResponse>('message', { data: response }))
+        } else {
+          console.error("Mock WebWorker's onmessage property hasn't been initialized yet.")
+        }
+      })
+      cleanupFuncs.push(() => { bot.free() })
+      mockWorker.postMessage = (request: WorkerRequest) => {
+        bot.onMessage(request)
       }
-    })
-    mockWorker.postMessage = (request: WorkerRequest) => {
-      bot.onMessage(request)
+      render(<App worker={mockWorker} />)
+    } catch (e) {
+      for (const cleanupFunc of cleanupFuncs.reverse()) {
+        cleanupFunc()
+      }
+      throw e
     }
-    render(<App worker={mockWorker} />)
+    return async () => {
+      for (const cleanupFunc of cleanupFuncs.reverse()) {
+        cleanupFunc()
+      }
+    }
   })
 
   test.concurrent('renders a game board', async () => {
