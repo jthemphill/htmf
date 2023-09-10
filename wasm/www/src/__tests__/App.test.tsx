@@ -34,9 +34,11 @@ describe('App', async () => {
   const wasmFile = await fs.promises.readFile(path.resolve(__dirname, '../../../pkg/htmf_wasm_bg.wasm'))
   beforeEach(async () => {
     const cleanupFuncs: Array<() => void> = []
+
     try {
       const mockWorker = new MockWorker()
       cleanupFuncs.push(() => { mockWorker.terminate() })
+
       const wasmInternals = await htmfWasmInit(wasmFile.buffer)
       const bot = new Bot(wasmInternals, (response: WorkerResponse) => {
         if (mockWorker.onmessage !== null) {
@@ -46,6 +48,8 @@ describe('App', async () => {
         }
       })
       cleanupFuncs.push(() => { bot.free() })
+      bot.init()
+
       mockWorker.postMessage = (request: WorkerRequest) => {
         bot.onMessage(request)
       }
