@@ -5,7 +5,7 @@ module.exports = {
         'standard-with-typescript',
         'plugin:react-hooks/recommended',
     ],
-    ignorePatterns: ['dist', '.eslintrc.cjs', 'vite.config.ts'],
+    ignorePatterns: ['dist', '.eslintrc.cjs'],
     parserOptions: {
         ecmaVersion: "latest",
         sourceType: "module",

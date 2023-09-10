@@ -1,6 +1,5 @@
-/// <reference types="vitest" />
-
-import { defineConfig, searchForWorkspaceRoot, type PluginOption } from 'vite'
+import { searchForWorkspaceRoot, type PluginOption } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react-swc'
 
 // Some JS features are disabled unless you use these HTTP headers to promise not to load third-party scripts.
@@ -8,14 +7,14 @@ import react from '@vitejs/plugin-react-swc'
 // https://web.dev/coop-coep/
 function setUpCrossOriginIsolation (): PluginOption {
   return {
-    name: "crossOriginIsolation",
+    name: 'crossOriginIsolation',
     configureServer (server): void {
       server.middlewares.use((_req, res, next) => {
-        res.setHeader("Cross-Origin-Opener-Policy", "same-origin")
-        res.setHeader("Cross-Origin-Embedder-Policy", "require-corp")
+        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
+        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp')
         next()
       })
-    },
+    }
   }
 }
 
@@ -27,13 +26,13 @@ export default defineConfig({
     sourcemap: true
   },
   plugins: [react(), setUpCrossOriginIsolation()],
-  resolve: { dedupe: ["react", "react-dom"] },
+  resolve: { dedupe: ['react', 'react-dom'] },
   server: {
     fs: { allow: [searchForWorkspaceRoot(process.cwd()), '../pkg'] }
   },
   test: {
     environment: 'jsdom',
-    setupFiles: 'setup-vitest.ts',
+    setupFiles: 'setup-vitest.ts'
   },
   worker: {
     format: 'es'
