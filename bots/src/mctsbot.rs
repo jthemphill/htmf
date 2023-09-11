@@ -1,4 +1,5 @@
 use rand::prelude::*;
+use std::sync::OnceLock;
 
 const NUM_PLAYERS: usize = 2;
 
@@ -34,7 +35,7 @@ pub struct TreeNode {
     pub game: Game,
     pub visits: u64,
     pub rewards: f64,
-    pub children: Option<Vec<(Move, TreeNode)>>,
+    pub children: OnceLock<Vec<(Move, TreeNode)>>,
 }
 
 impl TreeNode {
@@ -43,12 +44,12 @@ impl TreeNode {
             game,
             visits: 0,
             rewards: 0.0,
-            children: Option::None,
+            children: OnceLock::new(),
         }
     }
 
     pub fn is_leaf(&self) -> bool {
-        self.children.is_none()
+        self.children.get().is_none()
     }
 
     pub fn mark_visit(&mut self, reward: f64) {
@@ -64,8 +65,23 @@ impl TreeNode {
             .1
     }
 
+    pub fn iter_children(&self) -> impl Iterator<Item = &(Move, TreeNode)> {
+        self.children
+            .get_or_init(|| {
+                self.game
+                    .available_moves()
+                    .map(|child_move| {
+                        let mut game = self.game.clone();
+                        game.make_move(child_move);
+                        (child_move, TreeNode::new(game))
+                    })
+                    .collect()
+            })
+            .iter()
+    }
+
     pub fn iter_mut_children(&mut self) -> impl Iterator<Item = &mut (Move, TreeNode)> {
-        let children = self.children.get_or_insert_with(|| {
+        self.children.get_or_init(|| {
             self.game
                 .available_moves()
                 .map(|child_move| {
@@ -75,7 +91,7 @@ impl TreeNode {
                 })
                 .collect()
         });
-        children.iter_mut()
+        self.children.get_mut().unwrap().iter_mut()
     }
 }
 
@@ -129,15 +145,15 @@ impl Game {
 }
 
 fn choose_child<'tree, R: Rng + ?Sized>(
-    node: &'tree mut TreeNode,
+    node: &'tree TreeNode,
     rng: &'_ mut R,
-) -> (Move, &'tree mut TreeNode) {
+) -> (Move, &'tree TreeNode) {
     let total_visits = node.visits;
 
     let mut chosen_child = None;
     let mut num_optimal: u32 = 0;
     let mut best_so_far: f64 = std::f64::NEG_INFINITY;
-    for (child_move, child) in node.iter_mut_children() {
+    for (child_move, child) in node.iter_children() {
         let score = {
             // https://www.researchgate.net/publication/235985858_A_Survey_of_Monte_Carlo_Tree_Search_Methods
             if child.visits == 0 {
@@ -174,7 +190,7 @@ fn get_reward(game: &htmf::game::GameState, p: usize) -> f64 {
     }
 }
 
-fn playout<R: Rng + ?Sized>(root: &mut TreeNode, rng: &mut R) -> (Vec<Move>, Game) {
+fn playout<R: Rng + ?Sized>(root: &TreeNode, rng: &mut R) -> (Vec<Move>, Game) {
     let mut path = vec![];
     let mut expand_node = root;
 
@@ -248,7 +264,7 @@ impl<R: Rng> MCTSBot<R> {
             game: Game {
                 state: game_state.clone(),
             },
-            children: None,
+            children: OnceLock::new(),
             rewards: 0.0,
             visits: 0,
         };
@@ -293,7 +309,7 @@ impl<R: Rng> MCTSBot<R> {
         let mut sum = 0;
         while let Some(node) = stack.pop() {
             sum += 1;
-            if let Some(children) = &node.children {
+            if let Some(children) = node.children.get() {
                 for (_, child) in children {
                     stack.push(child);
                 }

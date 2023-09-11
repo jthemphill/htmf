@@ -130,7 +130,7 @@ impl Game {
     }
 
     pub fn get_visits(&self) -> f64 {
-        if let Some(children) = &self.bot.root.children {
+        if let Some(children) = self.bot.root.children.get() {
             children.iter().map(|(_, child)| child.visits).sum::<u64>() as f64
         } else {
             0.0
@@ -153,7 +153,7 @@ impl Game {
     }
 
     fn info(&self, game_move: htmf_bots::mctsbot::Move) -> MoveInfo {
-        if let Some(children) = &self.bot.root.children {
+        if let Some(children) = self.bot.root.children.get() {
             for (child_move, child) in children {
                 if *child_move == game_move {
                     return MoveInfo {
