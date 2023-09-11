@@ -66,28 +66,36 @@ export default function App ({ worker }: Props): React.JSX.Element {
 
   const modeType = gameState?.modeType
   const handleCellClick = React.useCallback((key: number) => {
-    if (chosenCell === key) {
+    // Reset state if we know it's not a legal move
+    if (modeType === undefined || possibleMoves?.includes(key) !== true) {
       setChosenCell(undefined)
       worker.postMessage({ type: 'getPossibleMoves' })
-    } else if (possibleMoves?.includes(key) === true) {
-      if (modeType === 'drafting') {
-        worker.postMessage({
-          type: 'movePenguin',
-          dst: key
-        })
-      } else if (modeType === 'playing') {
-        if (chosenCell === undefined) {
-          setChosenCell(key)
-          worker.postMessage({ type: 'getPossibleMoves', src: key })
-        } else {
-          worker.postMessage({
-            type: 'movePenguin',
-            src: chosenCell,
-            dst: key
-          })
-        }
-      }
+      return
     }
+
+    // Place a penguin if we're still drafting
+    if (modeType === 'drafting') {
+      worker.postMessage({
+        type: 'movePenguin',
+        dst: key
+      })
+      return
+    }
+
+    // Choose the given cell to move a penguin from
+    if (chosenCell === undefined) {
+      setChosenCell(key)
+      worker.postMessage({ type: 'getPossibleMoves', src: key })
+      return
+    }
+
+    // If we have already chosen a penguin, move the penguin to the clicked cell
+    worker.postMessage({
+      type: 'movePenguin',
+      src: chosenCell,
+      dst: key
+    })
+    setChosenCell(undefined)
   }, [worker, modeType, possibleMoves, chosenCell])
 
   let topMove
