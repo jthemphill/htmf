@@ -1,5 +1,6 @@
 use std::fmt;
 
+use serde_derive::{Deserialize, Serialize};
 use serde_json;
 
 use crate::board::Board;

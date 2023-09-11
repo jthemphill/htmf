@@ -1,8 +1,6 @@
 use rand::prelude::*;
 use std::fmt;
 
-use arrayvec::ArrayVec;
-
 use crate::board::{Board, Player};
 use crate::errors::IllegalMoveError;
 use crate::json::GameStateJSON;
@@ -63,10 +61,11 @@ impl GameState {
         }
     }
 
-    pub fn get_scores(&self) -> ArrayVec<usize, 4> {
-        (0..NUM_PLAYERS)
-            .map(|i| self.board.get_score(Player { id: i }))
-            .collect()
+    pub fn get_scores(&self) -> [usize; NUM_PLAYERS] {
+        [
+            self.board.get_score(Player { id: 0 }),
+            self.board.get_score(Player { id: 1 }),
+        ]
     }
 
     pub fn is_legal_place(&self, c: u8) -> bool {

@@ -1,10 +1,3 @@
-extern crate arrayvec;
-extern crate rand;
-
-extern crate serde;
-extern crate serde_json;
-
-#[macro_use]
 extern crate serde_derive;
 
 pub const EVEN_ROW_LEN: usize = 7;

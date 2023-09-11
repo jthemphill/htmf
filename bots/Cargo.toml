@@ -5,7 +5,6 @@ authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-arrayvec = "0"
 getrandom = "0"
 rand = "0"
 rayon = "1"

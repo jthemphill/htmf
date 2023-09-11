@@ -1,10 +1,7 @@
-extern crate rand;
-extern crate rayon;
-
 extern crate htmf;
 
-use self::rayon::prelude::*;
 use rand::prelude::*;
+use rayon::prelude::*;
 
 use htmf::board::Player;
 use htmf::game::{Action, GameState};
