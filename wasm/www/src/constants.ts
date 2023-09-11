@@ -1,24 +1,11 @@
-const NPLAYERS = 2
-const HUMAN_PLAYER = 0
-const BOT_PLAYER = 1
-const NUM_ROWS = 8
-const EVEN_ROW_LEN = 7
-const ODD_ROW_LEN = 8
-const NUM_CELLS = EVEN_ROW_LEN * (NUM_ROWS / 2) + ODD_ROW_LEN * (NUM_ROWS / 2)
+export const NPLAYERS = 2
+export const HUMAN_PLAYER = 0
+export const BOT_PLAYER = 1
+export const NUM_ROWS = 8
+export const EVEN_ROW_LEN = 7
+export const ODD_ROW_LEN = 8
+export const NUM_CELLS = EVEN_ROW_LEN * (NUM_ROWS / 2) + ODD_ROW_LEN * (NUM_ROWS / 2)
 
-const PONDER_INTERVAL_MS = 15
-const MIN_PLAYOUTS = 14_000
-const MAX_PLAYOUTS = 60_000
-
-export {
-  NPLAYERS,
-  HUMAN_PLAYER,
-  BOT_PLAYER,
-  NUM_ROWS,
-  EVEN_ROW_LEN,
-  ODD_ROW_LEN,
-  NUM_CELLS,
-  MIN_PLAYOUTS,
-  MAX_PLAYOUTS,
-  PONDER_INTERVAL_MS
-}
+export const PONDER_INTERVAL_MS = 15
+export const MIN_PLAYOUTS = 14_000
+export const MAX_PLAYOUTS = 60_000
