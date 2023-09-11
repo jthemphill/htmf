@@ -1,6 +1,6 @@
 import * as wasm from '../../pkg/htmf_wasm'
 
-import { NPLAYERS, NUM_CELLS, PLAYOUT_MS, PONDER_INTERVAL_MS, MIN_PLAYOUTS, MAX_PLAYOUTS, HUMAN_PLAYER, BOT_PLAYER } from './constants'
+import { NPLAYERS, NUM_CELLS, PONDER_INTERVAL_MS, MIN_PLAYOUTS, MAX_PLAYOUTS, HUMAN_PLAYER, BOT_PLAYER } from './constants'
 import { type GameState, type MoveScore, type WorkerRequest, type WorkerResponse } from './WorkerProtocol'
 
 function getGameState (game: wasm.Game): GameState {
@@ -77,25 +77,22 @@ class Bot {
       return
     }
     const ponderStartTime = performance.now()
-    this.ponderer = self.setInterval(
-      () => {
-        if (this.nplayouts >= MAX_PLAYOUTS) {
-          this.stopPondering()
-          return
-        }
-        const intervalStartTime = performance.now()
-        while (performance.now() - intervalStartTime < PLAYOUT_MS) {
-          this.playout()
-        }
+    this.ponderer = self.setInterval(() => {
+      if (this.nplayouts >= MAX_PLAYOUTS) {
+        this.stopPondering()
+        return
+      }
+      const intervalStartTime = performance.now()
+      while (performance.now() - intervalStartTime < PONDER_INTERVAL_MS) {
+        this.playout()
+      }
 
-        const activePlayer = this.game.active_player()
-        if (activePlayer !== undefined) {
-          const totalTimeMs = performance.now() - ponderStartTime
-          this.postThinkingProgress({ activePlayer, playoutsNeeded: MAX_PLAYOUTS, totalTimeMs })
-        }
-      },
-      PONDER_INTERVAL_MS
-    )
+      const activePlayer = this.game.active_player()
+      if (activePlayer !== undefined) {
+        const totalTimeMs = performance.now() - ponderStartTime
+        this.postThinkingProgress({ activePlayer, playoutsNeeded: MAX_PLAYOUTS, totalTimeMs })
+      }
+    })
   }
 
   stopPondering (): void {
