@@ -56,6 +56,7 @@ class Bot {
     this.postMessage = postMessage
     this.game = wasm.Game.new()
     this.ponder()
+    this.postGameState({ })
   }
 
   free (): void {

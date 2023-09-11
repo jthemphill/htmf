@@ -48,7 +48,6 @@ describe('App', async () => {
         }
       })
       cleanupFuncs.push(() => { bot.free() })
-      bot.postGameState({ })
 
       mockWorker.postMessage = (request: WorkerRequest) => {
         bot.onMessage(request)

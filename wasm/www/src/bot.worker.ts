@@ -8,6 +8,5 @@ const bot = new Bot(wasmInternals, postMessage)
 onmessage = (event) => {
   bot.onMessage(event.data)
 }
-bot.postGameState({ })
 
 export { }
