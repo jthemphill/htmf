@@ -188,11 +188,12 @@ const MemoryUsageBlock = React.memo(
 
 const ThinkingProgressBar = React.memo(
   function ThinkingProgressBar ({ thinkingProgress }: { thinkingProgress: ThinkingProgress }): React.JSX.Element {
-    const playoutsPerSec = thinkingProgress.totalPlayouts * 1000 / thinkingProgress.totalTimeMs
+    const totalTimeSec = thinkingProgress.totalTimeMs / 1000
+    const playoutsPerSec = thinkingProgress.totalPlayouts / totalTimeSec
     return (
       <div>
         <progress value={thinkingProgress.completed} max={thinkingProgress.required} />
-        <p>{thinkingProgress.totalPlayouts.toLocaleString()} playouts</p>
+        <p>{thinkingProgress.totalPlayouts.toLocaleString()} playouts in {totalTimeSec.toFixed(0)} sec</p>
         <p className="playout-counter">{`${playoutsPerSec.toFixed(0)} playouts/sec`}</p>
       </div>
     )
