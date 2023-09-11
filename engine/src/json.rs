@@ -111,32 +111,31 @@ impl<'a> From<&'a Board> for BoardJSON {
 
 impl<'a> From<&'a BoardJSON> for Board {
     fn from(b: &'a BoardJSON) -> Self {
-        let fish = (1..=3)
-            .map(|num_fish| {
-                b.fish
-                    .iter()
-                    .enumerate()
-                    .filter(|&(_, fish)| *fish == num_fish)
-                    .map(|(i, _)| i as u8)
-                    .collect()
-            })
-            .collect();
-        let penguins = (0..4)
-            .map(|player| {
-                let mut penguin_set = CellSet::new();
-                if let Some(player_penguins) = b.penguins.get(player) {
-                    for &p in player_penguins {
-                        penguin_set = penguin_set.insert(p as u8);
-                    }
+        let mut fish: [CellSet; 3] = [CellSet::new(); 3];
+        for num_fish in 1..=3 {
+            fish[num_fish] = b
+                .fish
+                .iter()
+                .enumerate()
+                .filter(|&(_, fish)| *fish == num_fish)
+                .map(|(i, _)| i as u8)
+                .collect()
+        }
+
+        let mut penguins: [CellSet; 2] = [CellSet::new(); 2];
+        for player in 0..2 {
+            if let Some(player_penguins) = b.penguins.get(player) {
+                for &p in player_penguins {
+                    penguins[player] = penguins[player].insert(p as u8);
                 }
-                penguin_set
-            })
-            .collect();
-        let claimed = b
-            .claimed
-            .iter()
-            .map(|cells| cells.iter().cloned().collect())
-            .collect();
+            }
+        }
+
+        let mut claimed: [CellSet; 2] = [CellSet::new(); 2];
+        for player in 0..2 {
+            claimed[player] = b.claimed[player].iter().cloned().collect();
+        }
+
         Board {
             fish,
             penguins,

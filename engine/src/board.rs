@@ -16,9 +16,9 @@ pub struct Player {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Board {
-    pub penguins: ArrayVec<CellSet, 4>,
-    pub fish: ArrayVec<CellSet, 3>,
-    pub claimed: ArrayVec<CellSet, 4>,
+    pub penguins: [CellSet; 2],
+    pub fish: [CellSet; 3],
+    pub claimed: [CellSet; 2],
 }
 
 impl Board {
@@ -37,18 +37,15 @@ impl Board {
 
         cell_to_fish.shuffle(rng);
 
-        let mut fish: ArrayVec<CellSet, 3> = ArrayVec::new();
-        for _ in 0..3 {
-            fish.push(CellSet::new());
-        }
+        let mut fish: [CellSet; 3] = [CellSet::new(); 3];
         for i in 0..NUM_CELLS {
             fish[cell_to_fish[i] - 1] = fish[cell_to_fish[i] - 1].insert(i as u8);
         }
 
         Board {
             fish,
-            penguins: (0..4).map(|_| CellSet::new()).collect(),
-            claimed: (0..4).map(|_| CellSet::new()).collect(),
+            penguins: [CellSet::new(); 2],
+            claimed: [CellSet::new(); 2],
         }
     }
 
@@ -292,18 +289,16 @@ impl Board {
         has_done_anything
     }
 
+    /// remove penguins that can no longer move
     pub fn reap(&mut self) {
-        // remove penguins that can no longer move
-        self.penguins = self
-            .penguins
-            .iter()
-            .map(|penguins| {
-                penguins
-                    .into_iter()
-                    .filter(|&p| Board::neighbors(p).into_iter().any(|n| !self.is_claimed(n)))
-                    .collect()
-            })
-            .collect();
+        let mut new_penguins: [CellSet; 2] = [CellSet::new(); 2];
+        for (i, penguins) in self.penguins.iter().enumerate() {
+            new_penguins[i] = penguins
+                .into_iter()
+                .filter(|&p| Board::neighbors(p).into_iter().any(|n| !self.is_claimed(n)))
+                .collect();
+        }
+        self.penguins = new_penguins
     }
 
     /// Assuming the given penguin is alone on a connected component,
