@@ -7,9 +7,10 @@ use crate::board::{Board, Player};
 use crate::errors::IllegalMoveError;
 use crate::json::GameStateJSON;
 
+const NUM_PLAYERS: usize = 2;
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct GameState {
-    pub nplayers: usize,
     pub turn: usize,
     pub board: Board,
 }
@@ -24,7 +25,7 @@ impl GameState {
     // Predicates
 
     pub fn finished_drafting(&self) -> bool {
-        let limit = match self.nplayers {
+        let limit = match NUM_PLAYERS {
             2 => 8,
             3 => 9,
             4 => 8,
@@ -42,28 +43,28 @@ impl GameState {
             return None;
         }
         if self.finished_drafting() {
-            let mut p = self.turn % self.nplayers;
+            let mut p = self.turn % NUM_PLAYERS;
             while self.board.penguins[p].is_empty() {
                 p += 1;
-                p %= self.nplayers;
+                p %= NUM_PLAYERS;
             }
             Some(Player { id: p })
-        } else if self.turn / self.nplayers % 2 == 1 {
+        } else if self.turn / NUM_PLAYERS % 2 == 1 {
             let mut turn = -(self.turn as isize) - 1;
-            turn %= self.nplayers as isize;
+            turn %= NUM_PLAYERS as isize;
             if turn < 0 {
-                turn += self.nplayers as isize;
+                turn += NUM_PLAYERS as isize;
             }
             Some(Player { id: turn as usize })
         } else {
             Some(Player {
-                id: self.turn % self.nplayers,
+                id: self.turn % NUM_PLAYERS,
             })
         }
     }
 
     pub fn get_scores(&self) -> ArrayVec<usize, 4> {
-        (0..self.nplayers)
+        (0..NUM_PLAYERS)
             .map(|i| self.board.get_score(Player { id: i }))
             .collect()
     }
@@ -88,9 +89,7 @@ impl GameState {
     }
 
     pub fn new_two_player<R: Rng + ?Sized>(rng: &mut R) -> GameState {
-        let nplayers = 2;
         GameState {
-            nplayers,
             turn: 0,
             board: Board::new(rng),
         }

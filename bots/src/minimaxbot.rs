@@ -11,6 +11,8 @@ use htmf::game::{Action, GameState};
 
 type Move = (u8, u8);
 
+const NUM_PLAYERS: usize = 2;
+
 #[derive(Clone)]
 pub struct MinimaxBot {
     pub me: Player,
@@ -67,7 +69,7 @@ impl MinimaxBot {
 
     fn score_move(game: &GameState, mv: Move, ply: i32) -> Vec<usize> {
         if ply <= 0 {
-            return (0..game.nplayers)
+            return (0..NUM_PLAYERS)
                 .map(|i| game.board.get_score(Player { id: i }))
                 .collect();
         }
@@ -80,7 +82,7 @@ impl MinimaxBot {
             let (scores, _) = Self::best_move(&game, new_active_player, ply - 1);
             scores
         } else {
-            (0..game.nplayers)
+            (0..NUM_PLAYERS)
                 .map(|i| game.board.get_score(Player { id: i }))
                 .collect()
         }

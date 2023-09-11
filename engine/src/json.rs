@@ -7,6 +7,8 @@ use crate::cellset::CellSet;
 use crate::game::GameState;
 use crate::NUM_CELLS;
 
+const NUM_PLAYERS: usize = 2;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GameStateJSON {
     pub last_move_valid: bool,
@@ -51,7 +53,7 @@ impl<'a> From<&'a GameState> for GameStateJSON {
         GameStateJSON {
             last_move_valid: true,
             mode_type,
-            nplayers: state.nplayers,
+            nplayers: NUM_PLAYERS,
             active_player: state.active_player().map(|p| p.id),
             scores: state.get_scores().to_vec(),
             turn: state.turn,
@@ -66,7 +68,7 @@ impl<'a> From<&'a Board> for GameStateJSON {
             last_move_valid: true,
             mode_type: GameModeType::Drafting,
             scores: vec![0, 0],
-            nplayers: 2,
+            nplayers: NUM_PLAYERS,
             active_player: Some(0),
             turn: 0,
             board: BoardJSON::from(b),
@@ -77,7 +79,6 @@ impl<'a> From<&'a Board> for GameStateJSON {
 impl<'a> From<&'a GameStateJSON> for GameState {
     fn from(json: &'a GameStateJSON) -> Self {
         GameState {
-            nplayers: json.nplayers,
             turn: json.turn,
             board: Board::from(&json.board),
         }

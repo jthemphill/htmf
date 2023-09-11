@@ -1,5 +1,6 @@
-use arrayvec::ArrayVec;
 use rand::prelude::*;
+
+const NUM_PLAYERS: usize = 2;
 
 /**
  * Games are connected to each other via Moves.
@@ -203,9 +204,7 @@ fn playout<R: Rng + ?Sized>(root: &mut TreeNode, rng: &mut R) -> (Vec<Move>, Gam
 
 fn backprop(root: &mut TreeNode, path: Vec<Move>, game: Game) {
     root.visits += 1;
-    let rewards: ArrayVec<f64, 4> = (0..game.state.nplayers)
-        .map(|p| get_reward(&game.state, p))
-        .collect();
+    let rewards: [f64; NUM_PLAYERS] = [get_reward(&game.state, 0), get_reward(&game.state, 1)];
     let mut backprop_node = root;
     for backprop_move in path {
         if backprop_node.is_leaf() {
