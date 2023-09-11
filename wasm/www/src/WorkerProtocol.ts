@@ -1,71 +1,44 @@
-import type GameState from './GameState'
+export interface GameState {
+  activePlayer?: number
+  modeType: 'drafting' | 'playing'
+  scores: number[]
+  turn: number
+  board: {
+    fish: number[]
+    penguins: number[][]
+    claimed: number[][]
+  }
+}
+
+export interface MoveScore { src?: number, dst: number, visits: number, rewards: number }
+
+export interface PlayerMoveScores {
+  player: number
+  moveScores: MoveScore[]
+}
 
 export type WorkerRequest = {
-  type: 'initialize'
+  type: 'getGameState'
 } | {
-  type: 'get'
-} | {
-  type: 'place'
-  dst: number
-} | {
-  type: 'move'
-  src: number
-  dst: number
-} | {
-  type: 'possibleMoves'
+  type: 'getPossibleMoves'
   src?: number
 } | {
-  type: 'takeAction'
-} | {
-  type: 'startPondering'
-} | {
-  type: 'takeAction'
+  type: 'movePenguin'
+  src?: number
+  dst: number
 }
 
 export type WorkerResponse = {
-  type: 'initialized'
+  type: 'gameState'
   gameState: GameState
   possibleMoves: number[]
-} | {
-  type: 'state'
-  gameState: GameState
-} | {
-  type: 'possibleMoves'
-  possibleMoves: number[]
-} | {
-  type: 'illegalMove'
-  src: number
-  dst: number
-} | {
-  type: 'illegalPlacement'
-  dst: number
-} | {
-  type: 'placeScores'
-  activePlayer: number
-  placeScores: Array<{
-    dst: number
-    visits: number
-    rewards: number
-  }>
-  memoryUsage: number
-  treeSize: number
-} | {
-  type: 'moveScores'
-  activePlayer: number
-  moveScores: Array<{
-    src: number
-    dst: number
-    visits: number
-    rewards: number
-  }>
-  memoryUsage: number
-  treeSize: number
+  lastMoveWasIllegal: boolean
 } | {
   type: 'thinkingProgress'
+  playerMoveScores: PlayerMoveScores
+  memoryUsage: number
+  treeSize: number
   completed: number
   required: number
   totalTimeMs: number
-} | {
-  type: 'treeSize'
-  treeSize: number
 }

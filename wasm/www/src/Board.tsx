@@ -1,10 +1,7 @@
 import * as React from 'react'
 
 import Hex from './Hex'
-
-import type GameState from './GameState'
-import type { MoveScore } from './MoveScores'
-
+import { type GameState, type MoveScore } from './WorkerProtocol'
 import { NUM_ROWS, EVEN_ROW_LEN, ODD_ROW_LEN, HUMAN_PLAYER, BOT_PLAYER } from './constants'
 
 interface Props {

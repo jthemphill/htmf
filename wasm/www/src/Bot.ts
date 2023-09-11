@@ -1,8 +1,7 @@
 import * as wasm from '../../pkg/htmf_wasm'
 
 import { NPLAYERS, NUM_CELLS, PLAYOUT_MS, PONDER_INTERVAL_MS, MIN_PLAYOUTS, MAX_PLAYOUTS, HUMAN_PLAYER, BOT_PLAYER } from './constants'
-import type GameState from './GameState'
-import { type WorkerRequest, type WorkerResponse } from './WorkerProtocol'
+import { type GameState, type MoveScore, type WorkerRequest, type WorkerResponse } from './WorkerProtocol'
 
 function getGameState (game: wasm.Game): GameState {
   const fish = []
@@ -68,16 +67,7 @@ class Bot {
     this.free()
     this.game = wasm.Game.new()
     this.ponder()
-    this.init()
-  }
-
-  init (): void {
-    const postMessage = this.postMessage
-    postMessage({
-      type: 'initialized',
-      gameState: this.getState(),
-      possibleMoves: this.getPossibleMoves()
-    })
+    this.postGameState({ })
   }
 
   ponder (): void {
@@ -86,24 +76,22 @@ class Bot {
     if (this.ponderer !== undefined) {
       return
     }
+    const ponderStartTime = performance.now()
     this.ponderer = self.setInterval(
       () => {
         if (this.nplayouts >= MAX_PLAYOUTS) {
           this.stopPondering()
           return
         }
-        const t0 = performance.now()
-        while (performance.now() - t0 < PLAYOUT_MS) {
+        const intervalStartTime = performance.now()
+        while (performance.now() - intervalStartTime < PLAYOUT_MS) {
           this.playout()
         }
 
         const activePlayer = this.game.active_player()
         if (activePlayer !== undefined) {
-          if (this.game.is_drafting()) {
-            this.postPlaceScores(activePlayer)
-          } else {
-            this.postMoveScores(activePlayer)
-          }
+          const totalTimeMs = performance.now() - ponderStartTime
+          this.postThinkingProgress({ activePlayer, playoutsNeeded: MAX_PLAYOUTS, totalTimeMs })
         }
       },
       PONDER_INTERVAL_MS
@@ -134,26 +122,20 @@ class Bot {
 
   takeAction (): void {
     this.stopPondering()
-    const postMessage = this.postMessage
-    const minPlayouts = this.game.turn() < 2 ? 2 * MIN_PLAYOUTS : MIN_PLAYOUTS
+    const playoutsNeeded = this.game.turn() < 2 ? 2 * MIN_PLAYOUTS : MIN_PLAYOUTS
     const startTime = performance.now()
-    while (this.nplayouts < minPlayouts) {
+    while (this.nplayouts < playoutsNeeded) {
       this.playout()
       if (this.nplayouts % 100 === 0) {
-        postMessage({
-          type: 'thinkingProgress',
-          completed: this.nplayouts,
-          required: minPlayouts,
-          totalTimeMs: performance.now() - startTime
-        })
-        if (this.game.is_drafting()) {
-          this.postPlaceScores(BOT_PLAYER)
-        } else {
-          this.postMoveScores(BOT_PLAYER)
+        const activePlayer = this.game.active_player()
+        if (activePlayer !== undefined) {
+          const totalTimeMs = performance.now() - startTime
+          this.postThinkingProgress({ activePlayer, playoutsNeeded, totalTimeMs })
         }
       }
     }
     this.game.take_action()
+    this.postGameState({ })
     this.ponder()
   }
 
@@ -167,113 +149,85 @@ class Bot {
 
   onMessage (request: WorkerRequest): void {
     console.log(`received request ${request.type}`)
+    let src
+    let lastMoveWasIllegal = false
     switch (request.type) {
-      case 'initialize':
-        this.init()
+      case 'getGameState':
         break
-      case 'get':
-        this.postGameState()
-        break
-      case 'move':
+      case 'movePenguin':
         try {
-          this.movePenguin(request.src, request.dst)
-          this.postGameState()
+          if (request.src === undefined) {
+            this.placePenguin(request.dst)
+          } else {
+            this.movePenguin(request.src, request.dst)
+          }
         } catch (err) {
-          this.postIllegalMove(request.src, request.dst)
+          lastMoveWasIllegal = true
         }
         break
-      case 'place':
-        try {
-          this.placePenguin(request.dst)
-          this.postGameState()
-        } catch (err) {
-          this.postIllegalPlacement(request.dst)
-        }
+      case 'getPossibleMoves':
+        src = request.src
         break
-      case 'possibleMoves':
-        this.postPossibleMoves(request.src)
-        break
-      case 'takeAction':
-        this.takeAction()
-        this.postGameState()
-        break
+    }
+    this.postGameState({ src, lastMoveWasIllegal })
+    while (this.game.active_player() === BOT_PLAYER) {
+      this.takeAction()
     }
   }
 
-  postIllegalMove (src: number, dst: number): void {
+  postGameState ({ src, lastMoveWasIllegal }: { src?: number, lastMoveWasIllegal?: boolean }): void {
+    lastMoveWasIllegal = lastMoveWasIllegal === true
     const postMessage = this.postMessage
     postMessage({
-      type: 'illegalMove',
-      src,
-      dst
+      type: 'gameState',
+      gameState: this.getState(),
+      possibleMoves: this.getPossibleMoves(src),
+      lastMoveWasIllegal
     })
   }
 
-  postIllegalPlacement (dst: number): void {
+  postThinkingProgress ({
+    activePlayer,
+    playoutsNeeded,
+    totalTimeMs
+  }: { activePlayer: number, playoutsNeeded: number, totalTimeMs: number }): void {
     const postMessage = this.postMessage
     postMessage({
-      type: 'illegalPlacement',
-      dst
-    })
-  }
-
-  postPossibleMoves (src?: number): void {
-    const postMessage = this.postMessage
-    postMessage({
-      type: 'possibleMoves',
-      possibleMoves: this.getPossibleMoves(src)
-    })
-  }
-
-  postGameState (): void {
-    const postMessage = this.postMessage
-    postMessage({
-      type: 'state',
-      gameState: this.getState()
-    })
-  }
-
-  postPlaceScores (activePlayer: number): void {
-    const placeScores = []
-    for (const dst of this.game.draftable_cells()) {
-      const info = this.game.place_info(dst)
-      placeScores.push({
-        dst,
-        visits: info.get_visits(),
-        rewards: info.get_rewards()
-      })
-    }
-    const postMessage = this.postMessage
-    postMessage({
-      type: 'placeScores',
-      activePlayer,
-      placeScores,
+      type: 'thinkingProgress',
+      completed: this.nplayouts,
+      required: playoutsNeeded,
+      totalTimeMs,
       memoryUsage: this.wasmInternals.memory.buffer.byteLength,
-      treeSize: this.game.tree_size()
+      treeSize: this.game.tree_size(),
+      playerMoveScores: { player: activePlayer, moveScores: this.getMoveScores(activePlayer) }
     })
   }
 
-  postMoveScores (activePlayer: number): void {
-    const moveScores = []
-    for (const src of this.game.penguins(activePlayer)) {
-      for (const dst of this.game.possible_moves(src)) {
-        const info = this.game.move_info(src, dst)
+  getMoveScores (activePlayer: number): MoveScore[] {
+    const moveScores: MoveScore[] = []
+    if (this.game.is_drafting()) {
+      for (const dst of this.game.draftable_cells()) {
+        const info = this.game.place_info(dst)
         moveScores.push({
-          src,
           dst,
           visits: info.get_visits(),
           rewards: info.get_rewards()
         })
       }
+    } else {
+      for (const src of this.game.penguins(activePlayer)) {
+        for (const dst of this.game.possible_moves(src)) {
+          const info = this.game.move_info(src, dst)
+          moveScores.push({
+            src,
+            dst,
+            visits: info.get_visits(),
+            rewards: info.get_rewards()
+          })
+        }
+      }
     }
-    const postMessage = this.postMessage
-    postMessage({
-      type: 'moveScores',
-      activePlayer,
-      moveScores,
-      memoryUsage: this.wasmInternals.memory.buffer.byteLength,
-      treeSize: this.game.tree_size()
-    })
+    return moveScores
   }
 }
 
