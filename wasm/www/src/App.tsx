@@ -30,13 +30,14 @@ export default function App ({ worker }: Props): React.JSX.Element {
   const [treeSize, setTreeSize] = React.useState<number>(0)
   const [memoryUsage, setMemoryUsage] = React.useState<number>(0)
 
-  React.useEffect(() => {
-    worker.onmessage = ({ data: response }: MessageEvent<WorkerResponse>) => {
+  React.useEffect(function initializeWorker () {
+    worker.onmessage = function workerOnMessage ({ data: response }: MessageEvent<WorkerResponse>) {
       switch (response.type) {
         case 'gameState':
           setGameState(response.gameState)
           setPossibleMoves(response.possibleMoves)
           setLastMoveWasIllegal(response.lastMoveWasIllegal)
+          setPlayerMoveScores(undefined)
           break
         case 'thinkingProgress':
           setPlayerMoveScores(response.playerMoveScores)
@@ -65,7 +66,7 @@ export default function App ({ worker }: Props): React.JSX.Element {
   ])
 
   const modeType = gameState?.modeType
-  const handleCellClick = React.useCallback((key: number) => {
+  const handleCellClick = React.useCallback(function handleCellClick (key: number) {
     // Reset state if we know it's not a legal move
     if (modeType === undefined || possibleMoves?.includes(key) !== true) {
       setChosenCell(undefined)

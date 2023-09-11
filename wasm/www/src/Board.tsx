@@ -12,7 +12,7 @@ interface Props {
   topMove?: MoveScore
 }
 
-const Board = React.memo(function Board (props: Props): React.JSX.Element {
+export default React.memo(function Board (props: Props): React.JSX.Element {
   const size = 1000
   const sideLength = size / 16
 
@@ -83,4 +83,3 @@ const Board = React.memo(function Board (props: Props): React.JSX.Element {
     </svg>
   )
 })
-export default Board
