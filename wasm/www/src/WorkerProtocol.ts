@@ -40,5 +40,6 @@ export type WorkerResponse = {
   treeSize: number
   completed: number
   required: number
-  totalTimeMs: number
+  totalPlayouts: number
+  totalTimeThinkingMs: number
 }

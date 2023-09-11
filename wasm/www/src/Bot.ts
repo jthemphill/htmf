@@ -46,15 +46,16 @@ function getPossibleMoves (game: wasm.Game, src?: number): number[] {
 
 class Bot {
   wasmInternals: wasm.InitOutput
-  game: wasm.Game
+  game: wasm.Game = wasm.Game.new()
   postMessage: (msg: WorkerResponse) => void
   ponderer?: number
-  nplayouts = 0
+  ponderStartTime?: number
+  totalPlayouts: number = 0
+  totalCompletedPonderTimeMs: number = 0
 
   constructor (wasmInternals: wasm.InitOutput, postMessage: (msg: WorkerResponse) => void) {
     this.wasmInternals = wasmInternals
     this.postMessage = postMessage
-    this.game = wasm.Game.new()
     this.ponder()
     this.postGameState({ })
   }
@@ -62,36 +63,29 @@ class Bot {
   free (): void {
     this.stopPondering()
     this.game.free()
-  }
-
-  reset (): void {
-    this.free()
-    this.game = wasm.Game.new()
-    this.ponder()
-    this.postGameState({ })
+    this.totalPlayouts = 0
+    this.totalCompletedPonderTimeMs = 0
   }
 
   ponder (): void {
-    this.nplayouts = this.game.get_visits()
-
     if (this.ponderer !== undefined) {
       return
     }
-    const ponderStartTime = performance.now()
+    this.ponderStartTime = performance.now()
     this.ponderer = self.setInterval(() => {
-      if (this.nplayouts >= MAX_PLAYOUTS) {
+      const activePlayer = this.game.active_player()
+      if (this.game.get_visits() >= MAX_PLAYOUTS || activePlayer === BOT_PLAYER) {
         this.stopPondering()
         return
       }
+
       const intervalStartTime = performance.now()
       while (performance.now() - intervalStartTime < PONDER_INTERVAL_MS) {
         this.playout()
       }
 
-      const activePlayer = this.game.active_player()
       if (activePlayer !== undefined) {
-        const totalTimeMs = performance.now() - ponderStartTime
-        this.postThinkingProgress({ activePlayer, playoutsNeeded: MAX_PLAYOUTS, totalTimeMs })
+        this.postThinkingProgress({ activePlayer, playoutsNeeded: MAX_PLAYOUTS })
       }
     })
   }
@@ -100,6 +94,10 @@ class Bot {
     if (this.ponderer !== undefined) {
       clearInterval(this.ponderer)
       this.ponderer = undefined
+    }
+    if (this.ponderStartTime !== undefined) {
+      this.totalCompletedPonderTimeMs += performance.now() - this.ponderStartTime
+      this.ponderStartTime = undefined
     }
   }
 
@@ -115,23 +113,29 @@ class Bot {
 
   playout (): void {
     this.game.playout()
-    ++this.nplayouts
+    ++this.totalPlayouts
   }
 
   takeAction (): void {
-    this.stopPondering()
     const playoutsNeeded = this.game.turn() < 2 ? 2 * MIN_PLAYOUTS : MIN_PLAYOUTS
-    const startTime = performance.now()
-    while (this.nplayouts < playoutsNeeded) {
+    let nplayouts = this.game.get_visits()
+    let lastIntervalTime = performance.now()
+    while (nplayouts < playoutsNeeded) {
       this.playout()
-      if (this.nplayouts % 100 === 0) {
+      ++nplayouts
+      if (this.game.get_visits() % 100 === 0) {
+        this.totalCompletedPonderTimeMs += performance.now() - lastIntervalTime
+        lastIntervalTime = performance.now()
+
         const activePlayer = this.game.active_player()
         if (activePlayer !== undefined) {
-          const totalTimeMs = performance.now() - startTime
-          this.postThinkingProgress({ activePlayer, playoutsNeeded, totalTimeMs })
+          this.postThinkingProgress({ activePlayer, playoutsNeeded })
         }
       }
     }
+    this.totalCompletedPonderTimeMs += performance.now() - lastIntervalTime
+    lastIntervalTime = performance.now()
+
     this.game.take_action()
     this.postGameState({ })
     this.ponder()
@@ -186,15 +190,15 @@ class Bot {
 
   postThinkingProgress ({
     activePlayer,
-    playoutsNeeded,
-    totalTimeMs
-  }: { activePlayer: number, playoutsNeeded: number, totalTimeMs: number }): void {
+    playoutsNeeded
+  }: { activePlayer: number, playoutsNeeded: number }): void {
     const postMessage = this.postMessage
     postMessage({
       type: 'thinkingProgress',
-      completed: this.nplayouts,
+      completed: this.game.get_visits(),
       required: playoutsNeeded,
-      totalTimeMs,
+      totalPlayouts: this.totalPlayouts,
+      totalTimeThinkingMs: this.getTotalTimeThinkingMs(),
       memoryUsage: this.wasmInternals.memory.buffer.byteLength,
       treeSize: this.game.tree_size(),
       playerMoveScores: { player: activePlayer, moveScores: this.getMoveScores(activePlayer) }
@@ -226,6 +230,14 @@ class Bot {
       }
     }
     return moveScores
+  }
+
+  getTotalTimeThinkingMs (): number {
+    let totalTimeThinkingMs = this.totalCompletedPonderTimeMs
+    if (this.ponderStartTime !== undefined) {
+      totalTimeThinkingMs += performance.now() - this.ponderStartTime
+    }
+    return totalTimeThinkingMs
   }
 }
 

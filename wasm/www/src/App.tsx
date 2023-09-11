@@ -7,6 +7,7 @@ import { type GameState, type PlayerMoveScores, type WorkerRequest, type WorkerR
 interface ThinkingProgress {
   completed: number
   required: number
+  totalPlayouts: number
   totalTimeMs: number
 }
 
@@ -44,7 +45,8 @@ export default function App ({ worker }: Props): React.JSX.Element {
           setThinkingProgress({
             completed: response.completed,
             required: response.required,
-            totalTimeMs: response.totalTimeMs
+            totalPlayouts: response.totalPlayouts,
+            totalTimeMs: response.totalTimeThinkingMs
           })
           break
       }
@@ -178,10 +180,11 @@ const MemoryUsageBlock = React.memo(
 
 const ThinkingProgressBar = React.memo(
   function ThinkingProgressBar ({ thinkingProgress }: { thinkingProgress: ThinkingProgress }): React.JSX.Element {
-    const playoutsPerSec = thinkingProgress.completed * 1000 / thinkingProgress.totalTimeMs
+    const playoutsPerSec = thinkingProgress.totalPlayouts * 1000 / thinkingProgress.totalTimeMs
     return (
       <div>
         <progress value={thinkingProgress.completed} max={thinkingProgress.required} />
+        <p>{thinkingProgress.totalPlayouts.toLocaleString()} playouts</p>
         <p className="playout-counter">{`${playoutsPerSec.toFixed(0)} playouts/sec`}</p>
       </div>
     )
