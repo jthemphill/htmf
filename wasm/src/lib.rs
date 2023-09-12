@@ -9,17 +9,17 @@ mod utils;
 
 #[wasm_bindgen]
 pub struct MoveInfo {
-    visits: u64,
-    rewards: f64,
+    visits: u32,
+    rewards: f32,
 }
 
 #[wasm_bindgen]
 impl MoveInfo {
-    pub fn get_visits(&self) -> f64 {
-        self.visits as f64
+    pub fn get_visits(&self) -> f32 {
+        self.visits as f32
     }
 
-    pub fn get_rewards(&self) -> f64 {
+    pub fn get_rewards(&self) -> f32 {
         self.rewards
     }
 }
@@ -131,7 +131,10 @@ impl Game {
 
     pub fn get_visits(&self) -> f64 {
         if let Some(children) = self.bot.root.children.get() {
-            children.iter().map(|(_, child)| child.visits).sum::<u64>() as f64
+            children
+                .iter()
+                .map(|(_, child)| child.rewards_visits.get().1)
+                .sum::<u32>() as f64
         } else {
             0.0
         }
@@ -156,10 +159,8 @@ impl Game {
         if let Some(children) = self.bot.root.children.get() {
             for (child_move, child) in children {
                 if *child_move == game_move {
-                    return MoveInfo {
-                        visits: child.visits,
-                        rewards: child.rewards,
-                    };
+                    let (rewards, visits) = child.rewards_visits.get();
+                    return MoveInfo { rewards, visits };
                 }
             }
         }

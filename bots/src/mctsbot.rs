@@ -1,4 +1,5 @@
 use rand::prelude::*;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 
 const NUM_PLAYERS: usize = 2;
@@ -33,8 +34,8 @@ impl Into<htmf::game::Action> for Move {
 
 pub struct TreeNode {
     pub game: Game,
-    pub visits: u64,
-    pub rewards: f64,
+    // u64 representation of (rewards: f32, visits: u32)
+    pub rewards_visits: RewardsVisits,
     pub children: OnceLock<Vec<(Move, TreeNode)>>,
 }
 
@@ -42,19 +43,13 @@ impl TreeNode {
     pub fn new(game: Game) -> Self {
         Self {
             game,
-            visits: 0,
-            rewards: 0.0,
-            children: OnceLock::new(),
+            rewards_visits: Default::default(),
+            children: Default::default(),
         }
     }
 
     pub fn is_leaf(&self) -> bool {
         self.children.get().is_none()
-    }
-
-    pub fn mark_visit(&mut self, reward: f64) {
-        self.visits += 1;
-        self.rewards += reward;
     }
 
     pub fn get_mut_child(&mut self, game_move: Move) -> &mut TreeNode {
@@ -92,6 +87,50 @@ impl TreeNode {
                 .collect()
         });
         self.children.get_mut().unwrap().iter_mut()
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct RewardsVisits {
+    pub rewards_visits: AtomicU64,
+}
+
+impl RewardsVisits {
+    pub fn get(&self) -> (f32, u32) {
+        let rewards_visits = self.rewards_visits.load(Ordering::SeqCst);
+        let rewards = f32::from_bits((rewards_visits >> 32) as u32);
+        let visits = rewards_visits as u32;
+        (rewards, visits)
+    }
+
+    pub fn get_and_increment_visits(&self) -> (f32, u32) {
+        let rewards_visits = self.rewards_visits.fetch_add(1, Ordering::SeqCst);
+        let rewards = f32::from_bits((rewards_visits >> 32) as u32);
+        let visits = rewards_visits as u32;
+        (rewards, visits)
+    }
+
+    pub fn get_and_add_reward(&self, reward: f32) -> (f32, u32) {
+        let mut current_rewards_visits = self.rewards_visits.load(Ordering::SeqCst);
+        loop {
+            let mut rewards = f32::from_bits((current_rewards_visits >> 32) as u32);
+            let visits = current_rewards_visits as u32;
+
+            rewards += reward;
+
+            let new_rewards_visits = ((rewards.to_bits() as u64) << 32) | (visits as u64);
+
+            if let Err(race_rewards_visits) = self.rewards_visits.compare_exchange_weak(
+                current_rewards_visits,
+                new_rewards_visits,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            ) {
+                current_rewards_visits = race_rewards_visits;
+            } else {
+                return (rewards, visits);
+            }
+        }
     }
 }
 
@@ -148,29 +187,31 @@ fn choose_child<'tree, R: Rng + ?Sized>(
     node: &'tree TreeNode,
     rng: &'_ mut R,
 ) -> (Move, &'tree TreeNode) {
-    let total_visits = node.visits;
+    // Increment visits now to discourage other threads from following this path through the tree
+    let (_, total_visits) = node.rewards_visits.get_and_increment_visits();
 
     let mut chosen_child = None;
-    let mut num_optimal: u32 = 0;
-    let mut best_so_far: f64 = std::f64::NEG_INFINITY;
+    let mut num_optimal: f64 = 0.0;
+    let mut best_so_far: f32 = std::f32::NEG_INFINITY;
     for (child_move, child) in node.iter_children() {
         let score = {
+            let (child_rewards, child_visits) = child.rewards_visits.get();
             // https://www.researchgate.net/publication/235985858_A_Survey_of_Monte_Carlo_Tree_Search_Methods
-            if child.visits == 0 {
-                std::f64::INFINITY
+            if child_visits == 0 {
+                std::f32::INFINITY
             } else {
-                let explore_term = (2.0 * (total_visits as f64).ln() / child.visits as f64).sqrt();
-                let exploit_term = (child.rewards + 1.0) / (child.visits as f64 + 2.0);
+                let explore_term = (2.0 * (total_visits as f32).ln() / child_visits as f32).sqrt();
+                let exploit_term = child_rewards / child_visits as f32;
                 explore_term + exploit_term
             }
         };
         if score > best_so_far {
             chosen_child = Some((*child_move, child));
-            num_optimal = 1;
+            num_optimal = 1.0;
             best_so_far = score;
-        } else if (score - best_so_far).abs() < std::f64::EPSILON {
-            num_optimal += 1;
-            if rng.gen_bool(1.0 / num_optimal as f64) {
+        } else if (score - best_so_far).abs() < std::f32::EPSILON {
+            num_optimal += 1.0;
+            if rng.gen_bool(1.0 / num_optimal) {
                 chosen_child = Some((*child_move, child));
             }
         }
@@ -178,7 +219,7 @@ fn choose_child<'tree, R: Rng + ?Sized>(
     chosen_child.unwrap()
 }
 
-fn get_reward(game: &htmf::game::GameState, p: usize) -> f64 {
+fn get_reward(game: &htmf::game::GameState, p: usize) -> f32 {
     let scores = game.get_scores();
     let winning_score = *scores.iter().max().unwrap();
     if scores[p] < winning_score {
@@ -219,8 +260,7 @@ fn playout<R: Rng + ?Sized>(root: &TreeNode, rng: &mut R) -> (Vec<Move>, Game) {
 }
 
 fn backprop(root: &mut TreeNode, path: Vec<Move>, game: Game) {
-    root.visits += 1;
-    let rewards: [f64; NUM_PLAYERS] = [get_reward(&game.state, 0), get_reward(&game.state, 1)];
+    let rewards: [f32; NUM_PLAYERS] = [get_reward(&game.state, 0), get_reward(&game.state, 1)];
     let mut backprop_node = root;
     for backprop_move in path {
         if backprop_node.is_leaf() {
@@ -228,7 +268,9 @@ fn backprop(root: &mut TreeNode, path: Vec<Move>, game: Game) {
         }
         if let Some(p) = backprop_node.game.state.active_player() {
             backprop_node = backprop_node.get_mut_child(backprop_move);
-            backprop_node.mark_visit(rewards[p.id]);
+            backprop_node
+                .rewards_visits
+                .get_and_add_reward(rewards[p.id]);
         } else {
             break;
         }
@@ -260,14 +302,9 @@ impl<R: Rng> MCTSBot<R> {
 
     /// Tell the bot about the new game state
     pub fn update(&mut self, game_state: &htmf::game::GameState) {
-        let dummy = TreeNode {
-            game: Game {
-                state: game_state.clone(),
-            },
-            children: OnceLock::new(),
-            rewards: 0.0,
-            visits: 0,
-        };
+        let dummy = TreeNode::new(Game {
+            state: game_state.clone(),
+        });
         let chosen_edge = self
             .root
             .iter_mut_children()
@@ -293,9 +330,11 @@ impl<R: Rng> MCTSBot<R> {
             .root
             .iter_mut_children()
             .max_by(|(_, child1), (_, child2)| {
-                (child1.rewards / child1.visits as f64)
-                    .partial_cmp(&(child2.rewards / child2.visits as f64))
-                    .unwrap_or(child1.visits.cmp(&child2.visits))
+                let (child1_rewards, child1_visits) = child1.rewards_visits.get();
+                let (child2_rewards, child2_visits) = child2.rewards_visits.get();
+                (child1_rewards / child1_visits as f32)
+                    .partial_cmp(&(child2_rewards / child2_visits as f32))
+                    .unwrap_or(child1_visits.cmp(&child2_visits))
             })
             .unwrap();
         match *best_move {
@@ -336,6 +375,7 @@ fn test_run_full_game() {
         .collect::<Vec<MCTSBot<StdRng>>>();
 
     while let Some(p) = game.active_player() {
+        bots[p.id].playout();
         let action = bots[p.id].take_action();
         game.apply_action(&action).unwrap();
         for bot in &mut bots {
