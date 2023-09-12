@@ -52,9 +52,9 @@ impl TreeNode {
         self.children.get().is_none()
     }
 
-    pub fn get_mut_child(&mut self, game_move: Move) -> &mut TreeNode {
-        &mut self
-            .iter_mut_children()
+    pub fn get_child(&self, game_move: Move) -> &TreeNode {
+        &self
+            .iter_children()
             .find(|(child_move, _)| *child_move == game_move)
             .unwrap()
             .1
@@ -231,7 +231,8 @@ fn get_reward(game: &htmf::game::GameState, p: usize) -> f32 {
     }
 }
 
-fn playout<R: Rng + ?Sized>(root: &TreeNode, rng: &mut R) -> (Vec<Move>, Game) {
+fn playout(root: &TreeNode) -> (Vec<Move>, Game) {
+    let mut rng = &mut thread_rng();
     let mut path = vec![];
     let mut expand_node = root;
 
@@ -259,7 +260,7 @@ fn playout<R: Rng + ?Sized>(root: &TreeNode, rng: &mut R) -> (Vec<Move>, Game) {
     (path, game)
 }
 
-fn backprop(root: &mut TreeNode, path: Vec<Move>, game: Game) {
+fn backprop(root: &TreeNode, path: Vec<Move>, game: Game) {
     let rewards: [f32; NUM_PLAYERS] = [get_reward(&game.state, 0), get_reward(&game.state, 1)];
     let mut backprop_node = root;
     for backprop_move in path {
@@ -267,7 +268,7 @@ fn backprop(root: &mut TreeNode, path: Vec<Move>, game: Game) {
             break;
         }
         if let Some(p) = backprop_node.game.state.active_player() {
-            backprop_node = backprop_node.get_mut_child(backprop_move);
+            backprop_node = backprop_node.get_child(backprop_move);
             backprop_node
                 .rewards_visits
                 .get_and_add_reward(rewards[p.id]);
@@ -285,18 +286,16 @@ pub struct UpdateStats {
     pub new_capacity: usize,
 }
 
-pub struct MCTSBot<R: Rng> {
+pub struct MCTSBot {
     pub root: TreeNode,
     pub me: htmf::board::Player,
-    rng: R,
 }
 
-impl<R: Rng> MCTSBot<R> {
-    pub fn new(game: htmf::game::GameState, me: htmf::board::Player, rng: R) -> Self {
+impl MCTSBot {
+    pub fn new(game: htmf::game::GameState, me: htmf::board::Player) -> Self {
         MCTSBot {
             root: TreeNode::new(Game { state: game }),
             me,
-            rng,
         }
     }
 
@@ -316,16 +315,16 @@ impl<R: Rng> MCTSBot<R> {
         }
     }
 
-    pub fn playout(&mut self) {
-        let (path, game) = playout(&mut self.root, &mut self.rng);
-        backprop(&mut self.root, path, game);
+    pub fn playout(&self) {
+        let (path, game) = playout(&self.root);
+        backprop(&self.root, path, game);
     }
 
     pub fn take_action(&mut self) -> htmf::game::Action {
         if self.root.game.state.active_player() != Some(self.me) {
             panic!("{:?} was asked to move, but it is not their turn!", self.me);
         }
-        playout(&mut self.root, &mut self.rng);
+        playout(&mut self.root);
         let (best_move, _) = self
             .root
             .iter_mut_children()
@@ -372,7 +371,7 @@ fn test_run_full_game() {
                 SeedableRng::seed_from_u64(i as u64),
             )
         })
-        .collect::<Vec<MCTSBot<StdRng>>>();
+        .collect::<Vec<MCTSBot>>();
 
     while let Some(p) = game.active_player() {
         bots[p.id].playout();

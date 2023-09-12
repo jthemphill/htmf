@@ -64,11 +64,7 @@ fn main() {
 fn play_game(nplayouts: usize, verbose: bool) -> (usize, Vec<GameState>) {
     let mut game = GameState::new_two_player::<StdRng>(&mut SeedableRng::from_entropy());
     let mut random = RandomBot::new(game.clone(), Player { id: RANDOM_PLAYER });
-    let mut mcts = MCTSBot::<StdRng>::new(
-        game.clone(),
-        Player { id: MCTS_PLAYER },
-        SeedableRng::from_entropy(),
-    );
+    let mut mcts = MCTSBot::new(game.clone(), Player { id: MCTS_PLAYER });
 
     let mut logged_states = vec![];
 

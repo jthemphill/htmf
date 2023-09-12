@@ -26,7 +26,7 @@ impl MoveInfo {
 
 #[wasm_bindgen]
 pub struct Game {
-    bot: MCTSBot<StdRng>,
+    bot: MCTSBot,
 }
 
 #[wasm_bindgen]
@@ -34,10 +34,9 @@ impl Game {
     pub fn new() -> Self {
         utils::set_panic_hook();
         Self {
-            bot: MCTSBot::<StdRng>::new(
+            bot: MCTSBot::new(
                 GameState::new_two_player::<StdRng>(&mut SeedableRng::from_entropy()),
                 Player { id: 1 },
-                SeedableRng::from_entropy(),
             ),
         }
     }
@@ -122,7 +121,7 @@ impl Game {
         }
     }
 
-    pub fn playout(&mut self) {
+    pub fn playout(&self) {
         if self.game_over() {
             return;
         }
