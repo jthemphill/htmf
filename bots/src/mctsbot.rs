@@ -97,40 +97,27 @@ pub struct RewardsVisits {
 
 impl RewardsVisits {
     pub fn get(&self) -> (f32, u32) {
-        let rewards_visits = self.rewards_visits.load(Ordering::SeqCst);
-        let rewards = f32::from_bits((rewards_visits >> 32) as u32);
-        let visits = rewards_visits as u32;
-        (rewards, visits)
+        Self::decompose_rewards_visits(self.rewards_visits.load(Ordering::Relaxed))
     }
 
     pub fn get_and_increment_visits(&self) -> (f32, u32) {
-        let rewards_visits = self.rewards_visits.fetch_add(1, Ordering::SeqCst);
+        Self::decompose_rewards_visits(self.rewards_visits.fetch_add(1, Ordering::Relaxed))
+    }
+
+    pub fn add_reward(&self, reward: f32) {
+        self.rewards_visits
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |rewards_visits| {
+                let (mut rewards, visits) = Self::decompose_rewards_visits(rewards_visits);
+                rewards += reward;
+                Some(((rewards.to_bits() as u64) << 32) | (visits as u64))
+            })
+            .unwrap();
+    }
+
+    fn decompose_rewards_visits(rewards_visits: u64) -> (f32, u32) {
         let rewards = f32::from_bits((rewards_visits >> 32) as u32);
         let visits = rewards_visits as u32;
         (rewards, visits)
-    }
-
-    pub fn get_and_add_reward(&self, reward: f32) -> (f32, u32) {
-        let mut current_rewards_visits = self.rewards_visits.load(Ordering::SeqCst);
-        loop {
-            let mut rewards = f32::from_bits((current_rewards_visits >> 32) as u32);
-            let visits = current_rewards_visits as u32;
-
-            rewards += reward;
-
-            let new_rewards_visits = ((rewards.to_bits() as u64) << 32) | (visits as u64);
-
-            if let Err(race_rewards_visits) = self.rewards_visits.compare_exchange_weak(
-                current_rewards_visits,
-                new_rewards_visits,
-                Ordering::SeqCst,
-                Ordering::SeqCst,
-            ) {
-                current_rewards_visits = race_rewards_visits;
-            } else {
-                return (rewards, visits);
-            }
-        }
     }
 }
 
@@ -232,7 +219,7 @@ fn get_reward(game: &htmf::game::GameState, p: usize) -> f32 {
 }
 
 fn playout(root: &TreeNode) -> (Vec<Move>, Game) {
-    let mut rng = &mut thread_rng();
+    let rng = &mut thread_rng();
     let mut path = vec![];
     let mut expand_node = root;
 
@@ -269,9 +256,7 @@ fn backprop(root: &TreeNode, path: Vec<Move>, game: Game) {
         }
         if let Some(p) = backprop_node.game.state.active_player() {
             backprop_node = backprop_node.get_child(backprop_move);
-            backprop_node
-                .rewards_visits
-                .get_and_add_reward(rewards[p.id]);
+            backprop_node.rewards_visits.add_reward(rewards[p.id]);
         } else {
             break;
         }
@@ -364,13 +349,7 @@ fn test_run_full_game() {
 
     let mut game = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(0));
     let mut bots = (0..=1)
-        .map(|i| {
-            MCTSBot::new(
-                game.clone(),
-                Player { id: i },
-                SeedableRng::seed_from_u64(i as u64),
-            )
-        })
+        .map(|i| MCTSBot::new(game.clone(), Player { id: i }))
         .collect::<Vec<MCTSBot>>();
 
     while let Some(p) = game.active_player() {
