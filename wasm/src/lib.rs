@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use rand::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -26,7 +28,7 @@ impl MoveInfo {
 
 #[wasm_bindgen]
 pub struct Game {
-    bot: MCTSBot,
+    bot: Arc<RwLock<MCTSBot>>,
 }
 
 #[wasm_bindgen]
@@ -34,10 +36,20 @@ impl Game {
     pub fn new() -> Self {
         utils::set_panic_hook();
         Self {
-            bot: MCTSBot::new(
+            bot: Arc::from(RwLock::from(MCTSBot::new(
                 GameState::new_two_player::<StdRng>(&mut SeedableRng::from_entropy()),
                 Player { id: 1 },
-            ),
+            ))),
+        }
+    }
+
+    pub fn clone_into_raw(&self) -> *const RwLock<MCTSBot> {
+        Arc::into_raw(Arc::clone(&self.bot))
+    }
+
+    pub unsafe fn from_raw(ptr: *const RwLock<MCTSBot>) -> Self {
+        Self {
+            bot: Arc::from_raw(ptr),
         }
     }
 
@@ -46,64 +58,68 @@ impl Game {
     }
 
     pub fn finished_drafting(&self) -> bool {
-        self.bot.root.game.state.finished_drafting()
+        let bot = self.bot.read().unwrap();
+        bot.root.game.state.finished_drafting()
     }
 
     pub fn game_over(&self) -> bool {
-        self.bot.root.game.state.game_over()
+        let bot = self.bot.read().unwrap();
+        bot.root.game.state.game_over()
     }
 
     pub fn active_player(&self) -> Option<u8> {
-        self.bot.root.game.state.active_player().map(|p| p.id as u8)
+        let bot = self.bot.read().unwrap();
+        bot.root.game.state.active_player().map(|p| p.id as u8)
     }
 
     pub fn score(&self, player: usize) -> usize {
-        self.bot.root.game.state.get_scores()[player]
+        let bot = self.bot.read().unwrap();
+        bot.root.game.state.get_scores()[player]
     }
 
     pub fn turn(&self) -> usize {
-        self.bot.root.game.state.turn
+        let bot = self.bot.read().unwrap();
+        bot.root.game.state.turn
     }
 
     pub fn num_fish(&self, idx: u8) -> usize {
-        self.bot.root.game.state.board.num_fish(idx)
+        let bot = self.bot.read().unwrap();
+        bot.root.game.state.board.num_fish(idx)
     }
 
     pub fn penguins(&self, player: usize) -> Vec<u8> {
-        self.bot.root.game.state.board.penguins[player]
+        let bot = self.bot.read().unwrap();
+        bot.root.game.state.board.penguins[player]
             .into_iter()
             .collect()
     }
 
     pub fn claimed(&self, player: usize) -> Vec<u8> {
-        self.bot.root.game.state.board.claimed[player]
+        let bot = self.bot.read().unwrap();
+        bot.root.game.state.board.claimed[player]
             .into_iter()
             .collect()
     }
 
     pub fn draftable_cells(&self) -> Vec<u8> {
-        self.bot.root.game.state.board.fish[0]
-            .exclude(self.bot.root.game.state.board.all_claimed_cells())
+        let bot = self.bot.read().unwrap();
+        bot.root.game.state.board.fish[0]
+            .exclude(bot.root.game.state.board.all_claimed_cells())
             .into_iter()
             .collect()
     }
 
     pub fn possible_moves(&self, src: u8) -> Vec<u8> {
-        self.bot
-            .root
-            .game
-            .state
-            .board
-            .moves(src)
-            .into_iter()
-            .collect()
+        let bot = self.bot.read().unwrap();
+        bot.root.game.state.board.moves(src).into_iter().collect()
     }
 
     pub fn place_penguin(&mut self, dst: u8) -> Result<(), JsValue> {
-        let mut new_game = self.bot.root.game.state.clone();
+        let mut bot = self.bot.write().unwrap();
+        let mut new_game = bot.root.game.state.clone();
         match new_game.place_penguin(dst) {
             Ok(()) => {
-                self.bot.update(&new_game);
+                bot.update(&new_game);
                 Ok(())
             }
             Err(err) => Err(JsValue::from(err.message)),
@@ -111,10 +127,11 @@ impl Game {
     }
 
     pub fn move_penguin(&mut self, src: u8, dst: u8) -> Result<(), JsValue> {
-        let mut new_game = self.bot.root.game.state.clone();
+        let mut bot = self.bot.write().unwrap();
+        let mut new_game = bot.root.game.state.clone();
         match new_game.move_penguin(src, dst) {
             Ok(()) => {
-                self.bot.update(&new_game);
+                bot.update(&new_game);
                 Ok(())
             }
             Err(err) => Err(JsValue::from(err.message)),
@@ -122,14 +139,16 @@ impl Game {
     }
 
     pub fn playout(&self) {
-        if self.game_over() {
+        let bot = self.bot.read().unwrap();
+        if bot.root.game.state.game_over() {
             return;
         }
-        self.bot.playout()
+        bot.playout()
     }
 
     pub fn get_visits(&self) -> f64 {
-        if let Some(children) = self.bot.root.children.get() {
+        let bot = self.bot.read().unwrap();
+        if let Some(children) = bot.root.children.get() {
             children
                 .iter()
                 .map(|(_, child)| child.rewards_visits.get().1)
@@ -155,7 +174,8 @@ impl Game {
     }
 
     fn info(&self, game_move: htmf_bots::mctsbot::Move) -> MoveInfo {
-        if let Some(children) = self.bot.root.children.get() {
+        let bot = self.bot.read().unwrap();
+        if let Some(children) = bot.root.children.get() {
             for (child_move, child) in children {
                 if *child_move == game_move {
                     let (rewards, visits) = child.rewards_visits.get();
@@ -170,15 +190,16 @@ impl Game {
     }
 
     pub fn take_action(&mut self) -> Result<(), JsValue> {
-        if self.game_over() {
+        let mut bot = self.bot.write().unwrap();
+        if bot.root.game.state.game_over() {
             return Ok(());
         }
-        while self.bot.root.game.state.active_player() == Some(self.bot.me) {
-            let action = self.bot.take_action();
-            let mut new_game = self.bot.root.game.state.clone();
+        while bot.root.game.state.active_player() == Some(bot.me) {
+            let action = bot.take_action();
+            let mut new_game = bot.root.game.state.clone();
             match new_game.apply_action(&action) {
                 Ok(()) => {
-                    self.bot.update(&new_game);
+                    bot.update(&new_game);
                     Ok(())
                 }
                 Err(err) => Err(JsValue::from(err.message)),
@@ -188,7 +209,8 @@ impl Game {
     }
 
     pub fn tree_size(&self) -> usize {
-        self.bot.tree_size()
+        let bot = self.bot.read().unwrap();
+        bot.tree_size()
     }
 }
 
