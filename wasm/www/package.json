@@ -5,7 +5,8 @@
   "main": "src/App.tsx",
   "type": "module",
   "scripts": {
-    "wasm-build": "wasm-pack build --target web --profiling",
+    "build:wasm-st": "wasm-pack build --target web --profiling",
+    "build:wasm-mt": "wasm-pack build --target web --profiling -- --features parallel",
     "dev": "vite",
     "test": "vitest",
     "build": "tsc && vite build",
@@ -53,6 +54,7 @@
     "ts-loader": "^9",
     "typescript": "^5",
     "vite": "^5",
-    "vitest": "^0"
+    "vitest": "^0",
+    "wasm-pack": "^0"
   }
 }
