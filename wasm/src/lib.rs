@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 
 use rand::prelude::*;
@@ -8,6 +9,11 @@ use htmf::game::GameState;
 use htmf_bots::MCTSBot;
 
 mod utils;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+#[cfg(feature = "parallel")]
+pub use wasm_bindgen_rayon::init_thread_pool;
 
 #[wasm_bindgen]
 pub struct MoveInfo {
@@ -29,6 +35,7 @@ impl MoveInfo {
 #[wasm_bindgen]
 pub struct Game {
     bot: Arc<RwLock<MCTSBot>>,
+    total_playouts: AtomicUsize,
 }
 
 #[wasm_bindgen]
@@ -40,16 +47,7 @@ impl Game {
                 GameState::new_two_player::<StdRng>(&mut SeedableRng::from_entropy()),
                 Player { id: 1 },
             ))),
-        }
-    }
-
-    pub fn clone_into_raw(&self) -> *const RwLock<MCTSBot> {
-        Arc::into_raw(Arc::clone(&self.bot))
-    }
-
-    pub unsafe fn from_raw(ptr: *const RwLock<MCTSBot>) -> Self {
-        Self {
-            bot: Arc::from_raw(ptr),
+            total_playouts: AtomicUsize::from(0),
         }
     }
 
@@ -143,7 +141,36 @@ impl Game {
         if bot.root.game.state.game_over() {
             return;
         }
-        bot.playout()
+        bot.playout();
+        self.total_playouts.fetch_add(1, Ordering::Relaxed);
+    }
+
+    #[cfg(feature = "rayon")]
+    pub fn playout_n_times(&self, n: usize) {
+        if self.game_over() {
+            return;
+        }
+        (0..n).into_par_iter().for_each(move |_| {
+            let bot = self.bot.read().unwrap();
+            bot.playout();
+        });
+        self.total_playouts.fetch_add(n, Ordering::Relaxed);
+    }
+
+    #[cfg(not(feature = "rayon"))]
+    pub fn playout_n_times(&self, n: usize) {
+        let bot = self.bot.read().unwrap();
+        if bot.root.game.state.game_over() {
+            return;
+        }
+        for _ in 0..n {
+            bot.playout();
+        }
+        self.total_playouts.fetch_add(n, Ordering::Relaxed);
+    }
+
+    pub fn get_total_playouts(&self) -> usize {
+        self.total_playouts.load(Ordering::Relaxed)
     }
 
     pub fn get_visits(&self) -> f64 {

@@ -9,13 +9,13 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["console_error_panic_hook"]
+parallel = ["rayon", "wasm-bindgen-rayon"]
 
 [dependencies]
 rand = "0.8"
+rayon = { version = "1", optional = true }
 wasm-bindgen = "0.2"
-
-[dev-dependencies]
-wasm-pack = "0.12.1"
+wasm-bindgen-rayon = {version = "1", optional = true }
 
 [dependencies.console_error_panic_hook]
 version = "0.1"
