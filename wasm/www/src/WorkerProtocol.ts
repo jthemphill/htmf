@@ -12,6 +12,11 @@ export interface GameState {
 
 export interface MoveScore { src?: number, dst: number, visits: number, rewards: number }
 
+export interface BotWorker extends Worker {
+  onmessage: (event: MessageEvent<WorkerResponse>) => void
+  postMessage: (request: WorkerRequest) => void
+}
+
 export interface PlayerMoveScores {
   player: number
   moveScores: MoveScore[]

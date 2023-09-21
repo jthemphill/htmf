@@ -2,7 +2,7 @@ import React from 'react'
 
 import Board from './Board'
 import { BOT_PLAYER, HUMAN_PLAYER, NPLAYERS } from './constants'
-import { type GameState, type PlayerMoveScores, type WorkerRequest, type WorkerResponse } from './WorkerProtocol'
+import { type GameState, type PlayerMoveScores, type BotWorker, type WorkerResponse } from './WorkerProtocol'
 
 interface ThinkingProgress {
   completed: number
@@ -11,13 +11,8 @@ interface ThinkingProgress {
   totalTimeMs: number
 }
 
-export interface AppWorker extends Worker {
-  onmessage: (event: MessageEvent<WorkerResponse>) => void
-  postMessage: (request: WorkerRequest) => void
-}
-
 interface Props {
-  worker: AppWorker
+  worker: BotWorker
 }
 
 export default function App ({ worker }: Props): React.JSX.Element {
