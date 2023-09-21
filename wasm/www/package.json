@@ -1,8 +1,8 @@
 {
   "name": "htmf",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "MCTS implementation of a neat game",
-  "main": "src/App.tsx",
+  "main": "src/main.tsx",
   "type": "module",
   "scripts": {
     "build:wasm-st": "wasm-pack build --target web --profiling",
@@ -12,8 +12,8 @@
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "npm run build && vite preview",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d ./dist"
+    "predeploy:pages": "npm run build:wasm-st && npm run build",
+    "deploy:pages": "gh-pages -d ./dist"
   },
   "repository": {
     "type": "git",
