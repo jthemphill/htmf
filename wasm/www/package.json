@@ -52,7 +52,7 @@
     "source-map-loader": "^4",
     "ts-loader": "^9",
     "typescript": "^5",
-    "vite": "^4",
+    "vite": "^5",
     "vitest": "^0"
   }
 }
