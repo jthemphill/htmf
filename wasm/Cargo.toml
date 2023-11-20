@@ -12,9 +12,9 @@ default = ["console_error_panic_hook"]
 parallel = ["rayon", "wasm-bindgen-rayon"]
 
 [dependencies]
-rand = "0.8"
+rand = "0"
 rayon = { version = "1", optional = true }
-wasm-bindgen = "0.2"
+wasm-bindgen = "0"
 wasm-bindgen-rayon = {version = "1", optional = true }
 
 [dependencies.console_error_panic_hook]
@@ -34,7 +34,7 @@ features = [
 ]
 
 [dependencies.getrandom]
-version = "0.2"
+version = "0"
 features = [
     "js",
 ]
