@@ -12,8 +12,20 @@ mod utils;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
+
 #[cfg(feature = "parallel")]
 pub use wasm_bindgen_rayon::init_thread_pool;
+
+#[cfg(not(feature = "parallel"))]
+#[wasm_bindgen(js_name = initThreadPool)]
+/// This function only exists when you compile without multithreading support!
+///
+/// This function does nothing; it's just a stub function to match
+/// `wasm_bindgen_rayon::init_thread_pool`, which exists when you do compile with
+/// multithreading support.
+pub fn init_thread_pool(_num_threads: usize) -> js_sys::Promise {
+    js_sys::Promise::resolve(&JsValue::UNDEFINED)
+}
 
 #[wasm_bindgen]
 pub struct MoveInfo {

@@ -262,6 +262,7 @@ dependencies = [
  "getrandom",
  "htmf",
  "htmf-bots",
+ "js-sys",
  "rand",
  "rayon",
  "wasm-bindgen",
