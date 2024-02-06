@@ -44,17 +44,17 @@
     "@typescript-eslint/eslint-plugin": "^6",
     "@vitejs/plugin-react-swc": "^3",
     "eslint": "^8",
-    "eslint-config-standard-with-typescript": "^40",
+    "eslint-config-standard-with-typescript": "^43",
     "eslint-plugin-react-hooks": "^4",
     "eslint-plugin-react-refresh": "^0",
     "gh-pages": "^6",
-    "jsdom": "^22",
+    "jsdom": "^24",
     "jsdom-worker": "^0",
-    "source-map-loader": "^4",
+    "source-map-loader": "^5",
     "ts-loader": "^9",
     "typescript": "^5",
     "vite": "^5",
-    "vitest": "^0",
+    "vitest": "^1",
     "wasm-pack": "^0"
   }
 }
