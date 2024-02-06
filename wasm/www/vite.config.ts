@@ -27,9 +27,6 @@ export default defineConfig({
   },
   plugins: [react(), setUpCrossOriginIsolation()],
   resolve: { dedupe: ["react", "react-dom"] },
-  server: {
-    fs: { allow: [searchForWorkspaceRoot(process.cwd()), "../pkg"] },
-  },
   test: {
     environment: "jsdom",
     setupFiles: "setup-vitest.ts",
