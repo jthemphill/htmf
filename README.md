@@ -22,5 +22,8 @@ So for now, you'll need a nightly build of Rust:
 
 Lastly, you will need `npm` in order to build this game's TypeScript.
 
-Once you have a nightly build of Rust and a build of `npm`, go to `wasm/www` and
-run `npm run start`.
+Once you have a nightly build of Rust and a build of `npm`:
+
+1. Go to `wasm/www`.
+2. Run `npm run build:wasm-st` to build the WebAssembly.
+3. Run `npm run dev` to start the Vite devserver.
