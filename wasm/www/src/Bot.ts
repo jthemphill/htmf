@@ -1,4 +1,4 @@
-import * as wasm from "../../pkg/htmf_wasm";
+import * as wasm from "htmf-wasm";
 
 import {
   NPLAYERS,
