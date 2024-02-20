@@ -20,65 +20,70 @@ interface Props {
   worker: BotWorker;
 }
 
+type WorkerState = {
+  gameState?: GameState;
+  possibleMoves?: number[];
+  lastMoveWasIllegal?: boolean;
+  playerMoveScores?: PlayerMoveScores;
+  thinkingProgress?: ThinkingProgress;
+  treeSize?: number;
+  memoryUsage?: number;
+};
+
+const WorkerStateReducer = (
+  state: WorkerState,
+  response: WorkerResponse,
+): WorkerState => {
+  switch (response.type) {
+    case "gameState":
+      return {
+        ...state,
+        gameState: response.gameState,
+        possibleMoves: response.possibleMoves,
+        lastMoveWasIllegal: response.lastMoveWasIllegal,
+        playerMoveScores: undefined,
+      };
+    case "thinkingProgress":
+      return {
+        ...state,
+        playerMoveScores: response.playerMoveScores,
+        treeSize: response.treeSize,
+        memoryUsage: response.memoryUsage,
+        thinkingProgress: {
+          completed: response.completed,
+          required: response.required,
+          totalPlayouts: response.totalPlayouts,
+          totalTimeMs: response.totalTimeThinkingMs,
+        },
+      };
+  }
+};
+
+const useWorker = (worker: BotWorker): WorkerState => {
+  const [state, dispatch] = React.useReducer(WorkerStateReducer, {});
+
+  React.useEffect(() => {
+    worker.onmessage = ({ data: response }) => {
+      dispatch(response);
+    };
+    worker.postMessage({ type: "getGameState" });
+  }, [worker]);
+
+  return state;
+};
+
 export default function App({ worker }: Props): React.JSX.Element {
-  const [gameState, setGameState] = React.useState<GameState | undefined>(
-    undefined,
-  );
-  const [possibleMoves, setPossibleMoves] = React.useState<
-    number[] | undefined
-  >(undefined);
+  const {
+    gameState,
+    possibleMoves,
+    lastMoveWasIllegal,
+    playerMoveScores,
+    thinkingProgress,
+    treeSize,
+    memoryUsage,
+  } = useWorker(worker);
   const [chosenCell, setChosenCell] = React.useState<number | undefined>(
     undefined,
-  );
-  const [lastMoveWasIllegal, setLastMoveWasIllegal] =
-    React.useState<boolean>(false);
-  const [playerMoveScores, setPlayerMoveScores] = React.useState<
-    PlayerMoveScores | undefined
-  >(undefined);
-  const [thinkingProgress, setThinkingProgress] = React.useState<
-    ThinkingProgress | undefined
-  >(undefined);
-  const [treeSize, setTreeSize] = React.useState<number>(0);
-  const [memoryUsage, setMemoryUsage] = React.useState<number>(0);
-
-  React.useEffect(
-    function initializeWorker() {
-      worker.onmessage = function workerOnMessage({
-        data: response,
-      }: MessageEvent<WorkerResponse>) {
-        switch (response.type) {
-          case "gameState":
-            setGameState(response.gameState);
-            setPossibleMoves(response.possibleMoves);
-            setLastMoveWasIllegal(response.lastMoveWasIllegal);
-            setPlayerMoveScores(undefined);
-            break;
-          case "thinkingProgress":
-            setPlayerMoveScores(response.playerMoveScores);
-            setTreeSize(response.treeSize);
-            setMemoryUsage(response.memoryUsage);
-            setThinkingProgress({
-              completed: response.completed,
-              required: response.required,
-              totalPlayouts: response.totalPlayouts,
-              totalTimeMs: response.totalTimeThinkingMs,
-            });
-            break;
-        }
-      };
-      worker.postMessage({ type: "getGameState" });
-    },
-    [
-      worker,
-      setGameState,
-      setPossibleMoves,
-      setChosenCell,
-      setLastMoveWasIllegal,
-      setPlayerMoveScores,
-      setThinkingProgress,
-      setTreeSize,
-      setMemoryUsage,
-    ],
   );
 
   const modeType = gameState?.modeType;
@@ -153,10 +158,10 @@ export default function App({ worker }: Props): React.JSX.Element {
         {playerMoveScores !== undefined && (
           <WinChanceMeter playerMoveScores={playerMoveScores} />
         )}
-        <p className="tree-size">
-          Stored {treeSize.toLocaleString()} game states in memory
-        </p>
-        <MemoryUsageBlock memoryUsage={memoryUsage} treeSize={treeSize} />
+        <MemoryUsageBlock
+          memoryUsage={memoryUsage ?? 0}
+          treeSize={treeSize ?? 0}
+        />
         {thinkingProgress !== undefined && (
           <ThinkingProgressBar thinkingProgress={thinkingProgress} />
         )}
@@ -236,14 +241,20 @@ const MemoryUsageBlock = React.memo(function MemoryUsageBlock({
     unitDisplay: "narrow",
   });
   return (
-    <div className="memory-usage-block">
-      <p className="memory-usage">
-        Using {memoryUsageFormatter.format(memoryUsage)}
+    <>
+      <p className="tree-size">
+        Stored {treeSize.toLocaleString()} game states in memory
       </p>
-      <p className="memory-ratio">
-        Ratio is {memoryUsageFormatter.format(memoryUsage / treeSize)} per state
-      </p>
-    </div>
+      <div className="memory-usage-block">
+        <p className="memory-usage">
+          Using {memoryUsageFormatter.format(memoryUsage)}
+        </p>
+        <p className="memory-ratio">
+          Ratio is {memoryUsageFormatter.format(memoryUsage / treeSize)} per
+          state
+        </p>
+      </div>
+    </>
   );
 });
 
