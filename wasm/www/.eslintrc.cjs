@@ -1,16 +1,21 @@
 module.exports = {
   root: true,
   env: { browser: true, es2021: true },
-  extends: ["standard-with-typescript", "plugin:react-hooks/recommended"],
-  ignorePatterns: ["dist", ".eslintrc.cjs"],
+  extends: [
+    "plugin:@typescript-eslint/strict-type-checked",
+    "plugin:react-hooks/recommended",
+  ],
+  ignorePatterns: [
+    "**/__tests__",
+    ".eslintrc.cjs",
+    "dist",
+    "setup-vitest.ts",
+    "vite.config.ts",
+  ],
   parserOptions: {
     ecmaVersion: "latest",
     sourceType: "module",
-    project: [
-      "./tsconfig.json",
-      "./tsconfig-vite.json",
-      "./tsconfig-tests.json",
-    ],
+    project: ["./tsconfig.json"],
     tsconfigRootDir: __dirname,
   },
   plugins: ["react-refresh"],
