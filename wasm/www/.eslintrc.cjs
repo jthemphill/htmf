@@ -1,6 +1,6 @@
 module.exports = {
   root: true,
-  env: { browser: true, es2021: true },
+  env: { browser: true, es2024: true },
   extends: [
     "plugin:@typescript-eslint/strict-type-checked",
     "plugin:react-hooks/recommended",
