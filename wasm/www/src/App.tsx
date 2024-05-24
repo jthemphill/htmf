@@ -17,6 +17,7 @@ interface ThinkingProgress {
 }
 
 type WorkerState = {
+  worker?: BotWorker;
   gameState?: GameState;
   possibleMoves?: number[];
   lastMoveWasIllegal?: boolean;
@@ -31,6 +32,11 @@ const WorkerStateReducer = (
   response: WorkerResponse,
 ): WorkerState => {
   switch (response.type) {
+    case "initialized":
+      return {
+        ...state,
+        worker: response.worker,
+      };
     case "gameState":
       return {
         ...state,
@@ -52,48 +58,56 @@ const WorkerStateReducer = (
           totalTimeMs: response.totalTimeThinkingMs,
         },
       };
+    case "terminated":
+      return {
+        ...state,
+        worker: undefined,
+      };
   }
 };
 
-const useWorker = (): [React.RefObject<BotWorker>, WorkerState] => {
-  const [state, dispatch] = React.useReducer(WorkerStateReducer, {});
-  const workerRef = React.useRef<BotWorker | null>(null);
+const useWorker = (): WorkerState => {
+  const [workerState, workerDispatch] = React.useReducer(
+    WorkerStateReducer,
+    {},
+  );
 
-  React.useEffect(() => {
-    if (!workerRef.current) {
-      const worker = new Worker(new URL("./bot.worker.ts", import.meta.url), {
-        name: "Rules engine and AI",
-        type: "module",
-      }) as BotWorker;
-      worker.onmessage = ({ data: response }) => {
-        dispatch(response);
-      };
-      worker.postMessage({ type: "getGameState" });
-      workerRef.current = worker;
-    }
+  React.useEffect(function workerLifecycle() {
+    const worker = new Worker(new URL("./bot.worker.ts", import.meta.url), {
+      name: "Rules engine and AI",
+      type: "module",
+    }) as BotWorker;
+    worker.onmessage = ({ data: response }) => {
+      workerDispatch(response);
+    };
+    worker.postMessage({ type: "getGameState" });
 
+    workerDispatch({
+      type: "initialized",
+      worker,
+    });
     return () => {
-      workerRef.current?.terminate();
-      workerRef.current = null;
+      workerDispatch({
+        type: "terminated",
+      });
+      worker.terminate();
     };
   }, []);
 
-  return [workerRef, state];
+  return workerState;
 };
 
 export default function App({}): React.JSX.Element {
-  const [
-    workerRef,
-    {
-      gameState,
-      possibleMoves,
-      lastMoveWasIllegal,
-      playerMoveScores,
-      thinkingProgress,
-      treeSize,
-      memoryUsage,
-    },
-  ] = useWorker();
+  const {
+    worker,
+    gameState,
+    possibleMoves,
+    lastMoveWasIllegal,
+    playerMoveScores,
+    thinkingProgress,
+    treeSize,
+    memoryUsage,
+  } = useWorker();
   const [chosenCell, setChosenCell] = React.useState<number | undefined>(
     undefined,
   );
@@ -101,15 +115,14 @@ export default function App({}): React.JSX.Element {
   const modeType = gameState?.modeType;
   const handleCellClick = React.useCallback(
     function handleCellClick(key: number) {
-      const worker: BotWorker | null = workerRef.current;
-      if (worker === null) {
+      if (worker === undefined) {
         throw new TypeError("Couldn't initialize the WebWorker");
       }
 
       // Reset state if we know it's not a legal move
       if (modeType === undefined || possibleMoves?.includes(key) !== true) {
         setChosenCell(undefined);
-        workerRef.current?.postMessage({ type: "getPossibleMoves" });
+        worker.postMessage({ type: "getPossibleMoves" });
         return;
       }
 
@@ -137,7 +150,7 @@ export default function App({}): React.JSX.Element {
       });
       setChosenCell(undefined);
     },
-    [workerRef, modeType, possibleMoves, chosenCell],
+    [worker, modeType, possibleMoves, chosenCell],
   );
 
   let topMove;

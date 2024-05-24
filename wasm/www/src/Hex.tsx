@@ -71,9 +71,12 @@ const Hex = React.memo(function Hex({
   isTopMoveSrc,
   isTopMoveDst,
 }: Props): React.JSX.Element {
-  const handleClick = React.useCallback(() => {
-    onClick(_key);
-  }, [onClick, _key]);
+  const handleClick = React.useCallback(
+    function handleClick() {
+      onClick(_key);
+    },
+    [onClick, _key],
+  );
 
   const transform = `translate(${cx.toString()},${cy.toString()})`;
 

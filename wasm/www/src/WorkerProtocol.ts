@@ -43,6 +43,10 @@ export type WorkerRequest =
 
 export type WorkerResponse =
   | {
+      type: "initialized";
+      worker: BotWorker;
+    }
+  | {
       type: "gameState";
       gameState: GameState;
       possibleMoves: number[];
@@ -57,4 +61,7 @@ export type WorkerResponse =
       required: number;
       totalPlayouts: number;
       totalTimeThinkingMs: number;
+    }
+  | {
+      type: "terminated";
     };
