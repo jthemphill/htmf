@@ -30,7 +30,7 @@ function points(sideLength: number): number[][] {
   return points;
 }
 
-const Circles = React.memo(function Circles({
+function Circles({
   sideLength,
   fish,
 }: {
@@ -55,9 +55,9 @@ const Circles = React.memo(function Circles({
   } else {
     throw new Error(`${fish.toString()} is not a valid fish amount`);
   }
-});
+}
 
-const Hex = React.memo(function Hex({
+export default function Hex({
   _key,
   sideLength,
   highlighted,
@@ -71,12 +71,9 @@ const Hex = React.memo(function Hex({
   isTopMoveSrc,
   isTopMoveDst,
 }: Props): React.JSX.Element {
-  const handleClick = React.useCallback(
-    function handleClick() {
-      onClick(_key);
-    },
-    [onClick, _key],
-  );
+  function handleClick() {
+    onClick(_key);
+  }
 
   const transform = `translate(${cx.toString()},${cy.toString()})`;
 
@@ -121,5 +118,4 @@ const Hex = React.memo(function Hex({
       {penguin}
     </g>
   );
-});
-export default Hex;
+}
