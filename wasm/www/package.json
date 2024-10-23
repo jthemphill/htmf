@@ -32,9 +32,8 @@
   "homepage": "https://jthemphill.github.io/htmf",
   "dependencies": {
     "htmf-wasm": "workspace:*",
-    "react": "18.3.1",
-    "react-compiler-runtime": "19.0.0-beta-8a03594-20241020",
-    "react-dom": "18.3.1"
+    "react": "19.0.0-rc-45804af1-20241021",
+    "react-dom": "19.0.0-rc-45804af1-20241021"
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.1",
@@ -46,8 +45,8 @@
     "@vitejs/plugin-react": "^4.3.3",
     "babel-plugin-react-compiler": "19.0.0-beta-8a03594-20241020",
     "eslint": "9.13.0",
-    "eslint-plugin-react-hooks": "5.0.0",
     "eslint-plugin-react-compiler": "19.0.0-beta-8a03594-20241020",
+    "eslint-plugin-react-hooks": "5.0.0",
     "eslint-plugin-react-refresh": "0.4.7",
     "gh-pages": "6.1.1",
     "globals": "^15.11.0",
