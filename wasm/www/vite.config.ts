@@ -1,4 +1,4 @@
-import { searchForWorkspaceRoot, type PluginOption } from "vite";
+import { type PluginOption } from "vite";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
 
