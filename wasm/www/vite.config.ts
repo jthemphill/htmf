@@ -1,5 +1,4 @@
-import { type PluginOption } from "vite";
-import { defineConfig } from "vitest/config";
+import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react";
 
 // Some JS features are disabled unless you use these HTTP headers to promise not to load third-party scripts.
