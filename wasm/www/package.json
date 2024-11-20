@@ -57,12 +57,5 @@
     "typescript-eslint": "^8.15.0",
     "vite": "^5.4.11",
     "wasm-pack": "^0.13.1"
-  },
-  "overrides": {
-    "eslint-plugin-react-compiler": {
-      "devDependencies": {
-        "eslint": "^9.13.0"
-      }
-    }
   }
 }
