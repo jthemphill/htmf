@@ -8,7 +8,7 @@ const memory = new WebAssembly.Memory({
   maximum: 16384,
   shared: true,
 });
-const wasmInternals = await htmfWasmInit(undefined, memory);
+const wasmInternals = await htmfWasmInit({ memory });
 
 // Initialize a pool with one WebWorker per available core
 await htmfWasm.initThreadPool(navigator.hardwareConcurrency);
