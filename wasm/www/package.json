@@ -32,15 +32,15 @@
   "homepage": "https://jthemphill.github.io/htmf",
   "dependencies": {
     "htmf-wasm": "workspace:*",
-    "react": "19.0.0-rc-45804af1-20241021",
-    "react-dom": "19.0.0-rc-45804af1-20241021"
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
   },
   "devDependencies": {
     "@eslint/compat": "1.2.3",
     "@eslint/eslintrc": "3.2.0",
     "@eslint/js": "9.15.0",
-    "@types/react": "18.3.12",
-    "@types/react-dom": "18.3.1",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
     "@typescript-eslint/eslint-plugin": "8.16.0",
     "@vitejs/plugin-react": "4.3.3",
     "babel-plugin-react-compiler": "19.0.0-beta-df7b47d-20241124",
