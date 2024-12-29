@@ -1,4 +1,13 @@
 {
+  "scripts": {
+    "build": "hereby build",
+    "dev": "hereby dev",
+    "preview": "hereby preview",
+    "deploy": "hereby deploy"
+  },
+  "devDependencies": {
+    "hereby": "1.10.0"
+  },
   "pnpm": {
     "overrides": {
       "axios@ >=0.8.1 <0.28.0": "0.28.1"
