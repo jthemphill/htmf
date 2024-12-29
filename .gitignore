@@ -1,5 +1,5 @@
 target
 train/data
 node_modules
-wasm/www/dist
+www/dist
 *.pyc
