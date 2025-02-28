@@ -4,7 +4,7 @@ import { describe, test, expect, beforeEach } from "vitest";
 
 import { NUM_CELLS } from "../constants";
 import App from "../App";
-import { type AppWorker } from "../App";
+import { type BotWorker } from "../WorkerProtocol";
 import { type WorkerRequest, type WorkerResponse } from "../WorkerProtocol";
 import Bot from "../Bot";
 import htmfWasmInit from "../../../pkg/htmf_wasm";
@@ -12,7 +12,7 @@ import htmfWasmInit from "../../../pkg/htmf_wasm";
 import fs from "fs";
 import path from "node:path";
 
-class MockWorker implements AppWorker {
+class MockWorker implements BotWorker {
   postMessage: (request: WorkerRequest) => void;
   onmessage: (this: Worker, ev: MessageEvent<WorkerResponse>) => any;
   onmessageerror: null;
