@@ -84,11 +84,6 @@
   width: 100%;
 }
 
-.info-col .playout-counter {
-  margin: 0px;
-  font-size: 2vmin;
-}
-
 .info-col .win-chance {
   display: flex;
   flex-direction: column;
