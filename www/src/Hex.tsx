@@ -110,7 +110,7 @@ export default function Hex({
   }
   return (
     <g
-      data-testid={`Hex::${_key}`}
+      data-testid={`Hex::${_key.toString()}`}
       className={cellClasses.join(" ")}
       role="button"
       aria-disabled={!possible}
