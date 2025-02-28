@@ -20,10 +20,10 @@ So for now, you'll need a nightly build of Rust:
 % rustup install nightly
 ```
 
-Lastly, you will need `npm` in order to build this game's TypeScript.
+Lastly, you will need `pnpm` in order to build this game's TypeScript.
 
-Once you have a nightly build of Rust and a build of `npm`:
+Once you have a nightly build of Rust and a build of `pnpm`:
 
-1. Go to `wasm/www`.
-2. Run `npm run build:wasm-st` to build the WebAssembly.
-3. Run `npm run dev` to start the Vite devserver.
+1. Go to `www`.
+2. Run `pnpm run build:wasm-st` to build the WebAssembly.
+3. Run `pnpm run dev` to start the Vite devserver.
