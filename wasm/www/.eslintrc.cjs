@@ -18,6 +18,8 @@ module.exports = {
     project: ["./tsconfig.json"],
     tsconfigRootDir: __dirname,
   },
-  plugins: ["react-refresh"],
-  rules: {},
+  plugins: ["eslint-plugin-react-compiler", "react-refresh"],
+  rules: {
+    "react-compiler/react-compiler": "error",
+  },
 };

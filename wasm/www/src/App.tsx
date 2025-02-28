@@ -16,10 +16,6 @@ interface ThinkingProgress {
   totalTimeMs: number;
 }
 
-interface Props {
-  worker: BotWorker;
-}
-
 type WorkerState = {
   gameState?: GameState;
   possibleMoves?: number[];
@@ -59,29 +55,45 @@ const WorkerStateReducer = (
   }
 };
 
-const useWorker = (worker: BotWorker): WorkerState => {
+const useWorker = (): [React.RefObject<BotWorker>, WorkerState] => {
   const [state, dispatch] = React.useReducer(WorkerStateReducer, {});
+  const workerRef = React.useRef<BotWorker | null>(null);
 
   React.useEffect(() => {
-    worker.onmessage = ({ data: response }) => {
-      dispatch(response);
-    };
-    worker.postMessage({ type: "getGameState" });
-  }, [worker]);
+    if (!workerRef.current) {
+      const worker = new Worker(new URL("./bot.worker.ts", import.meta.url), {
+        name: "Rules engine and AI",
+        type: "module",
+      }) as BotWorker;
+      worker.onmessage = ({ data: response }) => {
+        dispatch(response);
+      };
+      worker.postMessage({ type: "getGameState" });
+      workerRef.current = worker;
+    }
 
-  return state;
+    return () => {
+      workerRef.current?.terminate();
+      workerRef.current = null;
+    };
+  }, []);
+
+  return [workerRef, state];
 };
 
-export default function App({ worker }: Props): React.JSX.Element {
-  const {
-    gameState,
-    possibleMoves,
-    lastMoveWasIllegal,
-    playerMoveScores,
-    thinkingProgress,
-    treeSize,
-    memoryUsage,
-  } = useWorker(worker);
+export default function App({}): React.JSX.Element {
+  const [
+    workerRef,
+    {
+      gameState,
+      possibleMoves,
+      lastMoveWasIllegal,
+      playerMoveScores,
+      thinkingProgress,
+      treeSize,
+      memoryUsage,
+    },
+  ] = useWorker();
   const [chosenCell, setChosenCell] = React.useState<number | undefined>(
     undefined,
   );
@@ -89,10 +101,15 @@ export default function App({ worker }: Props): React.JSX.Element {
   const modeType = gameState?.modeType;
   const handleCellClick = React.useCallback(
     function handleCellClick(key: number) {
+      const worker: BotWorker | null = workerRef.current;
+      if (worker === null) {
+        throw new TypeError("Couldn't initialize the WebWorker");
+      }
+
       // Reset state if we know it's not a legal move
       if (modeType === undefined || possibleMoves?.includes(key) !== true) {
         setChosenCell(undefined);
-        worker.postMessage({ type: "getPossibleMoves" });
+        workerRef.current?.postMessage({ type: "getPossibleMoves" });
         return;
       }
 
@@ -120,7 +137,7 @@ export default function App({ worker }: Props): React.JSX.Element {
       });
       setChosenCell(undefined);
     },
-    [worker, modeType, possibleMoves, chosenCell],
+    [workerRef, modeType, possibleMoves, chosenCell],
   );
 
   let topMove;
