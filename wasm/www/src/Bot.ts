@@ -178,6 +178,7 @@ class Bot {
             this.movePenguin(request.src, request.dst);
           }
         } catch (err) {
+          void err;
           lastMoveWasIllegal = true;
         }
         break;
