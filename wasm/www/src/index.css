@@ -1,87 +1,87 @@
 .app {
-    display: flex;
-    flex-wrap: wrap;
+  display: flex;
+  flex-wrap: wrap;
 }
 
 .info-col {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 .board {
-    height: 100vmin;
-    width: 100vmin;
+  height: 100vmin;
+  width: 100vmin;
 }
 
 .board .cell {
-    fill: #eeeeee;
+  fill: #eeeeee;
 }
 
 .board .cell polygon {
-    stroke: #7c37dc;
+  stroke: #7c37dc;
 }
 
 .board .cell.possible {
-    fill: #d1fec8;
+  fill: #d1fec8;
 }
 
 .board .cell.highlighted {
-    fill: #fffe9f;
+  fill: #fffe9f;
 }
 
 .board .cell.claimed {
-    fill: #555555;
+  fill: #555555;
 }
 
 .board .cell.top-move-src {
-    fill: #7fec6e;
+  fill: #7fec6e;
 }
 
 .board .cell.top-move-dst {
-    fill: #7ed370;
+  fill: #7ed370;
 }
 
 .board .fish {
-    fill: #888888;
+  fill: #888888;
 }
 
 .penguin {
-    fill-opacity: 1;
-    stroke: none;
+  fill-opacity: 1;
+  stroke: none;
 }
 
 .penguin.beak {
-    fill: #fb8b00;
+  fill: #fb8b00;
 }
 
 .penguin.eyes {
-    fill: #ffffff;
+  fill: #ffffff;
 }
 
 .penguin.foot {
-    fill: #fb8b00;
+  fill: #fb8b00;
 }
 
 .human {
-    color: blue;
-    fill: blue;
+  color: blue;
+  fill: blue;
 }
 
 .bot {
-    color: red;
-    fill: red;
+  color: red;
+  fill: red;
 }
 
 .info-col progress {
-    width: 100%;
+  width: 100%;
 }
 
 .info-col .playout-counter {
-    margin: 0px;
-    font-size: 2vmin;
+  margin: 0px;
+  font-size: 2vmin;
 }
 
 .info-col .win-chance {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }

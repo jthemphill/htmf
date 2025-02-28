@@ -1,149 +1,122 @@
-import * as React from 'react'
+import * as React from "react";
 
-import Penguin from './Penguin'
+import Penguin from "./Penguin";
 
 interface Props {
-  _key: number
-  onClick: (key: number) => void
+  _key: number;
+  onClick: (key: number) => void;
 
-  claimed: boolean
-  fish: number
-  cx: number
-  cy: number
-  sideLength: number
-  highlighted: boolean
-  possible: boolean
-  player?: number
-  isTopMoveSrc: boolean
-  isTopMoveDst: boolean
+  claimed: boolean;
+  fish: number;
+  cx: number;
+  cy: number;
+  sideLength: number;
+  highlighted: boolean;
+  possible: boolean;
+  player?: number;
+  isTopMoveSrc: boolean;
+  isTopMoveDst: boolean;
 }
 
-function points (sideLength: number): number[][] {
-  const points = []
+function points(sideLength: number): number[][] {
+  const points = [];
   for (let i = 0; i < 6; ++i) {
-    const angleRadians = i * Math.PI / 3
+    const angleRadians = (i * Math.PI) / 3;
     points.push([
       sideLength * Math.sin(angleRadians),
-      sideLength * Math.cos(angleRadians)
-    ])
+      sideLength * Math.cos(angleRadians),
+    ]);
   }
-  return points
+  return points;
 }
 
-const Circles = React.memo(function Circles ({ sideLength, fish }: { sideLength: number, fish: number }): React.JSX.Element[] {
-  const r = sideLength / 10
+const Circles = React.memo(function Circles({
+  sideLength,
+  fish,
+}: {
+  sideLength: number;
+  fish: number;
+}): React.JSX.Element[] {
+  const r = sideLength / 10;
   if (fish === 1) {
-    return [
-      <circle
-        key={0}
-        className="fish"
-        r={r}
-      />
-    ]
+    return [<circle key={0} className="fish" r={r} />];
   } else if (fish === 2) {
     return [
-      <circle
-        key={0}
-        className="fish"
-        cx={-r * 2}
-        r={r}
-      />,
-      <circle
-        key={1}
-        className="fish"
-        cx={r * 2}
-        r={r}
-      />
-    ]
+      <circle key={0} className="fish" cx={-r * 2} r={r} />,
+      <circle key={1} className="fish" cx={r * 2} r={r} />,
+    ];
   } else if (fish === 3) {
-    const yOffset = r * 2 * Math.sin(Math.PI / 3)
+    const yOffset = r * 2 * Math.sin(Math.PI / 3);
     return [
-      <circle
-        key={0}
-        className="fish"
-        cx={-r * 2}
-        cy={yOffset}
-        r={r}
-      />,
-      <circle
-        key={1}
-        className="fish"
-        cx={r * 2}
-        cy={yOffset}
-        r={r}
-      />,
-      <circle
-        key={2}
-        className="fish"
-        cx={0}
-        cy={-yOffset}
-        r={r}
-      />
-    ]
+      <circle key={0} className="fish" cx={-r * 2} cy={yOffset} r={r} />,
+      <circle key={1} className="fish" cx={r * 2} cy={yOffset} r={r} />,
+      <circle key={2} className="fish" cx={0} cy={-yOffset} r={r} />,
+    ];
   } else {
-    throw new Error(`${fish} is not a valid fish amount`)
+    throw new Error(`${fish} is not a valid fish amount`);
   }
-})
+});
 
-const Hex = React.memo(function Hex (
-  {
-    _key,
-    sideLength,
-    highlighted,
-    possible,
-    player,
-    fish,
-    claimed,
-    cx,
-    cy,
-    onClick,
-    isTopMoveSrc,
-    isTopMoveDst
-  }: Props): React.JSX.Element {
-  const handleClick = React.useCallback(() => { onClick(_key) }, [onClick, _key])
+const Hex = React.memo(function Hex({
+  _key,
+  sideLength,
+  highlighted,
+  possible,
+  player,
+  fish,
+  claimed,
+  cx,
+  cy,
+  onClick,
+  isTopMoveSrc,
+  isTopMoveDst,
+}: Props): React.JSX.Element {
+  const handleClick = React.useCallback(() => {
+    onClick(_key);
+  }, [onClick, _key]);
 
-  const transform = `translate(${cx},${cy})`
+  const transform = `translate(${cx},${cy})`;
 
   if (player === undefined && claimed) {
     return (
       <g transform={transform}>
         <polygon
-          points={points(sideLength).join(' ')}
+          points={points(sideLength).join(" ")}
           className="cell claimed"
         />
       </g>
-    )
+    );
   }
 
-  let penguin
-  let circles
+  let penguin;
+  let circles;
   if (player !== undefined) {
-    penguin = (<Penguin player={player} size={sideLength} />)
+    penguin = <Penguin player={player} size={sideLength} />;
   } else {
-    circles = <Circles sideLength={sideLength} fish={fish} />
+    circles = <Circles sideLength={sideLength} fish={fish} />;
   }
-  const cellClasses = ['cell']
+  const cellClasses = ["cell"];
   if (highlighted) {
-    cellClasses.push('highlighted')
+    cellClasses.push("highlighted");
   } else if (possible) {
-    cellClasses.push('possible')
+    cellClasses.push("possible");
   }
   if (isTopMoveSrc) {
-    cellClasses.push('top-move-src')
+    cellClasses.push("top-move-src");
   } else if (isTopMoveDst) {
-    cellClasses.push('top-move-dst')
+    cellClasses.push("top-move-dst");
   }
   return (
     <g
-      className={cellClasses.join(' ')}
+      className={cellClasses.join(" ")}
       role="button"
       transform={transform}
       onClick={handleClick}
     >
-      <polygon points={points(sideLength).join(' ')} />
+      <polygon points={points(sideLength).join(" ")} />
       {circles}
       {penguin}
     </g>
-  )
-})
-export default Hex
+  );
+});
+export default Hex;

@@ -1,5 +1,5 @@
-import { afterEach } from 'vitest'
-import { cleanup } from '@testing-library/react'
+import { afterEach } from "vitest";
+import { cleanup } from "@testing-library/react";
 
 // extends Vitest's expect method with methods from react-testing-library
 // import matchers from '@testing-library/jest-dom/matchers'
@@ -7,5 +7,5 @@ import { cleanup } from '@testing-library/react'
 
 // runs a cleanup after each test case (e.g. clearing jsdom)
 afterEach(() => {
-  cleanup()
-})
+  cleanup();
+});
