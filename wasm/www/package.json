@@ -41,7 +41,7 @@
     "@testing-library/user-event": "14.5.2",
     "@types/react": "18.3.2",
     "@types/react-dom": "18.3.0",
-    "@typescript-eslint/eslint-plugin": "7.9.0",
+    "@typescript-eslint/eslint-plugin": "7.10.0",
     "@vitejs/plugin-react-swc": "3.6.0",
     "eslint": "8.57.0",
     "eslint-plugin-react-hooks": "4.6.2",
@@ -51,7 +51,7 @@
     "jsdom-worker": "0.3.0",
     "prettier": "3.2.5",
     "typescript": "5.4.5",
-    "typescript-eslint": "7.9.0",
+    "typescript-eslint": "7.10.0",
     "vite": "5.2.11",
     "vitest": "1.6.0",
     "wasm-pack": "0.12.1"
