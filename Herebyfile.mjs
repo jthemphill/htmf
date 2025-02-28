@@ -105,7 +105,7 @@ export const preview = task({
   run: async () => {
     await exec("pnpm", ["run", "preview"], { cwd: "www" });
   },
-  dependencies: [build_www],
+  dependencies: [build],
 });
 
 export const deploy = task({
