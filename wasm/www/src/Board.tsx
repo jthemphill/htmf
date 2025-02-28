@@ -85,7 +85,7 @@ export default React.memo(function Board(props: Props): React.JSX.Element {
       baseProfile="full"
       xmlns="http://www.w3.org/2000/svg"
       className="board"
-      viewBox={`0 0 ${size} ${size}`}
+      viewBox={`0 0 ${size.toString()} ${size.toString()}`}
     >
       {hexes}
     </svg>

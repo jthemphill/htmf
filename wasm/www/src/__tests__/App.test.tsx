@@ -14,7 +14,7 @@ import path from "node:path";
 
 class MockWorker implements BotWorker {
   postMessage: (request: WorkerRequest) => void;
-  onmessage: (this: Worker, ev: MessageEvent<WorkerResponse>) => any;
+  onmessage: (this: Worker, ev: MessageEvent<WorkerResponse>) => void;
   onmessageerror: null;
 
   constructor() {

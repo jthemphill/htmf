@@ -53,7 +53,7 @@ const Circles = React.memo(function Circles({
       <circle key={2} className="fish" cx={0} cy={-yOffset} r={r} />,
     ];
   } else {
-    throw new Error(`${fish} is not a valid fish amount`);
+    throw new Error(`${fish.toString()} is not a valid fish amount`);
   }
 });
 
@@ -75,7 +75,7 @@ const Hex = React.memo(function Hex({
     onClick(_key);
   }, [onClick, _key]);
 
-  const transform = `translate(${cx},${cy})`;
+  const transform = `translate(${cx.toString()},${cy.toString()})`;
 
   if (player === undefined && claimed) {
     return (

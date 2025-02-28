@@ -22,7 +22,9 @@ export default function Penguin({ size, player }: Props): React.JSX.Element {
   const translateY = -350;
 
   return (
-    <g transform={`scale(${scale}),translate(${translateX},${translateY})`}>
+    <g
+      transform={`scale(${scale.toString()}),translate(${translateX.toString()},${translateY.toString()})`}
+    >
       <g transform="matrix(2.0165499,0,0,2.0165499,-378.20444,-374.28247)">
         <g transform="translate(0,-14)" className={"penguin leftFoot"}>
           <rect

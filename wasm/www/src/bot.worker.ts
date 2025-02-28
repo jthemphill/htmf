@@ -1,5 +1,6 @@
 import Bot from "./Bot";
 import htmfWasmInit, * as htmfWasm from "htmf-wasm";
+import type { WorkerRequest } from "./WorkerProtocol";
 
 // Run WebAssembly.instantiateStreaming() to load and initialize the WebAssembly module
 const memory = new WebAssembly.Memory({
@@ -13,7 +14,7 @@ const wasmInternals = await htmfWasmInit(undefined, memory);
 await htmfWasm.initThreadPool(navigator.hardwareConcurrency);
 
 const bot = new Bot(wasmInternals, postMessage);
-onmessage = (event) => {
+onmessage = (event: MessageEvent<WorkerRequest>) => {
   bot.onMessage(event.data);
 };
 
