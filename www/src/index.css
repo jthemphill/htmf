@@ -17,12 +17,20 @@
   fill: #eeeeee;
 }
 
+.board .cell:hover {
+  fill: #cccccc;
+}
+
 .board .cell polygon {
   stroke: #7c37dc;
 }
 
 .board .cell.possible {
   fill: #d1fec8;
+}
+
+.board .cell.possible:hover {
+  fill: #10b0d0;
 }
 
 .board .cell.highlighted {

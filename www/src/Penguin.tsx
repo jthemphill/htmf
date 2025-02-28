@@ -2,6 +2,8 @@ import * as React from "react";
 
 import { HUMAN_PLAYER, BOT_PLAYER } from "./constants";
 
+import "./index.css";
+
 interface Props {
   size: number;
   player: number;

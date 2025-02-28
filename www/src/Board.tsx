@@ -10,6 +10,8 @@ import {
   BOT_PLAYER,
 } from "./constants";
 
+import "./index.css";
+
 interface Props {
   gameState: GameState;
   possibleMoves: number[];
@@ -85,6 +87,7 @@ export default function Board(props: Props): React.JSX.Element {
       baseProfile="full"
       xmlns="http://www.w3.org/2000/svg"
       className="board"
+      data-testid="board"
       viewBox={`0 0 ${size.toString()} ${size.toString()}`}
     >
       {hexes}

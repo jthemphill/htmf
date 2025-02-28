@@ -9,6 +9,8 @@ import {
   type WorkerResponse,
 } from "./WorkerProtocol";
 
+import "./index.css";
+
 interface ThinkingProgress {
   completed: number;
   required: number;
@@ -97,7 +99,7 @@ function useWorker(): WorkerState {
   return workerState;
 }
 
-export default function App({}): React.JSX.Element {
+export default function App(): React.JSX.Element {
   const {
     worker,
     gameState,

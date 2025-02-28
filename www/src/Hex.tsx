@@ -2,6 +2,8 @@ import * as React from "react";
 
 import Penguin from "./Penguin";
 
+import "./index.css";
+
 interface Props {
   _key: number;
   onClick: (key: number) => void;
@@ -108,8 +110,10 @@ export default function Hex({
   }
   return (
     <g
+      data-testid={`Hex::${_key}`}
       className={cellClasses.join(" ")}
       role="button"
+      aria-disabled={!possible}
       transform={transform}
       onClick={handleClick}
     >

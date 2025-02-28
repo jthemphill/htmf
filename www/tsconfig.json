@@ -1,15 +1,16 @@
 {
   "compilerOptions": {
+    "composite": true,
+    "isolatedDeclarations": true,
     "target": "ESNext",
     "useDefineForClassFields": true,
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "types": ["react", "react-dom"],
+    "types": ["@vitest/browser/providers/playwright", "react", "react-dom"],
     "module": "ESNext",
     /* Bundler mode */
     "moduleResolution": "bundler",
     "outDir": "./dist",
     "isolatedModules": true,
-    "noEmit": true,
     "esModuleInterop": true,
     "jsx": "react",
     /* Linting */
@@ -22,5 +23,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["./src"]
+  "include": ["src"]
 }
