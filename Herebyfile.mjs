@@ -111,7 +111,7 @@ export const preview = task({
 export const deploy = task({
   name: "deploy",
   run: async () => {
-    await exec("gh-pages", ["-d", "www/dist"], { cwd: "www" });
+    await exec("pnpm", ["run", "deploy:pages"], { cwd: "www" });
   },
   dependencies: [build, install],
 });
