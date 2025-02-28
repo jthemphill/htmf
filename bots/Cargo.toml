@@ -5,19 +5,17 @@ authors = ["Jeff Hemphill <jthemphill@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-getrandom = "0"
-rand = "0"
-rayon = "1"
+getrandom = "0.2.11"
+rand = "0.8.5"
+rayon = "1.8.0"
 
 htmf = { path = "../engine" }
 
 [dev-dependencies]
-criterion = "0"
+criterion = "0.5.1"
 
 [features]
-wasm = [
-    "getrandom/js",
-]
+wasm = ["getrandom/js"]
 
 [[bench]]
 name = "minimax_full_game"

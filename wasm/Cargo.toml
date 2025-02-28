@@ -12,36 +12,32 @@ default = ["console_error_panic_hook"]
 parallel = ["rayon", "wasm-bindgen-rayon"]
 
 [dependencies]
-js-sys = "0"
-rand = "0"
-rayon = { version = "1", optional = true }
-wasm-bindgen = "0"
-wasm-bindgen-rayon = {version = "1", optional = true }
+js-sys = "0.3.65"
+rand = "0.8.5"
+rayon = { version = "1.8.0", optional = true }
+wasm-bindgen = "=0.2.93"
+wasm-bindgen-rayon = { version = "1.0.3", optional = true }
 
 [dependencies.console_error_panic_hook]
-version = "0.1"
+version = "0.1.7"
 optional = true
 
 [dependencies.htmf]
 path = "../engine"
-features = [
-    "wasm",
-]
+features = ["wasm"]
 
 [dependencies.htmf-bots]
 path = "../bots"
-features = [
-    "wasm",
-]
+features = ["wasm"]
 
 [dependencies.getrandom]
-version = "0"
-features = [
-    "js",
-]
+version = "0.2.11"
+features = ["js"]
 
 [package.metadata.wasm-pack.profile.profiling]
-wasm-opt = [
-    "-O4",
-    '-g',
-]
+wasm-opt = ["-O4", '-g']
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+    'cfg(wasm_bindgen_unstable_test_coverage)',
+] }

@@ -5,8 +5,8 @@ authors = ["Jeff Hemphill <jhemphill@fb.com>"]
 edition = "2021"
 
 [dependencies]
-rand = "0"
-rayon = "1"
+rand = "0.8.5"
+rayon = "1.8.0"
 
 htmf-bots = { path = "../bots" }
 htmf = { path = "../engine" }
