@@ -1,5 +1,26 @@
 {
-  "extends": "./tsconfig-base.json",
-  "include": ["./src"],
-  "exclude": ["./**/__tests__"]
+  "compilerOptions": {
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "types": ["react", "react-dom"],
+    "module": "ESNext",
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "outDir": "./dist",
+    "isolatedModules": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "jsx": "react",
+    /* Linting */
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["./src"]
 }
