@@ -27,10 +27,10 @@ type WorkerState = {
   memoryUsage?: number;
 };
 
-const WorkerStateReducer = (
+function WorkerStateReducer(
   state: WorkerState,
   response: WorkerResponse,
-): WorkerState => {
+): WorkerState {
   switch (response.type) {
     case "initialized":
       return {
@@ -64,9 +64,9 @@ const WorkerStateReducer = (
         worker: undefined,
       };
   }
-};
+}
 
-const useWorker = (): WorkerState => {
+function useWorker(): WorkerState {
   const [workerState, workerDispatch] = React.useReducer(
     WorkerStateReducer,
     {},
@@ -95,7 +95,7 @@ const useWorker = (): WorkerState => {
   }, []);
 
   return workerState;
-};
+}
 
 export default function App({}): React.JSX.Element {
   const {
@@ -113,45 +113,42 @@ export default function App({}): React.JSX.Element {
   );
 
   const modeType = gameState?.modeType;
-  const handleCellClick = React.useCallback(
-    function handleCellClick(key: number) {
-      if (worker === undefined) {
-        throw new TypeError("Couldn't initialize the WebWorker");
-      }
+  function handleCellClick(key: number) {
+    if (worker === undefined) {
+      throw new TypeError("Couldn't initialize the WebWorker");
+    }
 
-      // Reset state if we know it's not a legal move
-      if (modeType === undefined || possibleMoves?.includes(key) !== true) {
-        setChosenCell(undefined);
-        worker.postMessage({ type: "getPossibleMoves" });
-        return;
-      }
+    // Reset state if we know it's not a legal move
+    if (modeType === undefined || possibleMoves?.includes(key) !== true) {
+      setChosenCell(undefined);
+      worker.postMessage({ type: "getPossibleMoves" });
+      return;
+    }
 
-      // Place a penguin if we're still drafting
-      if (modeType === "drafting") {
-        worker.postMessage({
-          type: "movePenguin",
-          dst: key,
-        });
-        return;
-      }
-
-      // Choose the given cell to move a penguin from
-      if (chosenCell === undefined) {
-        setChosenCell(key);
-        worker.postMessage({ type: "getPossibleMoves", src: key });
-        return;
-      }
-
-      // If we have already chosen a penguin, move the penguin to the clicked cell
+    // Place a penguin if we're still drafting
+    if (modeType === "drafting") {
       worker.postMessage({
         type: "movePenguin",
-        src: chosenCell,
         dst: key,
       });
-      setChosenCell(undefined);
-    },
-    [worker, modeType, possibleMoves, chosenCell],
-  );
+      return;
+    }
+
+    // Choose the given cell to move a penguin from
+    if (chosenCell === undefined) {
+      setChosenCell(key);
+      worker.postMessage({ type: "getPossibleMoves", src: key });
+      return;
+    }
+
+    // If we have already chosen a penguin, move the penguin to the clicked cell
+    worker.postMessage({
+      type: "movePenguin",
+      src: chosenCell,
+      dst: key,
+    });
+    setChosenCell(undefined);
+  }
 
   let topMove;
   if (
@@ -200,7 +197,7 @@ export default function App({}): React.JSX.Element {
   );
 }
 
-const ScoresBlock = React.memo(function ScoresBlock({
+function ScoresBlock({
   activePlayer,
   scores,
 }: {
@@ -220,9 +217,9 @@ const ScoresBlock = React.memo(function ScoresBlock({
     );
   }
   return <div className="scores-block">{scoresBlock}</div>;
-});
+}
 
-const WinChanceMeter = React.memo(function WinChanceMeter({
+function WinChanceMeter({
   playerMoveScores,
 }: {
   playerMoveScores: PlayerMoveScores;
@@ -255,9 +252,9 @@ const WinChanceMeter = React.memo(function WinChanceMeter({
       </label>
     </div>
   );
-});
+}
 
-const MemoryUsageBlock = React.memo(function MemoryUsageBlock({
+function MemoryUsageBlock({
   memoryUsage,
   treeSize,
 }: {
@@ -286,9 +283,9 @@ const MemoryUsageBlock = React.memo(function MemoryUsageBlock({
       </div>
     </>
   );
-});
+}
 
-const ThinkingProgressBar = React.memo(function ThinkingProgressBar({
+function ThinkingProgressBar({
   thinkingProgress,
 }: {
   thinkingProgress: ThinkingProgress;
@@ -308,4 +305,4 @@ const ThinkingProgressBar = React.memo(function ThinkingProgressBar({
       <p className="playout-counter">{`${playoutsPerSec.toFixed(0)} playouts/sec`}</p>
     </div>
   );
-});
+}

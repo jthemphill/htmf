@@ -1,6 +1,6 @@
 import { type PluginOption } from "vite";
 import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 
 // Some JS features are disabled unless you use these HTTP headers to promise not to load third-party scripts.
 // This plugin only affects local development. In production, you need to configure your webserver with these HTTP headers.
@@ -25,12 +25,15 @@ export default defineConfig({
     target: "esnext",
     sourcemap: true,
   },
-  plugins: [react(), setUpCrossOriginIsolation()],
+  plugins: [
+    react({
+      babel: {
+        plugins: [["babel-plugin-react-compiler", { target: "18" }]],
+      },
+    }),
+    setUpCrossOriginIsolation(),
+  ],
   resolve: { dedupe: ["react", "react-dom"] },
-  test: {
-    environment: "jsdom",
-    setupFiles: "setup-vitest.ts",
-  },
   worker: {
     format: "es",
   },
