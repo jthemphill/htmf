@@ -17,7 +17,12 @@ const compat = new FlatCompat({
 
 export default [
   {
-    ignores: ["**/dist", "**/eslint.config.mjs", "**/vite.config.ts"],
+    ignores: [
+      "**/dist",
+      "**/eslint.config.mjs",
+      "**/setup-vitest.ts",
+      "**/vite.config.ts",
+    ],
   },
   ...fixupConfigRules(
     compat.extends(
