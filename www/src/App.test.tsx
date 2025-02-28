@@ -1,5 +1,5 @@
 import React from "react";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 import { cleanup, render } from "vitest-browser-react";
 import { page, userEvent } from "@vitest/browser/context";
 
