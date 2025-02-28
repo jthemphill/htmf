@@ -32,27 +32,27 @@
   "homepage": "https://jthemphill.github.io/htmf",
   "dependencies": {
     "htmf-wasm": "workspace:*",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.4.2",
-    "@testing-library/react": "^14.2.2",
-    "@testing-library/user-event": "^14.5.2",
-    "@types/react": "^18.2.74",
-    "@types/react-dom": "^18.2.24",
-    "@typescript-eslint/eslint-plugin": "^7.5.0",
-    "@vitejs/plugin-react-swc": "^3.6.0",
-    "eslint": "^8.57.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.6",
-    "gh-pages": "^6.1.1",
-    "jsdom": "^24.0.0",
-    "jsdom-worker": "^0.3.0",
+    "@testing-library/jest-dom": "6.4.2",
+    "@testing-library/react": "14.2.2",
+    "@testing-library/user-event": "14.5.2",
+    "@types/react": "18.2.74",
+    "@types/react-dom": "18.2.24",
+    "@typescript-eslint/eslint-plugin": "7.5.0",
+    "@vitejs/plugin-react-swc": "3.6.0",
+    "eslint": "8.57.0",
+    "eslint-plugin-react-hooks": "4.6.0",
+    "eslint-plugin-react-refresh": "0.4.6",
+    "gh-pages": "6.1.1",
+    "jsdom": "24.0.0",
+    "jsdom-worker": "0.3.0",
     "prettier": "3.2.5",
-    "typescript": "^5.4.3",
-    "vite": "^5.2.8",
-    "vitest": "^1.4.0",
-    "wasm-pack": "^0.12.1"
+    "typescript": "5.4.3",
+    "vite": "5.2.8",
+    "vitest": "1.4.0",
+    "wasm-pack": "0.12.1"
   }
 }
