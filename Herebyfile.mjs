@@ -63,6 +63,14 @@ export const install = task({
   dependencies: [build_wasm_st],
 });
 
+export const playwright_install = task({
+  name: "playwright_install",
+  run: async () => {
+    await exec("pnpm", ["exec", "playwright", "install"], { cwd: "www" });
+  },
+  dependencies: [install],
+});
+
 export const dev = task({
   name: "dev",
   run: async () => {
@@ -113,7 +121,7 @@ export const test = task({
   run: async () => {
     await exec("pnpm", ["run", "test:headless"], { cwd: "www" });
   },
-  dependencies: [install],
+  dependencies: [install, playwright_install],
 });
 
 export const deploy = task({

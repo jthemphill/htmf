@@ -3,6 +3,7 @@
     "build": "hereby build",
     "dev": "hereby dev",
     "preview": "hereby preview",
+    "test": "hereby test",
     "deploy": "hereby deploy"
   },
   "devDependencies": {
