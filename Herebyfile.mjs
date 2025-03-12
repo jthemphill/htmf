@@ -116,12 +116,17 @@ export const preview = task({
   dependencies: [build],
 });
 
-export const test = task({
-  name: "test",
+export const test_www = task({
+  name: "test_www",
   run: async () => {
     await exec("pnpm", ["run", "test:headless"], { cwd: "www" });
   },
-  dependencies: [install, playwright_install],
+  dependencies: [install, lint_www, typecheck_www, playwright_install],
+});
+
+export const test = task({
+  name: "test",
+  dependencies: [test_www],
 });
 
 export const deploy = task({
