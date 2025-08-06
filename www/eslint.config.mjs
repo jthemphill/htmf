@@ -21,7 +21,7 @@ export default [
       "**/dist",
       "**/eslint.config.mjs",
       "**/vite.config.ts",
-      "**/vitest.workspace.ts",
+      "**/vitest.config.ts",
     ],
   },
   ...fixupConfigRules(
