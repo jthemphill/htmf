@@ -79,6 +79,9 @@ function useWorker(): WorkerState {
       name: "Rules engine and AI",
       type: "module",
     }) as BotWorker;
+    worker.onerror = (ev) => {
+      throw new Error("WebWorker failure", { cause: ev });
+    };
     worker.onmessage = ({ data: response }) => {
       workerDispatch(response);
     };
