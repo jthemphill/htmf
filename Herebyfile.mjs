@@ -121,12 +121,12 @@ export const test_www = task({
   run: async () => {
     await exec("pnpm", ["run", "test:headless"], { cwd: "www" });
   },
-  dependencies: [install, lint_www, typecheck_www, playwright_install],
+  dependencies: [install, playwright_install],
 });
 
 export const test = task({
   name: "test",
-  dependencies: [test_www],
+  dependencies: [lint_www, typecheck_www, test_www],
 });
 
 export const deploy = task({
