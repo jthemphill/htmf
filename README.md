@@ -1,5 +1,7 @@
 # Hey, that's my fish!
 
+[![WWW build](https://github.com/jthemphill/htmf/actions/workflows/www-build.yml/badge.svg)](https://github.com/jthemphill/htmf/actions/workflows/www-build.yml)
+
 ## Simple webapp version of a deceptively simple children's game
 
 You can play a productionized Webassembly version of the game at
