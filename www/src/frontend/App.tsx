@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 
 import Board from "./Board";
 import { BOT_PLAYER, HUMAN_PLAYER, NPLAYERS } from "../browser/constants";

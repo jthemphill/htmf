@@ -7,7 +7,7 @@
     "deploy": "hereby deploy"
   },
   "devDependencies": {
-    "hereby": "1.10.0"
+    "hereby": "1.11.0"
   },
   "pnpm": {
     "overrides": {
