@@ -1,4 +1,4 @@
-name: On merge to main
+name: WWW build
 
 on:
   push:
