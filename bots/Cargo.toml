@@ -13,7 +13,3 @@ htmf = { path = "../engine" }
 
 [features]
 wasm = ["getrandom/wasm_js"]
-
-[[bench]]
-name = "minimax_full_game"
-harness = false
