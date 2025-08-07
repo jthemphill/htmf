@@ -17,7 +17,7 @@ impl RandomBot {
         RandomBot {
             game,
             me,
-            rng: thread_rng(),
+            rng: rand::rng(),
         }
     }
 

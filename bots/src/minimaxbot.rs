@@ -23,7 +23,7 @@ impl MinimaxBot {
         MinimaxBot {
             game,
             me,
-            rng: thread_rng(),
+            rng: rand::rng(),
             ply: 2,
         }
     }
@@ -32,7 +32,7 @@ impl MinimaxBot {
         MinimaxBot {
             game,
             me,
-            rng: thread_rng(),
+            rng: rand::rng(),
             ply,
         }
     }

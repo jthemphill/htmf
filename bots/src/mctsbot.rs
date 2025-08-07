@@ -198,7 +198,7 @@ fn choose_child<'tree, R: Rng + ?Sized>(
             best_so_far = score;
         } else if (score - best_so_far).abs() < std::f32::EPSILON {
             num_optimal += 1.0;
-            if rng.gen_bool(1.0 / num_optimal) {
+            if rng.random_bool(1.0 / num_optimal) {
                 chosen_child = Some((*child_move, child));
             }
         }
@@ -219,7 +219,7 @@ fn get_reward(game: &htmf::game::GameState, p: usize) -> f32 {
 }
 
 fn playout(root: &TreeNode) -> (Vec<Move>, Game) {
-    let rng = &mut thread_rng();
+    let rng = &mut rand::rng();
     let mut path = vec![];
     let mut expand_node = root;
 

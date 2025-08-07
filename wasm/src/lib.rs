@@ -1,7 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 
-use rand::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use htmf::board::Player;
@@ -56,7 +55,7 @@ impl Game {
         utils::set_panic_hook();
         Self {
             bot: Arc::from(RwLock::from(MCTSBot::new(
-                GameState::new_two_player::<StdRng>(&mut SeedableRng::from_entropy()),
+                GameState::new_two_player(&mut rand::rng()),
                 Player { id: 1 },
             ))),
             total_playouts: AtomicUsize::from(0),
