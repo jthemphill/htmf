@@ -266,7 +266,7 @@ function MemoryUsageBlock({
   memoryUsage: number;
   treeSize: number;
 }): React.JSX.Element {
-  const memoryUsageFormatter = new Intl.NumberFormat(navigator.language, {
+  const memoryUsageFormatter = new Intl.NumberFormat(undefined, {
     notation: "compact",
     style: "unit",
     unit: "byte",
