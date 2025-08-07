@@ -1,28 +1,14 @@
 {
-  "compilerOptions": {
-    "composite": true,
-    "isolatedDeclarations": true,
-    "target": "ESNext",
-    "useDefineForClassFields": true,
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "skipLibCheck": true,
-    "types": ["@vitest/browser/providers/playwright", "react", "react-dom"],
-    "module": "ESNext",
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "outDir": "./dist",
-    "isolatedModules": true,
-    "esModuleInterop": true,
-    "jsx": "react",
-    /* Linting */
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "noImplicitReturns": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true
-  },
-  "include": ["src"]
+  "include": [],
+  "references": [
+    {
+      "path": "src/browser"
+    },
+    {
+      "path": "src/frontend"
+    },
+    {
+      "path": "src/webworker"
+    }
+  ]
 }

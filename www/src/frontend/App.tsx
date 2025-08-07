@@ -1,13 +1,13 @@
 import React from "react";
 
 import Board from "./Board";
-import { BOT_PLAYER, HUMAN_PLAYER, NPLAYERS } from "./constants";
+import { BOT_PLAYER, HUMAN_PLAYER, NPLAYERS } from "../browser/constants";
 import {
   type GameState,
   type PlayerMoveScores,
   type BotWorker,
   type WorkerResponse,
-} from "./WorkerProtocol";
+} from "../browser/WorkerProtocol";
 
 import "./index.css";
 
@@ -75,10 +75,13 @@ function useWorker(): WorkerState {
   );
 
   React.useEffect(function workerLifecycle() {
-    const worker = new Worker(new URL("./bot.worker.ts", import.meta.url), {
-      name: "Rules engine and AI",
-      type: "module",
-    }) as BotWorker;
+    const worker = new Worker(
+      new URL("../webworker/bot.worker.ts", import.meta.url),
+      {
+        name: "Rules engine and AI",
+        type: "module",
+      },
+    ) as BotWorker;
     worker.onerror = (ev) => {
       throw new Error("WebWorker failure", { cause: ev });
     };

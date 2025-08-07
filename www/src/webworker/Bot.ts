@@ -8,13 +8,13 @@ import {
   HUMAN_PLAYER,
   BOT_PLAYER,
   PLAYOUT_CHUNK_SIZE,
-} from "./constants";
+} from "../browser/constants";
 import {
   type GameState,
   type MoveScore,
   type WorkerRequest,
   type WorkerResponse,
-} from "./WorkerProtocol";
+} from "../browser/WorkerProtocol";
 
 function getGameState(game: wasm.Game): GameState {
   const fish = [];

@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig-base.json",
+  "compilerOptions": {
+    "lib": ["DOM", "ESNext"],
+    "types": ["@vitest/browser/providers/playwright", "react", "react-dom"],
+    "jsx": "react"
+  },
+  "references": [{ "path": "../browser" }, { "path": "../webworker" }],
+  "include": ["**/*", "../browser/constants.ts"]
+}
