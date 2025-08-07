@@ -64,7 +64,7 @@ export const playwright_install = task({
       cwd: "www",
     });
   },
-  dependencies: [install],
+  dependencies: [],
 });
 
 export const dev = task({
