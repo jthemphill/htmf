@@ -60,7 +60,9 @@ export const install = task({
 export const playwright_install = task({
   name: "playwright_install",
   run: async () => {
-    await exec("pnpm", ["exec", "playwright", "install"], { cwd: "www" });
+    await exec("pnpm", ["exec", "playwright", "install", "--with-deps"], {
+      cwd: "www",
+    });
   },
   dependencies: [install],
 });
