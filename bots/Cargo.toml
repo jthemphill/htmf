@@ -11,9 +11,6 @@ rayon = "1.10.0"
 
 htmf = { path = "../engine" }
 
-[dev-dependencies]
-criterion = "0.5.1"
-
 [features]
 wasm = ["getrandom/wasm_js"]
 
