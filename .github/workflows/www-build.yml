@@ -31,12 +31,12 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Playwright cache
+      - name: Library caches
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright
+            ~/Library/Caches/
+          key: ${{ runner.os }}-library
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
