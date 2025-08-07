@@ -8,13 +8,11 @@
     "skipLibCheck": true,
     "types": ["@vitest/browser/providers/playwright", "react", "react-dom"],
     "module": "ESNext",
-    /* Bundler mode */
     "moduleResolution": "bundler",
     "outDir": "./dist",
     "isolatedModules": true,
     "esModuleInterop": true,
     "jsx": "react",
-    /* Linting */
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
