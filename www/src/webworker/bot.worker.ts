@@ -1,6 +1,6 @@
 import Bot from "./Bot";
 import htmfWasmInit, * as htmfWasm from "htmf-wasm";
-import type { WorkerRequest } from "./WorkerProtocol";
+import type { WorkerRequest } from "../browser/WorkerProtocol";
 
 // Run WebAssembly.instantiateStreaming() to load and initialize the WebAssembly module
 const memory = new WebAssembly.Memory({

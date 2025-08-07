@@ -1,14 +1,14 @@
 import * as React from "react";
 
 import Hex from "./Hex";
-import { type GameState, type MoveScore } from "./WorkerProtocol";
+import { type GameState, type MoveScore } from "../browser/WorkerProtocol";
 import {
   NUM_ROWS,
   EVEN_ROW_LEN,
   ODD_ROW_LEN,
   HUMAN_PLAYER,
   BOT_PLAYER,
-} from "./constants";
+} from "../browser/constants";
 
 import "./index.css";
 
