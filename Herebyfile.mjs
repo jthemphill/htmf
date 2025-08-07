@@ -30,13 +30,7 @@ export const install_cargo = task({
 export const install_wasm_pack = task({
   name: "install_wasm_pack",
   run: async () => {
-    try {
-      await exec("command", ["-v", "wasm-pack"]);
-    } catch (err) {
-      if (err instanceof ExecError && err.exitCode === 1) {
-        await exec("cargo", ["install", "wasm-pack"]);
-      }
-    }
+    await exec("cargo", ["install", "wasm-pack"]);
   },
   dependencies: [install_cargo],
 });
