@@ -3,6 +3,5 @@
   "compilerOptions": {
     "lib": ["ESNext", "WebWorker"]
   },
-  "references": [{ "path": "../browser" }],
-  "include": ["**/*"]
+  "references": [{ "path": "../browser" }]
 }
