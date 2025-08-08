@@ -4,5 +4,6 @@
     "types": ["@vitest/browser/providers/playwright"]
   },
   "references": [{ "path": "./tsconfig-main.json" }],
-  "include": ["**/*.test.tsx"]
+  "include": ["**/*.test.tsx"],
+  "exclude": []
 }
