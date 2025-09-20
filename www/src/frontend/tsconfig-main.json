@@ -5,6 +5,6 @@
     "types": ["react", "react-dom"],
     "jsx": "react"
   },
-  "references": [{ "path": "../browser" }, { "path": "../webworker" }],
+  "references": [{ "path": "../browser" }],
   "exclude": ["**/*.test.tsx"]
 }
