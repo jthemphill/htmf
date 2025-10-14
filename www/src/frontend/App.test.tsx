@@ -1,7 +1,7 @@
+import { page, userEvent } from "@vitest/browser/context";
 import * as React from "react";
 import { beforeEach, describe, expect, test } from "vitest";
 import { cleanup, render } from "vitest-browser-react";
-import { page, userEvent } from "@vitest/browser/context";
 
 import App from "./App";
 

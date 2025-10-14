@@ -1,6 +1,9 @@
 {
-    "git.ignoreLimitWarning": true,
-    "rust-analyzer.cargo.extraEnv": {
-        "RUSTFLAGS": "-Ctarget-feature=+atomics,+bulk-memory,+mutable-globals"
-    }
+  "git.ignoreLimitWarning": true,
+  "rust-analyzer.cargo.extraEnv": {
+    "RUSTFLAGS": "-Ctarget-feature=+atomics,+bulk-memory,+mutable-globals"
+  },
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  }
 }

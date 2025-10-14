@@ -1,5 +1,5 @@
-import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react";
+import { defineConfig, type PluginOption } from "vite";
 
 // Some JS features are disabled unless you use these HTTP headers to promise not to load third-party scripts.
 // This plugin only affects local development. In production, you need to configure your webserver with these HTTP headers.

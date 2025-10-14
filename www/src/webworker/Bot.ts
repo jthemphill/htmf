@@ -1,12 +1,12 @@
 import * as wasm from "htmf-wasm";
 
 import {
+  BOT_PLAYER,
+  HUMAN_PLAYER,
+  MAX_PLAYOUTS,
+  MIN_PLAYOUTS,
   NPLAYERS,
   NUM_CELLS,
-  MIN_PLAYOUTS,
-  MAX_PLAYOUTS,
-  HUMAN_PLAYER,
-  BOT_PLAYER,
   PLAYOUT_CHUNK_SIZE,
 } from "../browser/constants";
 import {

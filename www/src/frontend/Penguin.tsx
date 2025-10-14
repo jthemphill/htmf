@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { HUMAN_PLAYER, BOT_PLAYER } from "../browser/constants";
+import { BOT_PLAYER, HUMAN_PLAYER } from "../browser/constants";
 
 import "./index.css";
 

@@ -1,13 +1,13 @@
 import * as React from "react";
 
-import Board from "./Board";
 import { BOT_PLAYER, HUMAN_PLAYER, NPLAYERS } from "../browser/constants";
 import {
+  type BotWorker,
   type GameState,
   type PlayerMoveScores,
-  type BotWorker,
   type WorkerResponse,
 } from "../browser/WorkerProtocol";
+import Board from "./Board";
 
 import "./index.css";
 
