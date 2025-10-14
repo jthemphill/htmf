@@ -6,7 +6,6 @@ extern crate htmf_bots;
 
 use std::sync::mpsc;
 
-use rand::prelude::*;
 use rayon::prelude::*;
 
 use htmf::board::*;
