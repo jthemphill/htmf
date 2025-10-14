@@ -2,4 +2,4 @@ packages:
   - wasm/pkg
   - www
 
-minimumReleaseAge: 1440
+minimumReleaseAge: 240

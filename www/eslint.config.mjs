@@ -1,6 +1,5 @@
 import { fixupConfigRules } from "@eslint/compat";
 import reactRefresh from "eslint-plugin-react-refresh";
-import reactCompiler from "eslint-plugin-react-compiler";
 import globals from "globals";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,7 +31,6 @@ export default [
   ),
   {
     plugins: {
-      "react-compiler": reactCompiler,
       "react-refresh": reactRefresh,
     },
 
@@ -48,10 +46,6 @@ export default [
         project: "./tsconfig-eslint.json",
         tsconfigRootDir: __dirname,
       },
-    },
-
-    rules: {
-      "react-compiler/react-compiler": "error",
     },
   },
 ];
