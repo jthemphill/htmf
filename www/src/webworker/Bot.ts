@@ -63,7 +63,7 @@ class Bot {
   postMessage: (msg: WorkerResponse) => void;
   ponderer?: number;
   ponderStartTime?: number;
-  totalCompletedPonderTimeMs: number = 0;
+  totalCompletedPonderTimeMs = 0;
 
   constructor(
     wasmInternals: wasm.InitOutput,

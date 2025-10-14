@@ -5,7 +5,7 @@
     "composite": true,
     "isolatedDeclarations": true,
     "target": "ESNext",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "lib": ["ESNext"],
     "skipLibCheck": true,
     "types": [],
     "module": "ESNext",

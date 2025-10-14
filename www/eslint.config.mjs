@@ -1,39 +1,22 @@
-import { fixupConfigRules } from "@eslint/compat";
-import reactRefresh from "eslint-plugin-react-refresh";
-import globals from "globals";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
 import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
+import { defineConfig, globalIgnores } from "eslint/config";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
+import globals from "globals";
+import tseslint from "typescript-eslint";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended,
-  allConfig: js.configs.all,
-});
 
-export default [
+/**
+ * @type {ReturnType<typeof defineConfig>}
+ */
+const config = defineConfig([
+  globalIgnores(["dist/**/*"]),
   {
-    ignores: [
-      "**/dist",
-      "**/eslint.config.mjs",
-      "**/vite.config.ts",
-      "**/vitest.config.ts",
-    ],
-  },
-  ...fixupConfigRules(
-    compat.extends(
-      "plugin:@typescript-eslint/strict-type-checked",
-      "plugin:react-hooks/recommended",
-    ),
-  ),
-  {
-    plugins: {
-      "react-refresh": reactRefresh,
-    },
-
     languageOptions: {
       globals: {
         ...globals.browser,
@@ -43,9 +26,16 @@ export default [
       sourceType: "module",
 
       parserOptions: {
-        project: "./tsconfig-eslint.json",
+        projectService: true,
         tsconfigRootDir: __dirname,
       },
     },
   },
-];
+  js.configs.recommended,
+  reactHooks.configs.flat.recommended,
+  reactRefresh.configs.recommended,
+  tseslint.configs.strictTypeChecked,
+  tseslint.configs.stylisticTypeChecked,
+]);
+
+export default config;

@@ -18,7 +18,7 @@ interface ThinkingProgress {
   totalTimeMs: number;
 }
 
-type WorkerState = {
+interface WorkerState {
   worker?: BotWorker;
   gameState?: GameState;
   possibleMoves?: number[];
@@ -27,7 +27,7 @@ type WorkerState = {
   thinkingProgress?: ThinkingProgress;
   treeSize?: number;
   memoryUsage?: number;
-};
+}
 
 function WorkerStateReducer(
   state: WorkerState,
@@ -159,10 +159,7 @@ export default function App(): React.JSX.Element {
   }
 
   let topMove;
-  if (
-    playerMoveScores !== undefined &&
-    playerMoveScores.player === BOT_PLAYER
-  ) {
+  if (playerMoveScores?.player === BOT_PLAYER) {
     for (const score of playerMoveScores.moveScores) {
       if (topMove === undefined || score.rewards > topMove.rewards) {
         topMove = score;
