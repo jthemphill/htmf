@@ -187,23 +187,41 @@ impl Board {
      * Return all legal moves in the line connecting src to dst.
      */
     fn legal_moves_in_line(&self, src: &EvenR, dst: &EvenR) -> CellSet {
+        use crate::hex::Cube;
+
         if src == dst {
             return CellSet::new();
         }
 
+        let src_cube = Cube::from_evenr(src);
+        let dst_cube = Cube::from_evenr(dst);
+
+        let dx = (dst_cube.x - src_cube.x).signum();
+        let dy = (dst_cube.y - src_cube.y).signum();
+        let dz = (dst_cube.z - src_cube.z).signum();
+
+        let mut cur_cube = src_cube;
+        cur_cube.x += dx;
+        cur_cube.y += dy;
+        cur_cube.z += dz;
+
         let mut ret = CellSet::new();
-        for hex in line(src, dst) {
-            if &hex == src {
-                continue;
-            }
+        let all_claimed = self.claimed[0].data | self.claimed[1].data;
+
+        loop {
+            let hex = EvenR::from_cube(&cur_cube);
             if !Board::in_bounds(&hex) {
                 break;
             }
             let idx = Board::evenr_to_index(&hex);
-            if self.is_claimed(idx) {
+            if (all_claimed & (1 << idx)) != 0 {
                 break;
             }
             ret = ret.insert(idx);
+
+            cur_cube.x += dx;
+            cur_cube.y += dy;
+            cur_cube.z += dz;
         }
         ret
     }
@@ -601,5 +619,75 @@ mod tests {
         b.prune();
         let num_claimed_cells = (0..NUM_CELLS as u8).filter(|&c| b.is_claimed(c)).count();
         assert_eq!(num_claimed_cells, 2);
+    }
+
+    #[cfg(test)]
+    mod quickcheck_tests {
+        use super::*;
+        use quickcheck::TestResult;
+        use quickcheck_macros::quickcheck;
+
+        fn ref_legal_moves_in_line(board: &Board, src: &EvenR, dst: &EvenR) -> CellSet {
+            if src == dst {
+                return CellSet::new();
+            }
+
+            let mut ret = CellSet::new();
+            for hex in line(src, dst) {
+                if &hex == src {
+                    continue;
+                }
+                if !Board::in_bounds(&hex) {
+                    break;
+                }
+                let idx = Board::evenr_to_index(&hex);
+                if board.is_claimed(idx) {
+                    break;
+                }
+                ret = ret.insert(idx);
+            }
+            ret
+        }
+
+        #[quickcheck]
+        fn prop_legal_moves_in_line_equivalence(
+            src_idx: u8,
+            dst_idx: u8,
+            claimed_mask_0: u64,
+            claimed_mask_1: u64,
+        ) -> TestResult {
+            if src_idx >= NUM_CELLS as u8 || dst_idx >= NUM_CELLS as u8 {
+                return TestResult::discard();
+            }
+
+            let mut board = Board::new::<StdRng>(&mut SeedableRng::seed_from_u64(0));
+            // Overwrite claimed sets with random data
+            board.claimed[0] = CellSet { data: claimed_mask_0 };
+            board.claimed[1] = CellSet { data: claimed_mask_1 };
+
+            let src = Board::index_to_evenr(src_idx);
+            let dst = Board::index_to_evenr(dst_idx);
+
+            // Ensure src and dst are in line, otherwise the function behavior is undefined or panics in `line()`
+            // The `line` function panics if not in line.
+            // `legal_moves_in_line` (optimized) does NOT panic, it just does math.
+            // `ref_legal_moves_in_line` calls `line()` which panics.
+            // We should only test cases where they are in line.
+            if !src.in_line(&dst) {
+                return TestResult::discard();
+            }
+            
+            // Also `line` panics if src == dst
+            if src == dst {
+                 let optimized = board.legal_moves_in_line(&src, &dst);
+                 let reference = ref_legal_moves_in_line(&board, &src, &dst);
+                 return TestResult::from_bool(optimized == reference);
+            }
+
+            let optimized = board.legal_moves_in_line(&src, &dst);
+            let reference = ref_legal_moves_in_line(&board, &src, &dst);
+
+            TestResult::from_bool(optimized == reference)
+        }
     }
 }
