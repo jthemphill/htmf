@@ -115,7 +115,7 @@ impl<'a> From<&'a BoardJSON> for Board {
     fn from(b: &'a BoardJSON) -> Self {
         let mut fish: [CellSet; 3] = [CellSet::new(); 3];
         for num_fish in 1..=3 {
-            fish[num_fish] = b
+            fish[num_fish - 1] = b
                 .fish
                 .iter()
                 .enumerate()
