@@ -27,6 +27,14 @@ export const install_cargo = task({
   },
 });
 
+export const test_rust = task({
+  name: "test_rust",
+  run: async () => {
+    await exec("cargo", ["test"]);
+  },
+  dependencies: [install_cargo],
+});
+
 export const install_wasm_pack = task({
   name: "install_wasm_pack",
   run: async () => {
@@ -122,7 +130,7 @@ export const test_www = task({
 
 export const test = task({
   name: "test",
-  dependencies: [lint_www, typecheck_www, test_www],
+  dependencies: [test_rust, lint_www, typecheck_www, test_www],
 });
 
 export const deploy = task({
