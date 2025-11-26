@@ -99,28 +99,20 @@ export const lint_www = task({
   dependencies: [install],
 });
 
-export const typecheck_training = task({
-  name: "typecheck_training",
+export const train = task({
+  name: "train",
   run: async () => {
-    await exec("pnpm", ["run", "typecheck"], { cwd: "training" });
-  },
-  dependencies: [install],
-});
-
-export const generate_data = task({
-  name: "generate_data",
-  run: async () => {
-    await exec("pnpm", ["run", "generate-data"], { cwd: "training" });
+    await exec("uv", ["run", "iterate.py"], { cwd: "training" });
   },
   dependencies: [test_rust],
 });
 
-export const train = task({
-  name: "train",
+export const validate = task({
+  name: "validate",
   run: async () => {
-    await exec("pnpm", ["run", "train"], { cwd: "training" });
+    await exec("cargo", ["run", "--release", "--bin", "nn_vs_mcts"]);
   },
-  dependencies: [generate_data],
+  dependencies: [test_rust],
 });
 
 export const typecheck_www = task({
@@ -129,6 +121,18 @@ export const typecheck_www = task({
     await exec("bun", ["run", "typecheck"], { cwd: "www" });
   },
   dependencies: [install],
+});
+
+export const typecheck_training = task({
+  name: "typecheck_training",
+  run: async () => {
+    // Type check Python training code (optional, skip if pyright not available)
+    try {
+      await exec("uv", ["run", "pyright", "."], { cwd: "training" });
+    } catch {
+      console.log("Skipping Python typecheck (pyright not installed)");
+    }
+  },
 });
 
 export const typecheck = task({

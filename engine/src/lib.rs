@@ -14,5 +14,5 @@ pub mod board;
 pub mod cellset;
 pub mod errors;
 pub mod game;
-mod hex;
+pub mod hex;
 pub mod json;
