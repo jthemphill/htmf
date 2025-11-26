@@ -1,0 +1,18 @@
+{
+  "name": "htmf-training",
+  "version": "0.1.0",
+  "description": "Neural network training for HTMF game using ONNX Runtime",
+  "type": "module",
+  "scripts": {
+    "generate-data": "cargo run --release -p selfplay > ./artifacts/training_data.jsonl 2> ./artifacts/generate.log",
+    "train": "node --experimental-strip-types train.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "onnxruntime-node": "1.23.2"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  }
+}

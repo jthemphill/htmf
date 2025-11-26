@@ -99,12 +99,41 @@ export const lint_www = task({
   dependencies: [install],
 });
 
+export const typecheck_training = task({
+  name: "typecheck_training",
+  run: async () => {
+    await exec("pnpm", ["run", "typecheck"], { cwd: "training" });
+  },
+  dependencies: [install],
+});
+
+export const generate_data = task({
+  name: "generate_data",
+  run: async () => {
+    await exec("pnpm", ["run", "generate-data"], { cwd: "training" });
+  },
+  dependencies: [test_rust],
+});
+
+export const train = task({
+  name: "train",
+  run: async () => {
+    await exec("pnpm", ["run", "train"], { cwd: "training" });
+  },
+  dependencies: [generate_data],
+});
+
 export const typecheck_www = task({
   name: "typecheck_www",
   run: async () => {
     await exec("bun", ["run", "typecheck"], { cwd: "www" });
   },
   dependencies: [install],
+});
+
+export const typecheck = task({
+  name: "typecheck",
+  dependencies: [typecheck_training, typecheck_www],
 });
 
 export const build = task({
@@ -130,7 +159,7 @@ export const test_www = task({
 
 export const test = task({
   name: "test",
-  dependencies: [test_rust, lint_www, typecheck_www, test_www],
+  dependencies: [test_rust, lint_www, typecheck, test_www],
 });
 
 export const deploy = task({
