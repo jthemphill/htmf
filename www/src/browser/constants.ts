@@ -9,4 +9,4 @@ export const NUM_CELLS: number =
 
 export const PLAYOUT_CHUNK_SIZE = 200;
 export const MIN_PLAYOUTS = 14_000;
-export const MAX_PLAYOUTS = 60_000;
+export const MAX_PLAYOUTS = 120_000;

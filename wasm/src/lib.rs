@@ -68,64 +68,64 @@ impl Game {
 
     pub fn finished_drafting(&self) -> bool {
         let bot = self.bot.read().unwrap();
-        bot.root.game.state.finished_drafting()
+        bot.root_game.state.finished_drafting()
     }
 
     pub fn game_over(&self) -> bool {
         let bot = self.bot.read().unwrap();
-        bot.root.game.state.game_over()
+        bot.root_game.state.game_over()
     }
 
     pub fn active_player(&self) -> Option<u8> {
         let bot = self.bot.read().unwrap();
-        bot.root.game.state.active_player().map(|p| p.id as u8)
+        bot.root_game.state.active_player().map(|p| p.id as u8)
     }
 
     pub fn score(&self, player: usize) -> usize {
         let bot = self.bot.read().unwrap();
-        bot.root.game.state.get_scores()[player]
+        bot.root_game.state.get_scores()[player]
     }
 
     pub fn turn(&self) -> usize {
         let bot = self.bot.read().unwrap();
-        bot.root.game.state.turn
+        bot.root_game.state.turn
     }
 
     pub fn num_fish(&self, idx: u8) -> usize {
         let bot = self.bot.read().unwrap();
-        bot.root.game.state.board.num_fish(idx)
+        bot.root_game.state.board.num_fish(idx)
     }
 
     pub fn penguins(&self, player: usize) -> Vec<u8> {
         let bot = self.bot.read().unwrap();
-        bot.root.game.state.board.penguins[player]
+        bot.root_game.state.board.penguins[player]
             .into_iter()
             .collect()
     }
 
     pub fn claimed(&self, player: usize) -> Vec<u8> {
         let bot = self.bot.read().unwrap();
-        bot.root.game.state.board.claimed[player]
+        bot.root_game.state.board.claimed[player]
             .into_iter()
             .collect()
     }
 
     pub fn draftable_cells(&self) -> Vec<u8> {
         let bot = self.bot.read().unwrap();
-        bot.root.game.state.board.fish[0]
-            .exclude(bot.root.game.state.board.all_claimed_cells())
+        bot.root_game.state.board.fish[0]
+            .exclude(bot.root_game.state.board.all_claimed_cells())
             .into_iter()
             .collect()
     }
 
     pub fn possible_moves(&self, src: u8) -> Vec<u8> {
         let bot = self.bot.read().unwrap();
-        bot.root.game.state.board.moves(src).into_iter().collect()
+        bot.root_game.state.board.moves(src).into_iter().collect()
     }
 
     pub fn place_penguin(&mut self, dst: u8) -> Result<(), JsValue> {
         let mut bot = self.bot.write().unwrap();
-        let mut new_game = bot.root.game.state.clone();
+        let mut new_game = bot.root_game.state.clone();
         match new_game.place_penguin(dst) {
             Ok(()) => {
                 bot.update(&new_game);
@@ -137,7 +137,7 @@ impl Game {
 
     pub fn move_penguin(&mut self, src: u8, dst: u8) -> Result<(), JsValue> {
         let mut bot = self.bot.write().unwrap();
-        let mut new_game = bot.root.game.state.clone();
+        let mut new_game = bot.root_game.state.clone();
         match new_game.move_penguin(src, dst) {
             Ok(()) => {
                 bot.update(&new_game);
@@ -149,7 +149,7 @@ impl Game {
 
     pub fn playout(&self) {
         let bot = self.bot.read().unwrap();
-        if bot.root.game.state.game_over() {
+        if bot.root_game.state.game_over() {
             return;
         }
         bot.playout();
@@ -171,7 +171,7 @@ impl Game {
     #[cfg(not(feature = "rayon"))]
     pub fn playout_n_times(&self, n: usize) {
         let bot = self.bot.read().unwrap();
-        if bot.root.game.state.game_over() {
+        if bot.root_game.state.game_over() {
             return;
         }
         for _ in 0..n {
@@ -229,12 +229,12 @@ impl Game {
 
     pub fn take_action(&mut self) -> Result<(), JsValue> {
         let mut bot = self.bot.write().unwrap();
-        if bot.root.game.state.game_over() {
+        if bot.root_game.state.game_over() {
             return Ok(());
         }
-        while bot.root.game.state.active_player() == Some(bot.me) {
+        while bot.root_game.state.active_player() == Some(bot.me) {
             let action = bot.take_action();
-            let mut new_game = bot.root.game.state.clone();
+            let mut new_game = bot.root_game.state.clone();
             match new_game.apply_action(&action) {
                 Ok(()) => {
                     bot.update(&new_game);
