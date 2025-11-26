@@ -1,14 +1,14 @@
-import { page, userEvent } from "@vitest/browser/context";
 import * as React from "react";
 import { beforeEach, describe, expect, test } from "vitest";
 import { cleanup, render } from "vitest-browser-react";
+import { page, userEvent } from "vitest/browser";
 
 import App from "./App";
 
 describe("App", () => {
-  beforeEach(() => {
-    cleanup();
-    render(<App />);
+  beforeEach(async () => {
+    await cleanup();
+    await render(<App />);
   });
 
   test("has clickable hexes", async () => {
