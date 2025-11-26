@@ -2,8 +2,4 @@
 build-std = ['std', 'panic_abort']
 
 [target.wasm32-unknown-unknown]
-rustflags = [
-    '-Ctarget-feature=+atomics,+bulk-memory,+mutable-globals',
-    '--cfg',
-    'getrandom_backend="wasm_js"',
-]
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
