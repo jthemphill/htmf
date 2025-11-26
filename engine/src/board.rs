@@ -3,7 +3,7 @@ use rand::prelude::*;
 
 use crate::cellset::CellSet;
 use crate::errors::IllegalMoveError;
-use crate::hex::{line, EvenR};
+use crate::hex::{line, Cube, EvenR};
 use crate::{EVEN_ROW_LEN, NUM_CELLS, NUM_ONE_FISH, NUM_THREE_FISH, NUM_TWO_FISH, ODD_ROW_LEN};
 
 type NumFish = usize;
@@ -19,6 +19,44 @@ pub struct Board {
     pub penguins: [CellSet; 2],
     pub fish: [CellSet; 3],
     pub claimed: [CellSet; 2],
+}
+
+const RAY_MASKS: [[u64; 6]; 64] = compute_ray_masks();
+
+const fn compute_ray_masks() -> [[u64; 6]; 64] {
+    let mut masks = [[0; 6]; 64];
+    let mut i = 0;
+    while i < 64 {
+        let src_idx = i as u8;
+        if src_idx >= NUM_CELLS as u8 {
+            i += 1;
+            continue;
+        }
+        let src_hex = Board::index_to_evenr(src_idx);
+        let src_cube = Cube::from_evenr(&src_hex);
+
+        let mut dir = 0;
+        while dir < 6 {
+            let mut ray_mask = 0;
+            let mut cur_cube = src_cube;
+            loop {
+                let neighbors = cur_cube.neighbors();
+                let next_cube = neighbors[dir];
+
+                let next_hex = EvenR::from_cube(&next_cube);
+                if !Board::in_bounds(&next_hex) {
+                    break;
+                }
+                let next_idx = Board::evenr_to_index(&next_hex);
+                ray_mask |= 1 << next_idx;
+                cur_cube = next_cube;
+            }
+            masks[i][dir] = ray_mask;
+            dir += 1;
+        }
+        i += 1;
+    }
+    masks
 }
 
 impl Board {
@@ -170,60 +208,63 @@ impl Board {
     }
 
     pub fn moves(&self, cell_idx: u8) -> CellSet {
-        let cell = Board::index_to_evenr(cell_idx);
-        cell.neighbors()
-            .iter()
-            .map(|n| self.legal_moves_in_line(&cell, n))
-            .fold(CellSet::new(), |acc, moves| acc.union(moves))
+        let mut moves = 0;
+        let occupied = self.claimed[0].data | self.claimed[1].data;
+
+        // For each of the 6 directions
+        for dir in 0..6 {
+            let ray = RAY_MASKS[cell_idx as usize][dir];
+            
+            // If we intersect with occupied cells:
+            let blockers = ray & occupied;
+            if blockers != 0 {
+                // There is a blocker.
+                // If the direction is increasing index (forward), the first blocker is the one with the smallest index (trailing_zeros).
+                // If the direction is decreasing index (backward), the first blocker is the one with the largest index (leading_zeros).
+                
+                // We need to know which directions are "positive" and "negative" in terms of bit index.
+                // 0: East (+1) -> Positive
+                // 1: NorthEast (depends on row parity, but generally -row_len) -> Negative
+                // 2: NorthWest -> Negative
+                // 3: West (-1) -> Negative
+                // 4: SouthWest -> Positive
+                // 5: SouthEast -> Positive
+                
+                if dir == 0 || dir == 4 || dir == 5 {
+                    // Positive direction: we want everything strictly less than the smallest blocker
+                    let first_blocker_idx = blockers.trailing_zeros();
+                    // Create a mask of all bits less than first_blocker_idx
+                    let mask = (1u64 << first_blocker_idx) - 1;
+                    moves |= ray & mask;
+                } else {
+                    // Negative direction: we want everything strictly greater than the largest blocker
+                    let first_blocker_idx = 63 - blockers.leading_zeros();
+                    // Create a mask of all bits greater than first_blocker_idx
+                    // (1 << (idx + 1)) - 1 gives 0..idx. We want the opposite.
+                    // !((1 << (idx + 1)) - 1)
+                    // Or simpler: !((1 << (first_blocker_idx + 1)).wrapping_sub(1))
+                    // Be careful with overflow if idx is 63.
+                    
+                    let mask = if first_blocker_idx == 63 {
+                        0
+                    } else {
+                        !((1u64 << (first_blocker_idx + 1)) - 1)
+                    };
+                    moves |= ray & mask;
+                }
+            } else {
+                // No blockers, all potential moves in this ray are valid
+                moves |= ray;
+            }
+        }
+        
+        CellSet { data: moves }
     }
 
     pub fn is_legal_move(&self, p: Player, src: u8, dst: u8) -> bool {
         self.penguins[p.id].contains(src)
             && !self.is_claimed(dst)
             && self.is_clear_path(&Board::index_to_evenr(src), &Board::index_to_evenr(dst))
-    }
-
-    /**
-     * Return all legal moves in the line connecting src to dst.
-     */
-    fn legal_moves_in_line(&self, src: &EvenR, dst: &EvenR) -> CellSet {
-        use crate::hex::Cube;
-
-        if src == dst {
-            return CellSet::new();
-        }
-
-        let src_cube = Cube::from_evenr(src);
-        let dst_cube = Cube::from_evenr(dst);
-
-        let dx = (dst_cube.x - src_cube.x).signum();
-        let dy = (dst_cube.y - src_cube.y).signum();
-        let dz = (dst_cube.z - src_cube.z).signum();
-
-        let mut cur_cube = src_cube;
-        cur_cube.x += dx;
-        cur_cube.y += dy;
-        cur_cube.z += dz;
-
-        let mut ret = CellSet::new();
-        let all_claimed = self.claimed[0].data | self.claimed[1].data;
-
-        loop {
-            let hex = EvenR::from_cube(&cur_cube);
-            if !Board::in_bounds(&hex) {
-                break;
-            }
-            let idx = Board::evenr_to_index(&hex);
-            if (all_claimed & (1 << idx)) != 0 {
-                break;
-            }
-            ret = ret.insert(idx);
-
-            cur_cube.x += dx;
-            cur_cube.y += dy;
-            cur_cube.z += dz;
-        }
-        ret
     }
 
     fn is_clear_path(&self, src: &EvenR, dst: &EvenR) -> bool {
@@ -649,14 +690,21 @@ mod tests {
             ret
         }
 
+        fn ref_moves(board: &Board, cell_idx: u8) -> CellSet {
+            let cell = Board::index_to_evenr(cell_idx);
+            cell.neighbors()
+                .iter()
+                .map(|n| ref_legal_moves_in_line(board, &cell, n))
+                .fold(CellSet::new(), |acc, moves| acc.union(moves))
+        }
+
         #[quickcheck]
-        fn prop_legal_moves_in_line_equivalence(
+        fn prop_moves_equivalence(
             src_idx: u8,
-            dst_idx: u8,
             claimed_mask_0: u64,
             claimed_mask_1: u64,
         ) -> TestResult {
-            if src_idx >= NUM_CELLS as u8 || dst_idx >= NUM_CELLS as u8 {
+            if src_idx >= NUM_CELLS as u8 {
                 return TestResult::discard();
             }
 
@@ -665,27 +713,13 @@ mod tests {
             board.claimed[0] = CellSet { data: claimed_mask_0 };
             board.claimed[1] = CellSet { data: claimed_mask_1 };
 
-            let src = Board::index_to_evenr(src_idx);
-            let dst = Board::index_to_evenr(dst_idx);
+            // Ensure src is not claimed (moves() might assume it? No, but usually we move from our own penguin)
+            // But moves() signature is just (cell_idx).
+            // If src is claimed, moves() should still return valid moves from that cell (as if a penguin was there).
+            // The logic doesn't check if src is claimed.
 
-            // Ensure src and dst are in line, otherwise the function behavior is undefined or panics in `line()`
-            // The `line` function panics if not in line.
-            // `legal_moves_in_line` (optimized) does NOT panic, it just does math.
-            // `ref_legal_moves_in_line` calls `line()` which panics.
-            // We should only test cases where they are in line.
-            if !src.in_line(&dst) {
-                return TestResult::discard();
-            }
-            
-            // Also `line` panics if src == dst
-            if src == dst {
-                 let optimized = board.legal_moves_in_line(&src, &dst);
-                 let reference = ref_legal_moves_in_line(&board, &src, &dst);
-                 return TestResult::from_bool(optimized == reference);
-            }
-
-            let optimized = board.legal_moves_in_line(&src, &dst);
-            let reference = ref_legal_moves_in_line(&board, &src, &dst);
+            let optimized = board.moves(src_idx);
+            let reference = ref_moves(&board, src_idx);
 
             TestResult::from_bool(optimized == reference)
         }
