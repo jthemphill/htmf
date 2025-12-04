@@ -24,11 +24,42 @@ from torch.utils.data import DataLoader, Dataset
 
 # Constants matching the Rust code
 NUM_CELLS = 60
-NUM_FEATURES = 8 * NUM_CELLS  # 480
+NUM_CHANNELS = 8
+NUM_FEATURES = NUM_CHANNELS * NUM_CELLS  # 480
 NUM_PENGUINS = 4
 NUM_DIRECTIONS = 6
 MAX_DISTANCE = 7
 MOVEMENT_POLICY_SIZE = NUM_PENGUINS * NUM_DIRECTIONS * MAX_DISTANCE  # 168
+
+# Grid dimensions for Conv2D (8 rows, alternating 7/8 columns -> embed in 8x8)
+NUM_ROWS = 8
+NUM_COLS = 8
+GRID_SIZE = NUM_ROWS * NUM_COLS  # 64
+
+# Mapping from flat 60-cell index to 8x8 grid position
+# Even rows (0,2,4,6) have 7 cells, odd rows (1,3,5,7) have 8 cells
+def _build_cell_to_grid():
+    """Build mapping from 60-cell index to (row, col) in 8x8 grid."""
+    cell_to_grid = []
+    cell_idx = 0
+    for row in range(NUM_ROWS):
+        row_len = 7 if row % 2 == 0 else 8
+        for col in range(row_len):
+            cell_to_grid.append((row, col))
+            cell_idx += 1
+    return cell_to_grid
+
+CELL_TO_GRID = _build_cell_to_grid()
+
+# Precompute valid cell mask for the 8x8 grid (60 valid, 4 invalid)
+def _build_valid_mask():
+    """Build a mask of valid cells in the 8x8 grid."""
+    mask = torch.zeros(NUM_ROWS, NUM_COLS)
+    for row, col in CELL_TO_GRID:
+        mask[row, col] = 1.0
+    return mask
+
+VALID_CELL_MASK = _build_valid_mask()
 
 ARTIFACTS_DIR = Path("./artifacts")
 TRAINING_DATA = ARTIFACTS_DIR / "training_data.jsonl"
@@ -99,20 +130,59 @@ class HTMFDataset(Dataset):
         return features, policies, values
 
 
-class ResidualBlock(nn.Module):
-    """Residual block with two fully connected layers."""
+def features_to_grid(features: torch.Tensor) -> torch.Tensor:
+    """Convert flat 480 features to 8x8x8 grid format for Conv2D.
 
-    def __init__(self, hidden_size: int):
+    Input: (batch, 480) - 8 channels × 60 cells flattened
+    Output: (batch, 8, 8, 8) - 8 channels × 8 rows × 8 cols
+    """
+    batch_size = features.shape[0]
+    # Reshape to (batch, 8 channels, 60 cells)
+    features = features.view(batch_size, NUM_CHANNELS, NUM_CELLS)
+
+    # Create output grid (batch, channels, rows, cols)
+    grid = torch.zeros(batch_size, NUM_CHANNELS, NUM_ROWS, NUM_COLS,
+                       device=features.device, dtype=features.dtype)
+
+    # Map each cell to its grid position
+    for cell_idx, (row, col) in enumerate(CELL_TO_GRID):
+        grid[:, :, row, col] = features[:, :, cell_idx]
+
+    return grid
+
+
+def grid_to_cells(grid: torch.Tensor) -> torch.Tensor:
+    """Extract the 60 valid cells from an 8x8 grid.
+
+    Input: (batch, 1, 8, 8) or (batch, 8, 8)
+    Output: (batch, 60)
+    """
+    if grid.dim() == 4:
+        grid = grid.squeeze(1)  # Remove channel dim
+
+    batch_size = grid.shape[0]
+    cells = torch.zeros(batch_size, NUM_CELLS, device=grid.device, dtype=grid.dtype)
+
+    for cell_idx, (row, col) in enumerate(CELL_TO_GRID):
+        cells[:, cell_idx] = grid[:, row, col]
+
+    return cells
+
+
+class ConvResidualBlock(nn.Module):
+    """Residual block with two conv layers (OpenSpiel AlphaZero style)."""
+
+    def __init__(self, channels: int):
         super().__init__()
-        self.fc1 = nn.Linear(hidden_size, hidden_size)
-        self.bn1 = nn.BatchNorm1d(hidden_size)
-        self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.bn2 = nn.BatchNorm1d(hidden_size)
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(channels)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(channels)
 
     def forward(self, x):
         residual = x
-        out = F.relu(self.bn1(self.fc1(x)))
-        out = self.bn2(self.fc2(out))
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
         out = F.relu(out + residual)
         return out
 
@@ -121,46 +191,54 @@ class HTMFNet(nn.Module):
     """
     Neural network for HTMF with policy and value heads.
 
-    Architecture:
-    - Input: 480 features (8 channels × 60 cells)
-    - Shared trunk: FC layers with residual connections
-    - Policy head: outputs logits for moves
-    - Value head: outputs win probability
+    Architecture matches OpenSpiel's AlphaZero ResNet:
+    - Input: 8 channels × 8×8 grid (60 valid cells embedded in 64)
+    - Shared trunk: Initial conv + residual blocks
+    - Policy head: 1×1 conv → BN → ReLU → flatten → FC
+    - Value head: 1×1 conv → BN → ReLU → flatten → FC → ReLU → FC → tanh
     """
 
-    def __init__(self, policy_size: int, hidden_size: int = 256, num_blocks: int = 4):
+    def __init__(self, policy_size: int, num_filters: int = 64, num_blocks: int = 4):
         super().__init__()
+        self.policy_size = policy_size
 
-        # Input projection
-        self.input_fc = nn.Linear(NUM_FEATURES, hidden_size)
-        self.input_bn = nn.BatchNorm1d(hidden_size)
+        # Initial convolution
+        self.input_conv = nn.Conv2d(NUM_CHANNELS, num_filters, kernel_size=3, padding=1)
+        self.input_bn = nn.BatchNorm2d(num_filters)
 
         # Residual blocks
-        self.blocks = nn.ModuleList([ResidualBlock(hidden_size) for _ in range(num_blocks)])
+        self.blocks = nn.ModuleList([ConvResidualBlock(num_filters) for _ in range(num_blocks)])
 
-        # Policy head
-        self.policy_fc1 = nn.Linear(hidden_size, hidden_size)
-        self.policy_bn = nn.BatchNorm1d(hidden_size)
-        self.policy_fc2 = nn.Linear(hidden_size, policy_size)
+        # Policy head: 1×1 conv to reduce channels, then flatten and FC
+        self.policy_conv = nn.Conv2d(num_filters, 2, kernel_size=1)
+        self.policy_bn = nn.BatchNorm2d(2)
+        self.policy_fc = nn.Linear(2 * GRID_SIZE, policy_size)
 
-        # Value head
-        self.value_fc1 = nn.Linear(hidden_size, hidden_size // 2)
-        self.value_bn = nn.BatchNorm1d(hidden_size // 2)
-        self.value_fc2 = nn.Linear(hidden_size // 2, 1)
+        # Value head: 1×1 conv, flatten, FC layers
+        self.value_conv = nn.Conv2d(num_filters, 1, kernel_size=1)
+        self.value_bn = nn.BatchNorm2d(1)
+        self.value_fc1 = nn.Linear(GRID_SIZE, num_filters)
+        self.value_fc2 = nn.Linear(num_filters, 1)
 
     def forward(self, x):
+        # Convert flat features to grid: (batch, 480) -> (batch, 8, 8, 8)
+        x = features_to_grid(x)
+
         # Shared trunk
-        x = F.relu(self.input_bn(self.input_fc(x)))
+        x = F.relu(self.input_bn(self.input_conv(x)))
         for block in self.blocks:
             x = block(x)
 
         # Policy head
-        policy = F.relu(self.policy_bn(self.policy_fc1(x)))
-        policy = self.policy_fc2(policy)
+        policy = F.relu(self.policy_bn(self.policy_conv(x)))
+        policy = policy.view(policy.size(0), -1)  # Flatten
+        policy = self.policy_fc(policy)
 
         # Value head
-        value = F.relu(self.value_bn(self.value_fc1(x)))
-        value = torch.sigmoid(self.value_fc2(value))
+        value = F.relu(self.value_bn(self.value_conv(x)))
+        value = value.view(value.size(0), -1)  # Flatten
+        value = F.relu(self.value_fc1(value))
+        value = torch.tanh(self.value_fc2(value))
 
         return policy, value
 
@@ -184,7 +262,8 @@ def train_model(
     perm = torch.randperm(len(features))
     features = features[perm].to(device)
     policies = policies[perm].to(device)
-    values = values[perm].to(device)
+    # Convert values from [0, 1] to [-1, 1] for tanh output
+    values = (values[perm] * 2 - 1).to(device)
 
     total_policy_loss = 0.0
     total_value_loss = 0.0
@@ -249,7 +328,7 @@ def main():
     parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--batch-size", type=int, default=256, help="Batch size")
-    parser.add_argument("--hidden-size", type=int, default=256, help="Hidden layer size")
+    parser.add_argument("--num-filters", type=int, default=64, help="Number of conv filters")
     parser.add_argument("--num-blocks", type=int, default=4, help="Number of residual blocks")
     args = parser.parse_args()
 
@@ -283,10 +362,10 @@ def main():
 
     # Create models
     drafting_model = HTMFNet(
-        policy_size=NUM_CELLS, hidden_size=args.hidden_size, num_blocks=args.num_blocks
+        policy_size=NUM_CELLS, num_filters=args.num_filters, num_blocks=args.num_blocks
     ).to(device)
     movement_model = HTMFNet(
-        policy_size=MOVEMENT_POLICY_SIZE, hidden_size=args.hidden_size, num_blocks=args.num_blocks
+        policy_size=MOVEMENT_POLICY_SIZE, num_filters=args.num_filters, num_blocks=args.num_blocks
     ).to(device)
 
     # Load existing weights if available
@@ -341,7 +420,7 @@ def main():
         {
             "drafting_model": drafting_model.state_dict(),
             "movement_model": movement_model.state_dict(),
-            "hidden_size": args.hidden_size,
+            "num_filters": args.num_filters,
             "num_blocks": args.num_blocks,
         },
         MODEL_CHECKPOINT,

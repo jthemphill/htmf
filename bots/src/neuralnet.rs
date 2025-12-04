@@ -60,13 +60,15 @@ impl NeuralNet {
 
         let outputs = model.run(tvec!(input.into()))?;
 
-        // Output 0: policy logits, Output 1: value
+        // Output 0: policy logits, Output 1: value (tanh output in [-1, 1])
         let policy_logits: Vec<f32> = outputs[0]
             .to_array_view::<f32>()?
             .iter()
             .copied()
             .collect();
-        let value: f32 = outputs[1].to_array_view::<f32>()?[[0, 0]];
+        // Convert tanh output [-1, 1] to probability [0, 1]
+        let raw_value: f32 = outputs[1].to_array_view::<f32>()?[[0, 0]];
+        let value = (raw_value + 1.0) / 2.0;
 
         Ok(NeuralNetOutput {
             policy_logits,
