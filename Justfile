@@ -4,8 +4,7 @@ default:
 
 # Remove build artifacts
 clean:
-    rm -rf wasm/pkg
-    pnpm --recursive --parallel exec rm -rf dist
+    rm -rf wasm/pkg www/dist
 
 # Check that cargo is installed
 install_cargo:
@@ -23,40 +22,40 @@ install_wasm_pack: install_cargo
 build_wasm: install_wasm_pack
     wasm-pack build wasm --target web --profiling
 
-# Install pnpm dependencies
+# Install bun dependencies
 install: build_wasm
-    pnpm install
+    bun install
 
 # Install Playwright browsers
 playwright_install:
-    cd www && pnpm exec playwright install --with-deps
+    cd www && bunx playwright install --with-deps
 
 # Start development server
 dev: install
-    cd www && pnpm run dev
+    cd www && bun run dev
 
 # Build www
 build_www: install
-    cd www && pnpm run build
+    cd www && bun run build
 
 # Lint www
 lint_www: install
-    cd www && pnpm run lint
+    cd www && bun run lint
 
 # Typecheck www
 typecheck_www: install
-    cd www && pnpm run typecheck
+    cd www && bun run typecheck
 
 # Build everything (www, lint, typecheck)
 build: build_www
 
 # Preview production build
 preview: build
-    cd www && pnpm run preview
+    cd www && bun run preview
 
 # Run www tests
 test_www: install playwright_install
-    cd www && pnpm run test:headless
+    cd www && bun run test:headless
 
 # Run all tests
 [parallel]
@@ -64,4 +63,4 @@ test: test_rust lint_www typecheck_www test_www
 
 # Deploy to Cloudflare Pages
 deploy: build install test
-    cd www && pnpm run deploy:pages
+    cd www && bun run deploy:pages
