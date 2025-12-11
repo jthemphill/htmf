@@ -13,18 +13,16 @@ When running in Webassembly mode, the AI runs entirely locally on the client.
 This is suitable for a "static" site like a Github page, where you're allowed to
 ship HTML/CSS/JS to a client but aren't allowed to consume server resources.
 
-You will need `pnpm` in order to install this game's packages and build this game's TypeScript.
+You will need `bun` in order to install this game's packages and build this game's TypeScript.
 
-To build automatically, download and run [hereby](https://www.npmjs.com/package/hereby):
+To start a Vite devserver:
 
 ```sh
-pnpm install -g hereby
-hereby dev
+bun dev
 ```
 
-To build manually:
+To run all tests:
 
-1. Go to `wasm`.
-2. Run `wasm-pack build --target web` to build the WebAssembly.
-3. Go to `www`.
-4. Run `pnpm run dev` to start the Vite devserver.
+```sh
+bun test
+```

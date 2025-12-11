@@ -30,7 +30,7 @@
   },
   "homepage": "https://jthemphill.github.io/htmf",
   "dependencies": {
-    "htmf-wasm": "workspace:*",
+    "htmf-wasm": "*",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },

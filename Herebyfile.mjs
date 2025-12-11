@@ -6,7 +6,7 @@ export const clean = task({
   run: async () => {
     await Promise.all([
       exec("rm", ["-rf", "wasm/pkg"]),
-      exec("pnpm", ["--recursive", "--parallel", "exec", "rm", "-rf", "dist"]),
+      exec("bun", ["--recursive", "--parallel", "exec", "rm", "-rf", "dist"]),
     ]);
   },
 });
@@ -60,7 +60,7 @@ export const build_wasm_st = task({
 export const install = task({
   name: "install",
   run: async () => {
-    await exec("pnpm", ["install"]);
+    await exec("bun", ["install"]);
   },
   dependencies: [build_wasm_st],
 });
@@ -68,7 +68,7 @@ export const install = task({
 export const playwright_install = task({
   name: "playwright_install",
   run: async () => {
-    await exec("pnpm", ["exec", "playwright", "install", "--with-deps"], {
+    await exec("bunx", ["playwright", "install", "--with-deps"], {
       cwd: "www",
     });
   },
@@ -78,7 +78,7 @@ export const playwright_install = task({
 export const dev = task({
   name: "dev",
   run: async () => {
-    await exec("pnpm", ["run", "dev"], { cwd: "www" });
+    await exec("bun", ["run", "dev"], { cwd: "www" });
   },
   dependencies: [install],
 });
@@ -86,7 +86,7 @@ export const dev = task({
 export const build_www = task({
   name: "build_www",
   run: async () => {
-    await exec("pnpm", ["run", "build"], { cwd: "www" });
+    await exec("bun", ["run", "build"], { cwd: "www" });
   },
   dependencies: [install],
 });
@@ -94,7 +94,7 @@ export const build_www = task({
 export const lint_www = task({
   name: "lint_www",
   run: async () => {
-    await exec("pnpm", ["run", "lint"], { cwd: "www" });
+    await exec("bun", ["run", "lint"], { cwd: "www" });
   },
   dependencies: [install],
 });
@@ -102,7 +102,7 @@ export const lint_www = task({
 export const typecheck_www = task({
   name: "typecheck_www",
   run: async () => {
-    await exec("pnpm", ["run", "typecheck"], { cwd: "www" });
+    await exec("bun", ["run", "typecheck"], { cwd: "www" });
   },
   dependencies: [install],
 });
@@ -115,7 +115,7 @@ export const build = task({
 export const preview = task({
   name: "preview",
   run: async () => {
-    await exec("pnpm", ["run", "preview"], { cwd: "www" });
+    await exec("bun", ["run", "preview"], { cwd: "www" });
   },
   dependencies: [build],
 });
@@ -123,7 +123,7 @@ export const preview = task({
 export const test_www = task({
   name: "test_www",
   run: async () => {
-    await exec("pnpm", ["run", "test:headless"], { cwd: "www" });
+    await exec("bun", ["run", "test:headless"], { cwd: "www" });
   },
   dependencies: [install, playwright_install],
 });
@@ -136,7 +136,7 @@ export const test = task({
 export const deploy = task({
   name: "deploy",
   run: async () => {
-    await exec("pnpm", ["run", "deploy:pages"], { cwd: "www" });
+    await exec("bun", ["run", "deploy:pages"], { cwd: "www" });
   },
   dependencies: [build, install, test],
 });

@@ -39,19 +39,13 @@ jobs:
             ~/Library/Caches/
           key: ${{ runner.os }}-library
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
         with:
-          run_install: false
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: "pnpm"
+          bun-version: latest
 
       - name: Install dependencies
-        run: pnpm install
+        run: bun install
 
       - name: Run tests
-        run: ./node_modules/hereby/bin/hereby.js test
+        run: bun ./node_modules/hereby/bin/hereby.js test
