@@ -3,3 +3,4 @@ train/data
 node_modules
 www/dist
 *.pyc
+.claude
