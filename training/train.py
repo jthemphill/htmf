@@ -36,6 +36,7 @@ NUM_ROWS = 8
 NUM_COLS = 8
 GRID_SIZE = NUM_ROWS * NUM_COLS  # 64
 
+
 # Mapping from flat 60-cell index to 8x8 grid position
 # Even rows (0,2,4,6) have 7 cells, odd rows (1,3,5,7) have 8 cells
 def _build_cell_to_grid():
@@ -49,7 +50,9 @@ def _build_cell_to_grid():
             cell_idx += 1
     return cell_to_grid
 
+
 CELL_TO_GRID = _build_cell_to_grid()
+
 
 # Precompute valid cell mask for the 8x8 grid (60 valid, 4 invalid)
 def _build_valid_mask():
@@ -58,6 +61,7 @@ def _build_valid_mask():
     for row, col in CELL_TO_GRID:
         mask[row, col] = 1.0
     return mask
+
 
 VALID_CELL_MASK = _build_valid_mask()
 
@@ -141,8 +145,14 @@ def features_to_grid(features: torch.Tensor) -> torch.Tensor:
     features = features.view(batch_size, NUM_CHANNELS, NUM_CELLS)
 
     # Create output grid (batch, channels, rows, cols)
-    grid = torch.zeros(batch_size, NUM_CHANNELS, NUM_ROWS, NUM_COLS,
-                       device=features.device, dtype=features.dtype)
+    grid = torch.zeros(
+        batch_size,
+        NUM_CHANNELS,
+        NUM_ROWS,
+        NUM_COLS,
+        device=features.device,
+        dtype=features.dtype,
+    )
 
     # Map each cell to its grid position
     for cell_idx, (row, col) in enumerate(CELL_TO_GRID):
@@ -207,7 +217,9 @@ class HTMFNet(nn.Module):
         self.input_bn = nn.BatchNorm2d(num_filters)
 
         # Residual blocks
-        self.blocks = nn.ModuleList([ConvResidualBlock(num_filters) for _ in range(num_blocks)])
+        self.blocks = nn.ModuleList(
+            [ConvResidualBlock(num_filters) for _ in range(num_blocks)]
+        )
 
         # Policy head: 1×1 conv to reduce channels, then flatten and FC
         self.policy_conv = nn.Conv2d(num_filters, 2, kernel_size=1)
@@ -280,7 +292,9 @@ def train_model(
 
         # Policy loss: cross-entropy with target distribution
         # Target policies are probability distributions from MCTS
-        policy_loss = -(batch_policies * F.log_softmax(pred_policy, dim=1)).sum(dim=1).mean()
+        policy_loss = (
+            -(batch_policies * F.log_softmax(pred_policy, dim=1)).sum(dim=1).mean()
+        )
 
         # Value loss: MSE
         value_loss = F.mse_loss(pred_value, batch_values)
@@ -294,7 +308,9 @@ def train_model(
         total_value_loss += value_loss.item()
         num_batches += 1
 
-    return total_policy_loss / max(1, num_batches), total_value_loss / max(1, num_batches)
+    return total_policy_loss / max(1, num_batches), total_value_loss / max(
+        1, num_batches
+    )
 
 
 def export_to_onnx(model: HTMFNet, path: Path, device: torch.device):
@@ -310,12 +326,7 @@ def export_to_onnx(model: HTMFNet, path: Path, device: torch.device):
         path,
         input_names=["features"],
         output_names=["policy", "value"],
-        dynamic_axes={
-            "features": {0: "batch_size"},
-            "policy": {0: "batch_size"},
-            "value": {0: "batch_size"},
-        },
-        opset_version=17,
+        opset_version=14,  # Use older opset for better tract compatibility
         dynamo=False,  # Use legacy exporter for compatibility
     )
 
@@ -325,11 +336,17 @@ def export_to_onnx(model: HTMFNet, path: Path, device: torch.device):
 
 def main():
     parser = argparse.ArgumentParser(description="Train HTMF neural network")
-    parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs")
+    parser.add_argument(
+        "--epochs", type=int, default=20, help="Number of training epochs"
+    )
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--batch-size", type=int, default=256, help="Batch size")
-    parser.add_argument("--num-filters", type=int, default=64, help="Number of conv filters")
-    parser.add_argument("--num-blocks", type=int, default=4, help="Number of residual blocks")
+    parser.add_argument(
+        "--num-filters", type=int, default=64, help="Number of conv filters"
+    )
+    parser.add_argument(
+        "--num-blocks", type=int, default=4, help="Number of residual blocks"
+    )
     args = parser.parse_args()
 
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -365,13 +382,17 @@ def main():
         policy_size=NUM_CELLS, num_filters=args.num_filters, num_blocks=args.num_blocks
     ).to(device)
     movement_model = HTMFNet(
-        policy_size=MOVEMENT_POLICY_SIZE, num_filters=args.num_filters, num_blocks=args.num_blocks
+        policy_size=MOVEMENT_POLICY_SIZE,
+        num_filters=args.num_filters,
+        num_blocks=args.num_blocks,
     ).to(device)
 
     # Load existing weights if available
     if MODEL_CHECKPOINT.exists():
         print(f"Loading existing model from {MODEL_CHECKPOINT}...")
-        checkpoint = torch.load(MODEL_CHECKPOINT, map_location=device, weights_only=True)
+        checkpoint = torch.load(
+            MODEL_CHECKPOINT, map_location=device, weights_only=True
+        )
         drafting_model.load_state_dict(checkpoint["drafting_model"])
         movement_model.load_state_dict(checkpoint["movement_model"])
         print("Loaded existing model weights")
