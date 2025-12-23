@@ -1,8 +1,7 @@
 //! Benchmark: Neural Network guided MCTS vs Traditional MCTS
 //!
-//! The NN bot uses value network for leaf evaluation (no rollouts needed),
-//! so it can search deeper with fewer playouts. We give it 1/10th the playouts
-//! of traditional MCTS to test if it can compete with better guidance.
+//! The NN bot uses PUCT selection with NN policy priors and random rollouts.
+//! This provides a strong baseline that can be incrementally improved through training.
 
 use std::sync::Arc;
 
@@ -47,7 +46,7 @@ fn main() {
         let mut nn_bot = MCTSBot::with_neural_net(
             game.clone(),
             Player { id: nn_player },
-            nn.clone(),
+            Some(nn.clone()),
         );
         let mut mcts_bot = MCTSBot::new(game.clone(), Player { id: mcts_player });
 

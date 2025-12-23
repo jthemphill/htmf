@@ -326,11 +326,9 @@ fn play_game(nplayouts: usize, nn: Option<Arc<NeuralNet>>) -> GameResult {
     let mut game = GameState::new_two_player(&mut rand::rng());
     let mut bots: Vec<MCTSBot> = (0..NUM_PLAYERS)
         .map(|i| {
-            if let Some(ref nn) = nn {
-                MCTSBot::with_neural_net(game.clone(), Player { id: i }, nn.clone())
-            } else {
-                MCTSBot::new(game.clone(), Player { id: i })
-            }
+            // Always use PUCT mode (with_neural_net) - it outperforms pure UCB1
+            // Pass the NN if available for policy priors, otherwise uses uniform priors
+            MCTSBot::with_neural_net(game.clone(), Player { id: i }, nn.clone())
         })
         .collect();
 

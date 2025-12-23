@@ -185,6 +185,25 @@ impl TreeNode {
         *node_count += children.len();
         let _ = self.children.set(children);
     }
+
+    /// Expand children with uniform priors (1/n for each of n children)
+    /// Used for debugging PUCT without neural network policy guidance
+    pub fn expand_with_uniform_priors(&mut self, game: &Game, node_count: &mut usize) {
+        if self.children.get().is_some() {
+            return; // Already expanded
+        }
+
+        let moves: Vec<Move> = game.available_moves().collect();
+        let uniform_prior = 1.0 / moves.len() as f32;
+
+        let children: Vec<_> = moves
+            .into_iter()
+            .map(|child_move| (child_move, TreeNode::with_prior(uniform_prior)))
+            .collect();
+
+        *node_count += children.len();
+        let _ = self.children.set(children);
+    }
 }
 
 /// Convert a move from (src, dst) to (direction, distance)
@@ -453,19 +472,20 @@ fn playout(root: &mut TreeNode, root_game: &Game, node_count: &mut usize) -> (Ve
     (path, game)
 }
 
-/// Neural network guided playout - returns the path, value estimate, and the player whose perspective the value is from
-fn playout_nn(
+/// PUCT-based playout with random rollout evaluation.
+/// Uses neural network policy priors if available, otherwise uniform priors.
+fn playout_puct(
     root: &mut TreeNode,
     root_game: &Game,
-    nn: &NeuralNet,
+    nn: &Option<Arc<NeuralNet>>,
     node_count: &mut usize,
-) -> (Vec<Move>, f32, usize) {
+) -> (Vec<Move>, Game) {
     let rng = &mut rand::rng();
     let mut path = vec![];
     let mut expand_node = root;
     let mut game = root_game.clone();
 
-    // Traverse to a leaf node using PUCT
+    // Traverse using PUCT
     while !expand_node.is_leaf() {
         let (child_move, child_node) = choose_child_puct(expand_node, rng);
         game.make_move(child_move);
@@ -473,43 +493,29 @@ fn playout_nn(
         path.push(child_move);
     }
 
-    // At a leaf node - evaluate with neural network and expand
-    if game.state.game_over() {
-        // Terminal node - use actual game result
-        // Need to figure out who the last player to move was
-        let last_player = if !path.is_empty() {
-            let mut temp_game = root_game.clone();
-            let mut last_p = temp_game.current_player().id;
-            for (i, m) in path.iter().enumerate() {
-                if i < path.len() - 1 {
-                    last_p = temp_game.current_player().id;
-                    temp_game.make_move(*m);
-                }
-            }
-            // The player who made the last move
-            let mut temp_game2 = root_game.clone();
-            for (i, m) in path.iter().enumerate() {
-                if i == path.len() - 1 {
-                    return (path, get_reward(&game.state, temp_game2.current_player().id), temp_game2.current_player().id);
-                }
-                temp_game2.make_move(*m);
-            }
-            last_p
-        } else {
-            root_game.current_player().id
-        };
-        (path, get_reward(&game.state, last_player), last_player)
-    } else {
-        // Non-terminal leaf - use neural network
+    // At a leaf - expand with priors (from NN if available, otherwise uniform)
+    if !game.state.game_over() {
         let current_player = game.current_player().id;
-        let output = nn.predict(&game.state, current_player).expect("NN prediction failed");
+        if let Some(nn) = nn {
+            let output = nn.predict(&game.state, current_player).expect("NN prediction failed");
+            expand_node.expand_with_priors(&game, &output.policy_logits, current_player, node_count);
+        } else {
+            expand_node.expand_with_uniform_priors(&game, node_count);
+        }
 
-        // Expand with policy priors
-        expand_node.expand_with_priors(&game, &output.policy_logits, current_player, node_count);
-
-        // Return value from current player's perspective
-        (path, output.value, current_player)
+        // Select one child to expand into (using PUCT)
+        let (child_move, _child_node) = choose_child_puct(expand_node, rng);
+        game.make_move(child_move);
+        path.push(child_move);
     }
+
+    // Random rollout to end of game
+    while let Some(game_move) = game.available_moves().choose(rng) {
+        path.push(game_move);
+        game.make_move(game_move);
+    }
+
+    (path, game)
 }
 
 fn backprop(root: &mut TreeNode, root_game: &Game, path: Vec<Move>, game: Game) {
@@ -531,38 +537,24 @@ fn backprop(root: &mut TreeNode, root_game: &Game, path: Vec<Move>, game: Game) 
     }
 }
 
-/// Backpropagate a value estimate from neural network
-fn backprop_value(root: &mut TreeNode, root_game: &Game, path: Vec<Move>, leaf_value: f32, leaf_player: usize) {
-    let mut backprop_node = root;
-    let mut current_game = root_game.clone();
-
-    for backprop_move in path {
-        if backprop_node.is_leaf() {
-            break;
-        }
-        if let Some(p) = current_game.state.active_player() {
-            backprop_node = backprop_node.get_child_mut(backprop_move);
-            // leaf_value is from the perspective of leaf_player
-            // We flip it for the opponent
-            let value_for_p = if p.id == leaf_player {
-                leaf_value
-            } else {
-                1.0 - leaf_value
-            };
-            backprop_node.rewards_visits.add_reward(value_for_p);
-            current_game.make_move(backprop_move);
-        } else {
-            break;
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
 pub struct UpdateStats {
     pub old_size: usize,
     pub old_capacity: usize,
     pub new_size: usize,
     pub new_capacity: usize,
+}
+
+/// Mode of operation for MCTS
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MCTSMode {
+    /// Pure MCTS with UCB1 selection and random rollouts
+    Pure,
+    /// PUCT selection with random rollouts.
+    /// Uses neural network policy priors if available, otherwise uniform priors.
+    /// This mode outperforms Pure MCTS and provides a foundation for incremental
+    /// improvement through training - each generation can improve on the last.
+    NeuralNet,
 }
 
 pub struct MCTSBot {
@@ -572,6 +564,8 @@ pub struct MCTSBot {
     pub num_nodes: usize,
     /// Optional neural network for guided search
     nn: Option<Arc<NeuralNet>>,
+    /// Mode of operation
+    mode: MCTSMode,
 }
 
 impl MCTSBot {
@@ -582,35 +576,48 @@ impl MCTSBot {
             me,
             num_nodes: 1,
             nn: None,
+            mode: MCTSMode::Pure,
         }
     }
 
-    /// Create an MCTS bot guided by a neural network
+    /// Create an MCTS bot that uses PUCT selection with random rollouts.
+    ///
+    /// If a neural network is provided, it will be used for policy priors
+    /// (guiding which moves to explore first). Otherwise, uniform priors are used.
+    ///
+    /// This mode uses random rollouts for leaf evaluation (not NN value prediction),
+    /// which provides a strong baseline that outperforms pure UCB1-based MCTS.
+    /// Training can then incrementally improve the policy priors.
     pub fn with_neural_net(
         game: htmf::game::GameState,
         me: htmf::board::Player,
-        nn: Arc<NeuralNet>,
+        nn: Option<Arc<NeuralNet>>,
     ) -> Self {
         let mut bot = MCTSBot {
             root: TreeNode::new(),
             root_game: Game { state: game.clone() },
             me,
             num_nodes: 1,
-            nn: Some(nn.clone()),
+            nn,
+            mode: MCTSMode::NeuralNet,
         };
 
-        // Initialize root with neural network priors
+        // Initialize root with priors (from NN if available, otherwise uniform)
         if let Some(p) = game.active_player() {
-            let output = nn.predict(&game, p.id).expect("NN prediction failed");
-            bot.root.expand_with_priors(
-                &bot.root_game,
-                &output.policy_logits,
-                p.id,
-                &mut bot.num_nodes,
-            );
+            bot.expand_node_with_priors(&bot.root_game.clone(), p.id);
         }
 
         bot
+    }
+
+    /// Expand a node with priors (from NN if available, otherwise uniform)
+    fn expand_node_with_priors(&mut self, game: &Game, current_player: usize) {
+        if let Some(nn) = &self.nn {
+            let output = nn.predict(&game.state, current_player).expect("NN prediction failed");
+            self.root.expand_with_priors(game, &output.policy_logits, current_player, &mut self.num_nodes);
+        } else {
+            self.root.expand_with_uniform_priors(game, &mut self.num_nodes);
+        }
     }
 
     /// Tell the bot about the new game state
@@ -637,10 +644,16 @@ impl MCTSBot {
             // New state not found in tree - start fresh
             self.root = dummy;
 
-            // If using neural network, initialize with priors
-            if let (Some(nn), Some(p)) = (&self.nn, game_state.active_player()) {
-                let output = nn.predict(game_state, p.id).expect("NN prediction failed");
-                self.root.expand_with_priors(&new_game, &output.policy_logits, p.id, &mut self.num_nodes);
+            // Initialize based on mode
+            match self.mode {
+                MCTSMode::NeuralNet => {
+                    if let Some(p) = game_state.active_player() {
+                        self.expand_node_with_priors(&new_game, p.id);
+                    }
+                }
+                MCTSMode::Pure => {
+                    // Pure MCTS doesn't pre-expand
+                }
             }
         }
 
@@ -649,14 +662,18 @@ impl MCTSBot {
     }
 
     pub fn playout(&mut self) {
-        if let Some(nn) = &self.nn {
-            // Neural network guided search
-            let (path, value, leaf_player) = playout_nn(&mut self.root, &self.root_game, nn, &mut self.num_nodes);
-            backprop_value(&mut self.root, &self.root_game, path, value, leaf_player);
-        } else {
-            // Traditional MCTS with random rollouts
-            let (path, game) = playout(&mut self.root, &self.root_game, &mut self.num_nodes);
-            backprop(&mut self.root, &self.root_game, path, game);
+        match self.mode {
+            MCTSMode::Pure => {
+                // Traditional MCTS with UCB1 selection and random rollouts
+                let (path, game) = playout(&mut self.root, &self.root_game, &mut self.num_nodes);
+                backprop(&mut self.root, &self.root_game, path, game);
+            }
+            MCTSMode::NeuralNet => {
+                // PUCT selection with random rollouts
+                // Uses NN policy priors if available, otherwise uniform priors
+                let (path, game) = playout_puct(&mut self.root, &self.root_game, &self.nn, &mut self.num_nodes);
+                backprop(&mut self.root, &self.root_game, path, game);
+            }
         }
     }
 
@@ -869,7 +886,7 @@ fn test_neural_network_guided_game() {
 
     let mut game = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(42));
     let mut bots = (0..=1)
-        .map(|i| MCTSBot::with_neural_net(game.clone(), Player { id: i }, nn.clone()))
+        .map(|i| MCTSBot::with_neural_net(game.clone(), Player { id: i }, Some(nn.clone())))
         .collect::<Vec<MCTSBot>>();
 
     let mut move_count = 0;
