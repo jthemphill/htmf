@@ -50,8 +50,8 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: "pnpm"
 
-      - name: Install dependencies
-        run: pnpm install
+      - name: Setup just
+        uses: extractions/setup-just@v3
 
       - name: Run tests
-        run: ./node_modules/hereby/bin/hereby.js test
+        run: just test
