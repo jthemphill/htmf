@@ -15,11 +15,10 @@ ship HTML/CSS/JS to a client but aren't allowed to consume server resources.
 
 You will need `pnpm` in order to install this game's packages and build this game's TypeScript.
 
-To build automatically, download and run [hereby](https://www.npmjs.com/package/hereby):
+To build automatically, download and run [just](https://github.com/casey/just):
 
 ```sh
-pnpm install -g hereby
-hereby dev
+just dev
 ```
 
 To build manually:
