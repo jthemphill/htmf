@@ -313,25 +313,18 @@ def train_model(
     )
 
 
-def export_to_onnx(model: HTMFNet, path: Path, device: torch.device):
+def export_to_onnx(model: HTMFNet, path: Path):
     """Export model to ONNX format."""
     model.eval()
-    # Move to CPU for ONNX export to avoid device compatibility issues
-    model_cpu = model.cpu()
     dummy_input = torch.zeros(1, NUM_FEATURES)
 
     torch.onnx.export(
-        model_cpu,
+        model,
         dummy_input,
         path,
         input_names=["features"],
         output_names=["policy", "value"],
-        opset_version=14,  # Use older opset for better tract compatibility
-        dynamo=False,  # Use legacy exporter for compatibility
     )
-
-    # Move model back to original device
-    model.to(device)
 
 
 def main():
@@ -449,10 +442,10 @@ def main():
 
     # Export to ONNX
     print(f"Exporting drafting model to {ONNX_DRAFTING}...")
-    export_to_onnx(drafting_model, ONNX_DRAFTING, device)
+    export_to_onnx(drafting_model, ONNX_DRAFTING)
 
     print(f"Exporting movement model to {ONNX_MOVEMENT}...")
-    export_to_onnx(movement_model, ONNX_MOVEMENT, device)
+    export_to_onnx(movement_model, ONNX_MOVEMENT)
 
     print("\nTraining complete!")
     return 0
