@@ -44,6 +44,12 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      - name: Build WASM package
+        run: wasm-pack build wasm --target web --profiling
+
       - name: Install dependencies
         run: bun install
 
