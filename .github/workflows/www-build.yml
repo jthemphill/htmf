@@ -19,6 +19,10 @@ jobs:
     runs-on: ${{matrix.os}}
 
     steps:
+      - name: Get date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
       - name: Checkout repo
         uses: actions/checkout@v4
 
@@ -37,7 +41,7 @@ jobs:
           path: |
             ~/.cache
             ~/Library/Caches/
-          key: ${{ runner.os }}-library
+          key: ${{ runner.os }}-library-${{ steps.date.outputs.date }}
 
       - name: Setup bun
         uses: oven-sh/setup-bun@v2
