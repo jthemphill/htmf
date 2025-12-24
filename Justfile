@@ -64,3 +64,12 @@ test: test_rust lint_www typecheck_www test_www
 # Deploy to Cloudflare Pages
 deploy: build install test
     cd www && bun run deploy:pages
+
+# Training dependencies
+install_training:
+    @command -v uv > /dev/null || (echo "uv not found. Please install from https://docs.astral.sh/uv/" && exit 1)
+    cd training && uv sync
+
+# Run one iteration of selfplay and training, promoting the model if it improves
+train: install_cargo install_training
+    bun run scripts/train.ts

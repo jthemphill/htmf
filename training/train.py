@@ -315,6 +315,8 @@ def train_model(
 
 def export_to_onnx(model: HTMFNet, path: Path):
     """Export model to ONNX format."""
+    # Move model to CPU for ONNX export (required for compatibility)
+    model = model.cpu()
     model.eval()
     dummy_input = torch.zeros(1, NUM_FEATURES)
 
@@ -324,6 +326,7 @@ def export_to_onnx(model: HTMFNet, path: Path):
         path,
         input_names=["features"],
         output_names=["policy", "value"],
+        dynamo=False,  # Use legacy exporter for Python 3.14 compatibility
     )
 
 
