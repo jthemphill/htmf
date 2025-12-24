@@ -29,6 +29,12 @@ path = "../bots"
 version = "0.3.3"
 features = ["wasm_js"]
 
+# Also needed for transitive dependencies via tract-onnx -> rand 0.8 -> rand_core 0.6 -> getrandom 0.2
+[dependencies.getrandom02]
+package = "getrandom"
+version = "0.2"
+features = ["js"]
+
 [package.metadata.wasm-pack.profile.profiling]
 wasm-opt = ["-O4", '-g']
 
