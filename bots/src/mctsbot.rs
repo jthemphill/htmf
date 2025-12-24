@@ -7,12 +7,8 @@ use std::sync::Arc;
 
 const NUM_PLAYERS: usize = 2;
 
-// Compressed movement policy constants
-const NUM_PENGUINS: usize = 4;
 const NUM_DIRECTIONS: usize = 6;
 const MAX_DISTANCE: usize = 7;
-#[allow(dead_code)]
-const MOVEMENT_POLICY_SIZE: usize = NUM_PENGUINS * NUM_DIRECTIONS * MAX_DISTANCE; // 168
 
 /// Exploration constant for PUCT formula (AlphaZero uses ~1.0-2.0)
 const C_PUCT: f32 = 1.0;
@@ -95,27 +91,6 @@ impl TreeNode {
             .1
     }
 
-    pub fn iter_children<'a>(
-        &'a self,
-        game: &Game,
-        node_count: Option<&mut usize>,
-    ) -> impl Iterator<Item = &'a (Move, TreeNode)> {
-        self.children
-            .get_or_init(|| {
-                let children: Vec<_> = game
-                    .available_moves()
-                    .map(|child_move| (child_move, TreeNode::new()))
-                    .collect();
-
-                if let Some(node_count) = node_count {
-                    *node_count += children.len();
-                }
-
-                children
-            })
-            .iter()
-    }
-
     pub fn iter_mut_children<'a>(
         &'a mut self,
         game: &Game,
@@ -152,7 +127,9 @@ impl TreeNode {
         let moves: Vec<Move> = game.available_moves().collect();
 
         // Get sorted penguin list for consistent indexing (only needed for movement)
-        let mut penguins: Vec<u8> = game.state.board.penguins[current_player].into_iter().collect();
+        let mut penguins: Vec<u8> = game.state.board.penguins[current_player]
+            .into_iter()
+            .collect();
         penguins.sort();
 
         // Convert logits to probabilities with softmax over legal moves only
@@ -187,7 +164,6 @@ impl TreeNode {
     }
 
     /// Expand children with uniform priors (1/n for each of n children)
-    /// Used for debugging PUCT without neural network policy guidance
     pub fn expand_with_uniform_priors(&mut self, game: &Game, node_count: &mut usize) {
         if self.children.get().is_some() {
             return; // Already expanded
@@ -230,13 +206,25 @@ fn move_to_direction_distance(src: u8, dst: u8) -> Option<(usize, usize)> {
 
     let direction = if dz == 0 {
         // z constant: East (0) or West (3)
-        if dx > 0 { 0 } else { 3 }
+        if dx > 0 {
+            0
+        } else {
+            3
+        }
     } else if dy == 0 {
         // y constant: Northeast (1) or Southwest (4)
-        if dx > 0 { 1 } else { 4 }
+        if dx > 0 {
+            1
+        } else {
+            4
+        }
     } else if dx == 0 {
         // x constant: Northwest (2) or Southeast (5)
-        if dy > 0 { 2 } else { 5 }
+        if dy > 0 {
+            2
+        } else {
+            5
+        }
     } else {
         // Not a valid hex line move
         return None;
@@ -348,46 +336,7 @@ impl Game {
     }
 }
 
-fn choose_child<'tree, R: Rng + ?Sized>(
-    node: &'tree mut TreeNode,
-    game: &Game,
-    rng: &'_ mut R,
-    node_count: &mut usize,
-) -> (Move, &'tree mut TreeNode) {
-    let (_, total_visits) = node.rewards_visits.get_and_increment_visits();
-
-    let mut chosen_idx = 0;
-    let mut num_optimal: f64 = 0.0;
-    let mut best_so_far: f32 = std::f32::NEG_INFINITY;
-    for (idx, (_, child)) in node.iter_children(game, Some(node_count)).enumerate() {
-        let score = {
-            let (child_rewards, child_visits) = child.rewards_visits.get();
-            // https://www.researchgate.net/publication/235985858_A_Survey_of_Monte_Carlo_Tree_Search_Methods
-            if child_visits == 0 {
-                std::f32::INFINITY
-            } else {
-                let explore_term = (2.0 * (total_visits as f32).ln() / child_visits as f32).sqrt();
-                let exploit_term = child_rewards / child_visits as f32;
-                explore_term + exploit_term
-            }
-        };
-        if score > best_so_far {
-            chosen_idx = idx;
-            num_optimal = 1.0;
-            best_so_far = score;
-        } else if (score - best_so_far).abs() < std::f32::EPSILON {
-            num_optimal += 1.0;
-            if rng.random_bool(1.0 / num_optimal) {
-                chosen_idx = idx;
-            }
-        }
-    }
-    let children = node.children.get_mut().unwrap();
-    let (child_move, child) = &mut children[chosen_idx];
-    (*child_move, child)
-}
-
-/// Choose child using PUCT formula (for neural network guided search)
+/// Choose child using PUCT formula
 fn choose_child_puct<'tree, R: Rng + ?Sized>(
     node: &'tree mut TreeNode,
     rng: &'_ mut R,
@@ -395,7 +344,10 @@ fn choose_child_puct<'tree, R: Rng + ?Sized>(
     let (_, total_visits) = node.rewards_visits.get_and_increment_visits();
     let sqrt_total = (total_visits as f32).sqrt();
 
-    let children = node.children.get_mut().expect("Node must be expanded before PUCT selection");
+    let children = node
+        .children
+        .get_mut()
+        .expect("Node must be expanded before PUCT selection");
 
     let mut chosen_idx = 0;
     let mut num_optimal: f64 = 0.0;
@@ -442,36 +394,6 @@ fn get_reward(game: &htmf::game::GameState, p: usize) -> f32 {
     }
 }
 
-fn playout(root: &mut TreeNode, root_game: &Game, node_count: &mut usize) -> (Vec<Move>, Game) {
-    let rng = &mut rand::rng();
-    let mut path = vec![];
-    let mut expand_node = root;
-    let mut game = root_game.clone();
-
-    // Find a leaf node
-    while !expand_node.is_leaf() {
-        let (child_move, child_node) = choose_child(expand_node, &game, rng, node_count);
-        game.make_move(child_move);
-        expand_node = child_node;
-        path.push(child_move);
-    }
-
-    // Expand the tree by creating one more node
-    if !game.state.game_over() {
-        let (child_move, _child_node) = choose_child(expand_node, &game, rng, node_count);
-        game.make_move(child_move);
-        path.push(child_move);
-    }
-
-    // Finish the game
-    while let Some(game_move) = game.available_moves().choose(rng) {
-        path.push(game_move);
-        game.make_move(game_move);
-    }
-
-    (path, game)
-}
-
 /// PUCT-based playout with random rollout evaluation.
 /// Uses neural network policy priors if available, otherwise uniform priors.
 fn playout_puct(
@@ -497,8 +419,15 @@ fn playout_puct(
     if !game.state.game_over() {
         let current_player = game.current_player().id;
         if let Some(nn) = nn {
-            let output = nn.predict(&game.state, current_player).expect("NN prediction failed");
-            expand_node.expand_with_priors(&game, &output.policy_logits, current_player, node_count);
+            let output = nn
+                .predict(&game.state, current_player)
+                .expect("NN prediction failed");
+            expand_node.expand_with_priors(
+                &game,
+                &output.policy_logits,
+                current_player,
+                node_count,
+            );
         } else {
             expand_node.expand_with_uniform_priors(&game, node_count);
         }
@@ -570,14 +499,24 @@ pub struct MCTSBot {
 
 impl MCTSBot {
     pub fn new(game: htmf::game::GameState, me: htmf::board::Player) -> Self {
-        MCTSBot {
+        let root_game = Game {
+            state: game.clone(),
+        };
+        let mut bot = MCTSBot {
             root: TreeNode::new(),
-            root_game: Game { state: game },
+            root_game,
             me,
             num_nodes: 1,
             nn: None,
             mode: MCTSMode::Pure,
+        };
+
+        if game.active_player().is_some() {
+            bot.root
+                .expand_with_uniform_priors(&bot.root_game.clone(), &mut bot.num_nodes);
         }
+
+        bot
     }
 
     /// Create an MCTS bot that uses PUCT selection with random rollouts.
@@ -595,7 +534,9 @@ impl MCTSBot {
     ) -> Self {
         let mut bot = MCTSBot {
             root: TreeNode::new(),
-            root_game: Game { state: game.clone() },
+            root_game: Game {
+                state: game.clone(),
+            },
             me,
             num_nodes: 1,
             nn,
@@ -613,10 +554,18 @@ impl MCTSBot {
     /// Expand a node with priors (from NN if available, otherwise uniform)
     fn expand_node_with_priors(&mut self, game: &Game, current_player: usize) {
         if let Some(nn) = &self.nn {
-            let output = nn.predict(&game.state, current_player).expect("NN prediction failed");
-            self.root.expand_with_priors(game, &output.policy_logits, current_player, &mut self.num_nodes);
+            let output = nn
+                .predict(&game.state, current_player)
+                .expect("NN prediction failed");
+            self.root.expand_with_priors(
+                game,
+                &output.policy_logits,
+                current_player,
+                &mut self.num_nodes,
+            );
         } else {
-            self.root.expand_with_uniform_priors(game, &mut self.num_nodes);
+            self.root
+                .expand_with_uniform_priors(game, &mut self.num_nodes);
         }
     }
 
@@ -652,7 +601,11 @@ impl MCTSBot {
                     }
                 }
                 MCTSMode::Pure => {
-                    // Pure MCTS doesn't pre-expand
+                    // Pure mode also uses PUCT, so pre-expand with uniform priors
+                    if game_state.active_player().is_some() {
+                        self.root
+                            .expand_with_uniform_priors(&new_game, &mut self.num_nodes);
+                    }
                 }
             }
         }
@@ -662,19 +615,13 @@ impl MCTSBot {
     }
 
     pub fn playout(&mut self) {
-        match self.mode {
-            MCTSMode::Pure => {
-                // Traditional MCTS with UCB1 selection and random rollouts
-                let (path, game) = playout(&mut self.root, &self.root_game, &mut self.num_nodes);
-                backprop(&mut self.root, &self.root_game, path, game);
-            }
-            MCTSMode::NeuralNet => {
-                // PUCT selection with random rollouts
-                // Uses NN policy priors if available, otherwise uniform priors
-                let (path, game) = playout_puct(&mut self.root, &self.root_game, &self.nn, &mut self.num_nodes);
-                backprop(&mut self.root, &self.root_game, path, game);
-            }
-        }
+        let (path, game) = playout_puct(
+            &mut self.root,
+            &self.root_game,
+            &self.nn,
+            &mut self.num_nodes,
+        );
+        backprop(&mut self.root, &self.root_game, path, game);
     }
 
     pub fn take_action(&mut self) -> htmf::game::Action {
@@ -693,7 +640,10 @@ impl MCTSBot {
 
         // Expand if needed
         if self.root.children.get().is_none() {
-            let _: Vec<_> = self.root.iter_mut_children(&self.root_game, Some(&mut self.num_nodes)).collect();
+            let _: Vec<_> = self
+                .root
+                .iter_mut_children(&self.root_game, Some(&mut self.num_nodes))
+                .collect();
         }
 
         let children = self.root.children.get().unwrap();
@@ -821,11 +771,13 @@ fn test_tree_size_optimization() {
     let game = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(0));
     let mut bot = MCTSBot::new(game.clone(), Player { id: 0 });
 
-    assert_eq!(bot.tree_size(), 1);
+    // Root is now pre-expanded with uniform priors (PUCT requires this)
+    let initial_size = bot.tree_size();
+    assert!(initial_size > 1, "Root should be pre-expanded");
 
     bot.playout();
-    // Playout expands at least one node (unless game over, which it isn't)
-    assert!(bot.tree_size() > 1);
+    // Playout expands at least one more node
+    assert!(bot.tree_size() > initial_size);
 
     // Verify tree size matches manual calculation
     assert_eq!(bot.tree_size(), bot.calculate_tree_size());
