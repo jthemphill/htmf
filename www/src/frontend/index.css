@@ -62,12 +62,12 @@
   fill: #fb8b00;
 }
 
-.human {
+.human.penguin {
   color: blue;
   fill: blue;
 }
 
-.bot {
+.bot.penguin {
   color: red;
   fill: red;
 }
@@ -79,4 +79,14 @@
 .info-col .win-chance {
   display: flex;
   flex-direction: column;
+}
+
+.bot-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.bot-controls button {
+  padding: 0.5rem 1rem;
 }

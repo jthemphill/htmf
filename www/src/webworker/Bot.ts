@@ -62,6 +62,7 @@ class Bot {
   game: wasm.Game = wasm.Game.new();
   postMessage: (msg: WorkerResponse) => void;
   ponderer?: number;
+  forcedMove = false;
   ponderStartTime?: number;
   totalCompletedPonderTimeMs = 0;
 
@@ -88,23 +89,33 @@ class Bot {
     this.ponderStartTime = performance.now();
     this.ponderer = self.setInterval(() => {
       const activePlayer = this.game.active_player();
-      if (
-        this.game.get_visits() >= MAX_PLAYOUTS ||
-        activePlayer === BOT_PLAYER
+      if (activePlayer === BOT_PLAYER) {
+        // We need to make a move soon
+        if (this.forcedMove || this.game.get_visits() >= MIN_PLAYOUTS) {
+          // Move if the human player forced us or if we clear the minimum threshold
+          this.game.take_action();
+          this.forcedMove = false;
+          this.postGameState({});
+          this.ponder();
+        }
+      } else if (
+        activePlayer === undefined ||
+        this.game.get_visits() >= MAX_PLAYOUTS
       ) {
+        // The game is over or we've consumed our playout budget; stop thinking
         this.stopPondering();
-        return;
       }
 
       this.game.playout_n_times(PLAYOUT_CHUNK_SIZE);
-
-      if (activePlayer !== undefined) {
-        this.postThinkingProgress({
-          activePlayer,
-          playoutsNeeded: MAX_PLAYOUTS,
-        });
-      }
+      this.postThinkingProgress();
     });
+  }
+
+  moveNow(): void {
+    this.forcedMove = true;
+    if (this.game.active_player() === BOT_PLAYER) {
+      this.ponder();
+    }
   }
 
   stopPondering(): void {
@@ -117,6 +128,7 @@ class Bot {
         performance.now() - this.ponderStartTime;
       this.ponderStartTime = undefined;
     }
+    this.postThinkingProgress();
   }
 
   placePenguin(dst: number): void {
@@ -131,28 +143,6 @@ class Bot {
 
   playout(): void {
     this.game.playout();
-  }
-
-  takeAction(): void {
-    const playoutsNeeded =
-      this.game.turn() < 2 ? 2 * MIN_PLAYOUTS : MIN_PLAYOUTS;
-    let lastIntervalTime = performance.now();
-    while (this.game.get_visits() < playoutsNeeded) {
-      this.game.playout_n_times(PLAYOUT_CHUNK_SIZE);
-      this.totalCompletedPonderTimeMs += performance.now() - lastIntervalTime;
-      lastIntervalTime = performance.now();
-
-      const activePlayer = this.game.active_player();
-      if (activePlayer !== undefined) {
-        this.postThinkingProgress({ activePlayer, playoutsNeeded });
-      }
-    }
-    this.totalCompletedPonderTimeMs += performance.now() - lastIntervalTime;
-    lastIntervalTime = performance.now();
-
-    this.game.take_action();
-    this.postGameState({});
-    this.ponder();
   }
 
   getState(): GameState {
@@ -185,11 +175,17 @@ class Bot {
       case "getPossibleMoves":
         src = request.src;
         break;
+      case "pausePondering":
+        this.stopPondering();
+        return;
+      case "resumePondering":
+        this.ponder();
+        return;
+      case "moveNow":
+        this.moveNow();
+        return;
     }
     this.postGameState({ src, lastMoveWasIllegal });
-    while (this.game.active_player() === BOT_PLAYER) {
-      this.takeAction();
-    }
   }
 
   postGameState({
@@ -209,26 +205,25 @@ class Bot {
     });
   }
 
-  postThinkingProgress({
-    activePlayer,
-    playoutsNeeded,
-  }: {
-    activePlayer: number;
-    playoutsNeeded: number;
-  }): void {
+  postThinkingProgress(): void {
+    const activePlayer = this.game.active_player();
     const postMessage = this.postMessage;
     postMessage({
       type: "thinkingProgress",
       completed: this.game.get_visits(),
-      required: playoutsNeeded,
+      required: activePlayer === BOT_PLAYER ? MIN_PLAYOUTS : MAX_PLAYOUTS,
       totalPlayouts: this.game.get_total_playouts(),
       totalTimeThinkingMs: this.getTotalTimeThinkingMs(),
       memoryUsage: this.wasmInternals.memory.buffer.byteLength,
+      isPondering: this.ponderer !== undefined,
       treeSize: this.game.tree_size(),
-      playerMoveScores: {
-        player: activePlayer,
-        moveScores: this.getMoveScores(activePlayer),
-      },
+      playerMoveScores:
+        activePlayer !== undefined
+          ? {
+              player: activePlayer,
+              moveScores: this.getMoveScores(activePlayer),
+            }
+          : {},
     });
   }
 
