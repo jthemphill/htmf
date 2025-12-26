@@ -7,6 +7,7 @@
 //!   --uniform: Use uniform priors instead of trained NN (for baseline comparison)
 
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use htmf::board::Player;
 use htmf::game::GameState;
@@ -68,8 +69,21 @@ fn main() {
     println!("Playouts per move: {}", num_playouts);
     println!();
 
+    // Result type including timing
+    struct GameResult {
+        game_num: usize,
+        nn_player: usize,
+        nn_score: usize,
+        mcts_player: usize,
+        mcts_score: usize,
+        move_count: usize,
+        result: usize, // 0=nn_win, 1=mcts_win, 2=draw
+        nn_time: Duration,
+        mcts_time: Duration,
+    }
+
     // Run games in parallel
-    let results: Vec<(usize, usize, usize, usize, usize, usize, usize)> = (0..num_games)
+    let results: Vec<GameResult> = (0..num_games)
         .into_par_iter()
         .map(|game_num| {
             // Alternate who goes first
@@ -87,17 +101,26 @@ fn main() {
             let mut mcts_bot = MCTSBot::new(game.clone(), Player { id: mcts_player });
 
             let mut move_count = 0;
+            let mut nn_time = Duration::ZERO;
+            let mut mcts_time = Duration::ZERO;
+
             while let Some(p) = game.active_player() {
                 let action = if p.id == nn_player {
+                    let start = Instant::now();
                     for _ in 0..num_playouts {
                         nn_bot.playout();
                     }
-                    nn_bot.take_action()
+                    let result = nn_bot.take_action();
+                    nn_time += start.elapsed();
+                    result
                 } else {
+                    let start = Instant::now();
                     for _ in 0..num_playouts {
                         mcts_bot.playout();
                     }
-                    mcts_bot.take_action()
+                    let result = mcts_bot.take_action();
+                    mcts_time += start.elapsed();
+                    result
                 };
 
                 game.apply_action(&action).unwrap();
@@ -110,8 +133,6 @@ fn main() {
             let nn_score = scores[nn_player];
             let mcts_score = scores[mcts_player];
 
-            // Return: (game_num, nn_player, nn_score, mcts_player, mcts_score, move_count, result)
-            // result: 0=nn_win, 1=mcts_win, 2=draw
             let result = if nn_score > mcts_score {
                 0 // NN wins
             } else if mcts_score > nn_score {
@@ -120,7 +141,17 @@ fn main() {
                 2 // Draw
             };
 
-            (game_num, nn_player, nn_score, mcts_player, mcts_score, move_count, result)
+            GameResult {
+                game_num,
+                nn_player,
+                nn_score,
+                mcts_player,
+                mcts_score,
+                move_count,
+                result,
+                nn_time,
+                mcts_time,
+            }
         })
         .collect();
 
@@ -128,25 +159,29 @@ fn main() {
     let mut nn_wins = 0;
     let mut mcts_wins = 0;
     let mut draws = 0;
+    let mut total_nn_time = Duration::ZERO;
+    let mut total_mcts_time = Duration::ZERO;
 
-    let mut sorted_results = results.clone();
-    sorted_results.sort_by_key(|r| r.0);
+    let mut sorted_results = results;
+    sorted_results.sort_by_key(|r| r.game_num);
 
-    for (game_num, nn_player, nn_score, mcts_player, mcts_score, move_count, result) in sorted_results {
-        let result_str = match result {
+    for r in &sorted_results {
+        let result_str = match r.result {
             0 => { nn_wins += 1; "NN wins" }
             1 => { mcts_wins += 1; "MCTS wins" }
             _ => { draws += 1; "Draw" }
         };
+        total_nn_time += r.nn_time;
+        total_mcts_time += r.mcts_time;
 
         println!(
             "Game {:2}: NN(P{})={:2} vs MCTS(P{})={:2} in {:2} moves - {}",
-            game_num + 1,
-            nn_player,
-            nn_score,
-            mcts_player,
-            mcts_score,
-            move_count,
+            r.game_num + 1,
+            r.nn_player,
+            r.nn_score,
+            r.mcts_player,
+            r.mcts_score,
+            r.move_count,
             result_str
         );
     }
@@ -156,4 +191,10 @@ fn main() {
     println!("  NN wins:   {} ({:.1}%)", nn_wins, 100.0 * nn_wins as f64 / num_games as f64);
     println!("  MCTS wins: {} ({:.1}%)", mcts_wins, 100.0 * mcts_wins as f64 / num_games as f64);
     println!("  Draws:     {} ({:.1}%)", draws, 100.0 * draws as f64 / num_games as f64);
+
+    println!();
+    println!("Thinking time:");
+    println!("  NN total:   {:.2}s", total_nn_time.as_secs_f64());
+    println!("  MCTS total: {:.2}s", total_mcts_time.as_secs_f64());
+    println!("  NN/MCTS ratio: {:.2}x", total_nn_time.as_secs_f64() / total_mcts_time.as_secs_f64());
 }
