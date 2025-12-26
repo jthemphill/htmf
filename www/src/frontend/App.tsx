@@ -158,14 +158,10 @@ export default function App(): React.JSX.Element {
     setChosenCell(undefined);
   }
 
-  let topMove;
-  if (playerMoveScores?.player === BOT_PLAYER) {
-    for (const score of playerMoveScores.moveScores) {
-      if (topMove === undefined || score.rewards > topMove.rewards) {
-        topMove = score;
-      }
-    }
-  }
+  const botMoveScores =
+    playerMoveScores?.player === BOT_PLAYER
+      ? playerMoveScores.moveScores
+      : undefined;
 
   return (
     <div className="app">
@@ -175,7 +171,7 @@ export default function App(): React.JSX.Element {
           possibleMoves={possibleMoves ?? []}
           chosenCell={chosenCell}
           handleCellClick={handleCellClick}
-          topMove={topMove}
+          botMoveScores={botMoveScores}
         />
       )}
       <div className="info-col">

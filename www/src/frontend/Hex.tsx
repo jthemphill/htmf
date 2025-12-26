@@ -16,8 +16,7 @@ interface Props {
   highlighted: boolean;
   possible: boolean;
   player?: number;
-  isTopMoveSrc: boolean;
-  isTopMoveDst: boolean;
+  fillColor?: string;
 }
 
 function points(sideLength: number): number[][] {
@@ -70,8 +69,7 @@ export default function Hex({
   cx,
   cy,
   onClick,
-  isTopMoveSrc,
-  isTopMoveDst,
+  fillColor,
 }: Props): React.JSX.Element {
   function handleClick() {
     onClick(_key);
@@ -103,11 +101,9 @@ export default function Hex({
   } else if (possible) {
     cellClasses.push("possible");
   }
-  if (isTopMoveSrc) {
-    cellClasses.push("top-move-src");
-  } else if (isTopMoveDst) {
-    cellClasses.push("top-move-dst");
-  }
+
+  const style = fillColor !== undefined ? { fill: fillColor } : undefined;
+
   return (
     <g
       data-testid={`Hex::${_key.toString()}`}
@@ -117,7 +113,7 @@ export default function Hex({
       transform={transform}
       onClick={handleClick}
     >
-      <polygon points={points(sideLength).join(" ")} />
+      <polygon points={points(sideLength).join(" ")} style={style} />
       {circles}
       {penguin}
     </g>
