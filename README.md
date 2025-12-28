@@ -15,14 +15,14 @@ ship HTML/CSS/JS to a client but aren't allowed to consume server resources.
 
 You will need `bun` in order to install this game's packages and build this game's TypeScript.
 
-To build automatically, download and run [just](https://github.com/casey/just):
+To build and test automatically, use `hereby`. You can run it with `bunx` like this:
 
 ```sh
-just dev
+bunx hereby dev
 ```
 
 To run all tests:
 
 ```sh
-just test
+bunx hereby test
 ```

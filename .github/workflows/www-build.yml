@@ -48,8 +48,5 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Setup just
-        uses: extractions/setup-just@v3
-
       - name: Run tests
-        run: just test
+        run: bunx hereby test
