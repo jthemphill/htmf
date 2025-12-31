@@ -1,6 +1,8 @@
+*.pyc
+.venv
+__screenshots__
 target
 train/data
 node_modules
 www/dist
-*.pyc
-.venv
+

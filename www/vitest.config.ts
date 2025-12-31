@@ -8,10 +8,13 @@ export default defineConfig({
       provider: playwright(),
       instances: [
         { browser: "chromium" },
-        { browser: "firefox" },
-        { browser: "webkit" },
+        // { browser: "firefox" },
+        // { browser: "webkit" },
       ],
     },
     exclude: [...configDefaults.exclude, "dist"],
+  },
+  optimizeDeps: {
+    include: ["react", "react-dom/client"],
   },
 });

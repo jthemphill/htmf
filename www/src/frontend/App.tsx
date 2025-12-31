@@ -24,6 +24,7 @@ interface WorkerState {
   possibleMoves?: number[];
   lastMoveWasIllegal?: boolean;
   playerMoveScores?: PlayerMoveScores;
+  isPondering?: boolean;
   thinkingProgress?: ThinkingProgress;
   treeSize?: number;
   memoryUsage?: number;
@@ -45,9 +46,9 @@ function WorkerStateReducer(
         gameState: response.gameState,
         possibleMoves: response.possibleMoves,
         lastMoveWasIllegal: response.lastMoveWasIllegal,
-        playerMoveScores: undefined,
       };
     case "thinkingProgress":
+      console.log(response.playerMoveScores);
       return {
         ...state,
         playerMoveScores: response.playerMoveScores,
@@ -59,6 +60,7 @@ function WorkerStateReducer(
           totalPlayouts: response.totalPlayouts,
           totalTimeMs: response.totalTimeThinkingMs,
         },
+        isPondering: response.isPondering,
       };
     case "terminated":
       return {
@@ -110,6 +112,7 @@ export default function App(): React.JSX.Element {
     worker,
     gameState,
     possibleMoves,
+    isPondering,
     lastMoveWasIllegal,
     playerMoveScores,
     thinkingProgress,
@@ -163,6 +166,29 @@ export default function App(): React.JSX.Element {
       ? playerMoveScores.moveScores
       : undefined;
 
+  const handlePauseResume = React.useCallback(() => {
+    if (!worker) return;
+    if (isPondering) {
+      worker.postMessage({ type: "pausePondering" });
+    } else {
+      worker.postMessage({ type: "resumePondering" });
+    }
+  }, [isPondering, worker]);
+
+  const pauseResumeButton = (
+    <button
+      aria-label={isPondering ? "Pause" : "Resume"}
+      onClick={handlePauseResume}
+    >
+      {isPondering ? "⏸️" : "▶️"}
+    </button>
+  );
+
+  function handleMoveNow() {
+    if (worker === undefined) return;
+    worker.postMessage({ type: "moveNow" });
+  }
+
   return (
     <div className="app">
       {gameState !== undefined && (
@@ -193,6 +219,16 @@ export default function App(): React.JSX.Element {
         {thinkingProgress !== undefined && (
           <ThinkingProgressBar thinkingProgress={thinkingProgress} />
         )}
+        <div className="bot-controls">
+          {pauseResumeButton}
+          <button
+            aria-label="Move now"
+            onClick={handleMoveNow}
+            disabled={playerMoveScores?.player !== BOT_PLAYER}
+          >
+            ⏭️
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -224,7 +260,11 @@ function WinChanceMeter({
   playerMoveScores,
 }: {
   playerMoveScores: PlayerMoveScores;
-}): React.JSX.Element {
+}): React.JSX.Element | null {
+  if (!playerMoveScores.moveScores) {
+    return null;
+  }
+
   let totalVisits = 0;
   let totalRewards = 0;
   for (const mov of playerMoveScores.moveScores) {
