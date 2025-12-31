@@ -17,7 +17,6 @@ function WorkerStateReducer(state, response) {
                 lastMoveWasIllegal: response.lastMoveWasIllegal,
             };
         case "thinkingProgress":
-            console.log(response.playerMoveScores);
             return {
                 ...state,
                 playerMoveScores: response.playerMoveScores,

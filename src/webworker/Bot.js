@@ -121,7 +121,6 @@ class Bot {
         return getPossibleMoves(this.game, src);
     }
     onMessage(request) {
-        console.log(`received request ${request.type}`);
         let src;
         let lastMoveWasIllegal = false;
         switch (request.type) {
