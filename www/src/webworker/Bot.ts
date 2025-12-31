@@ -154,7 +154,6 @@ class Bot {
   }
 
   onMessage(request: WorkerRequest): void {
-    console.log(`received request ${request.type}`);
     let src;
     let lastMoveWasIllegal = false;
     switch (request.type) {
