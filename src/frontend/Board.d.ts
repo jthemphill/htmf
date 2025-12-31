@@ -6,7 +6,7 @@ interface Props {
     possibleMoves: number[];
     chosenCell?: number;
     handleCellClick: (idx: number) => void;
-    topMove?: MoveScore;
+    botMoveScores?: MoveScore[];
 }
 export default function Board(props: Props): React.JSX.Element;
 export {};

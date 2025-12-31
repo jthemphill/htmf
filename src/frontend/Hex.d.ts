@@ -11,8 +11,7 @@ interface Props {
     highlighted: boolean;
     possible: boolean;
     player?: number;
-    isTopMoveSrc: boolean;
-    isTopMoveDst: boolean;
+    fillColor?: string;
 }
-export default function Hex({ _key, sideLength, highlighted, possible, player, fish, claimed, cx, cy, onClick, isTopMoveSrc, isTopMoveDst, }: Props): React.JSX.Element;
+export default function Hex({ _key, sideLength, highlighted, possible, player, fish, claimed, cx, cy, onClick, fillColor, }: Props): React.JSX.Element;
 export {};

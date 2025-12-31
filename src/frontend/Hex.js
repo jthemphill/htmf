@@ -35,7 +35,7 @@ function Circles({ sideLength, fish, }) {
         throw new Error(`${fish.toString()} is not a valid fish amount`);
     }
 }
-export default function Hex({ _key, sideLength, highlighted, possible, player, fish, claimed, cx, cy, onClick, isTopMoveSrc, isTopMoveDst, }) {
+export default function Hex({ _key, sideLength, highlighted, possible, player, fish, claimed, cx, cy, onClick, fillColor, }) {
     function handleClick() {
         onClick(_key);
     }
@@ -59,14 +59,9 @@ export default function Hex({ _key, sideLength, highlighted, possible, player, f
     else if (possible) {
         cellClasses.push("possible");
     }
-    if (isTopMoveSrc) {
-        cellClasses.push("top-move-src");
-    }
-    else if (isTopMoveDst) {
-        cellClasses.push("top-move-dst");
-    }
+    const style = fillColor !== undefined ? { fill: fillColor } : undefined;
     return (React.createElement("g", { "data-testid": `Hex::${_key.toString()}`, className: cellClasses.join(" "), role: "button", "aria-disabled": !possible, transform: transform, onClick: handleClick },
-        React.createElement("polygon", { points: points(sideLength).join(" ") }),
+        React.createElement("polygon", { points: points(sideLength).join(" "), style: style }),
         circles,
         penguin));
 }

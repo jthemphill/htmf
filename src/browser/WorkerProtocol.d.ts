@@ -20,9 +20,10 @@ export interface BotWorker extends Worker {
     postMessage: (request: WorkerRequest) => void;
 }
 export interface PlayerMoveScores {
-    player: number;
-    moveScores: MoveScore[];
+    player?: number;
+    moveScores?: MoveScore[];
 }
+export type PonderStatus = "thinking" | "paused" | "moving";
 export type WorkerRequest = {
     type: "getGameState";
 } | {
@@ -32,6 +33,12 @@ export type WorkerRequest = {
     type: "movePenguin";
     src?: number;
     dst: number;
+} | {
+    type: "pausePondering";
+} | {
+    type: "resumePondering";
+} | {
+    type: "moveNow";
 };
 export type WorkerResponse = {
     type: "initialized";
@@ -45,6 +52,7 @@ export type WorkerResponse = {
     type: "thinkingProgress";
     playerMoveScores: PlayerMoveScores;
     memoryUsage: number;
+    isPondering: boolean;
     treeSize: number;
     completed: number;
     required: number;

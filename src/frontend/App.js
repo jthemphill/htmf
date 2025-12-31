@@ -15,9 +15,9 @@ function WorkerStateReducer(state, response) {
                 gameState: response.gameState,
                 possibleMoves: response.possibleMoves,
                 lastMoveWasIllegal: response.lastMoveWasIllegal,
-                playerMoveScores: undefined,
             };
         case "thinkingProgress":
+            console.log(response.playerMoveScores);
             return {
                 ...state,
                 playerMoveScores: response.playerMoveScores,
@@ -29,6 +29,7 @@ function WorkerStateReducer(state, response) {
                     totalPlayouts: response.totalPlayouts,
                     totalTimeMs: response.totalTimeThinkingMs,
                 },
+                isPondering: response.isPondering,
             };
         case "terminated":
             return {
@@ -65,7 +66,7 @@ function useWorker() {
     return workerState;
 }
 export default function App() {
-    const { worker, gameState, possibleMoves, lastMoveWasIllegal, playerMoveScores, thinkingProgress, treeSize, memoryUsage, } = useWorker();
+    const { worker, gameState, possibleMoves, isPondering, lastMoveWasIllegal, playerMoveScores, thinkingProgress, treeSize, memoryUsage, } = useWorker();
     const [chosenCell, setChosenCell] = React.useState(undefined);
     const modeType = gameState?.modeType;
     function handleCellClick(key) {
@@ -100,23 +101,37 @@ export default function App() {
         });
         setChosenCell(undefined);
     }
-    let topMove;
-    if (playerMoveScores?.player === BOT_PLAYER) {
-        for (const score of playerMoveScores.moveScores) {
-            if (topMove === undefined || score.rewards > topMove.rewards) {
-                topMove = score;
-            }
+    const botMoveScores = playerMoveScores?.player === BOT_PLAYER
+        ? playerMoveScores.moveScores
+        : undefined;
+    const handlePauseResume = React.useCallback(() => {
+        if (!worker)
+            return;
+        if (isPondering) {
+            worker.postMessage({ type: "pausePondering" });
         }
+        else {
+            worker.postMessage({ type: "resumePondering" });
+        }
+    }, [isPondering, worker]);
+    const pauseResumeButton = (React.createElement("button", { "aria-label": isPondering ? "Pause" : "Resume", onClick: handlePauseResume }, isPondering ? "⏸️" : "▶️"));
+    function handleMoveNow() {
+        if (worker === undefined)
+            return;
+        worker.postMessage({ type: "moveNow" });
     }
     return (React.createElement("div", { className: "app" },
-        gameState !== undefined && (React.createElement(Board, { gameState: gameState, possibleMoves: possibleMoves ?? [], chosenCell: chosenCell, handleCellClick: handleCellClick, topMove: topMove })),
+        gameState !== undefined && (React.createElement(Board, { gameState: gameState, possibleMoves: possibleMoves ?? [], chosenCell: chosenCell, handleCellClick: handleCellClick, botMoveScores: botMoveScores })),
         React.createElement("div", { className: "info-col" },
             React.createElement("p", null, gameState?.modeType),
             lastMoveWasIllegal && React.createElement("p", null, "\"Invalid move!\""),
             gameState !== undefined && (React.createElement(ScoresBlock, { activePlayer: gameState.activePlayer, scores: gameState.scores })),
             playerMoveScores !== undefined && (React.createElement(WinChanceMeter, { playerMoveScores: playerMoveScores })),
             React.createElement(MemoryUsageBlock, { memoryUsage: memoryUsage ?? 0, treeSize: treeSize ?? 0 }),
-            thinkingProgress !== undefined && (React.createElement(ThinkingProgressBar, { thinkingProgress: thinkingProgress })))));
+            thinkingProgress !== undefined && (React.createElement(ThinkingProgressBar, { thinkingProgress: thinkingProgress })),
+            React.createElement("div", { className: "bot-controls" },
+                pauseResumeButton,
+                React.createElement("button", { "aria-label": "Move now", onClick: handleMoveNow, disabled: playerMoveScores?.player !== BOT_PLAYER }, "\u23ED\uFE0F")))));
 }
 function ScoresBlock({ activePlayer, scores, }) {
     const scoresBlock = [];
@@ -133,6 +148,9 @@ function ScoresBlock({ activePlayer, scores, }) {
     return React.createElement("div", { className: "scores-block" }, scoresBlock);
 }
 function WinChanceMeter({ playerMoveScores, }) {
+    if (!playerMoveScores.moveScores) {
+        return null;
+    }
     let totalVisits = 0;
     let totalRewards = 0;
     for (const mov of playerMoveScores.moveScores) {

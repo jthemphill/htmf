@@ -6,5 +6,5 @@ export declare const EVEN_ROW_LEN = 7;
 export declare const ODD_ROW_LEN = 8;
 export declare const NUM_CELLS: number;
 export declare const PLAYOUT_CHUNK_SIZE = 200;
-export declare const MIN_PLAYOUTS = 14000;
+export declare const MIN_PLAYOUTS = 28000;
 export declare const MAX_PLAYOUTS = 120000;
