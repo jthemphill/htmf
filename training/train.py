@@ -574,12 +574,12 @@ def train_model(
         total_score_diff_loss += score_diff_loss.item()
         num_batches += 1
 
-    return (
-        total_policy_loss / max(1, num_batches),
-        total_value_loss / max(1, num_batches),
-        total_ownership_loss / max(1, num_batches),
-        total_score_diff_loss / max(1, num_batches),
-    )
+    avg_policy = total_policy_loss / max(1, num_batches)
+    avg_value = total_value_loss / max(1, num_batches)
+    avg_ownership = total_ownership_loss / max(1, num_batches)
+    avg_score_diff = total_score_diff_loss / max(1, num_batches)
+
+    return avg_policy, avg_value, avg_ownership, avg_score_diff
 
 
 def export_to_onnx(model: HTMFNet, path: Path):
@@ -740,16 +740,28 @@ def main():
             batch_size=args.batch_size,
         )
 
-        # Print losses (only show auxiliary losses if they're non-zero)
-        status = f"Epoch {epoch:3d}/{args.epochs}: "
-        status += f"Drafting [P: {d_policy_loss:.4f}, V: {d_value_loss:.4f}"
+        # Print detailed loss analysis
+        print(f"\n{'='*80}")
+        print(f"Epoch {epoch:3d}/{args.epochs}")
+        print(f"{'='*80}")
+
+        # Drafting losses
+        print(f"\nDRAFTING PHASE:")
+        print(f"  Raw losses:      P={d_policy_loss:.4f}  V={d_value_loss:.4f}  O={d_ownership_loss:.4f}  S={d_score_diff_loss:.4f}")
         if d_ownership_loss > 0:
-            status += f", O: {d_ownership_loss:.4f}, S: {d_score_diff_loss:.4f}"
-        status += "] | Movement [P: {m_policy_loss:.4f}, V: {m_value_loss:.4f}"
+            print(f"  Weighted (0.5):                                   O={0.5*d_ownership_loss:.4f}  S={0.5*d_score_diff_loss:.4f}")
+            total_weighted = d_policy_loss + d_value_loss + 0.5*d_ownership_loss + 0.5*d_score_diff_loss
+            print(f"  Total weighted loss: {total_weighted:.4f}")
+            print(f"  Contribution %:  P={100*d_policy_loss/total_weighted:.1f}%  V={100*d_value_loss/total_weighted:.1f}%  O={100*0.5*d_ownership_loss/total_weighted:.1f}%  S={100*0.5*d_score_diff_loss/total_weighted:.1f}%")
+
+        # Movement losses
+        print(f"\nMOVEMENT PHASE:")
+        print(f"  Raw losses:      P={m_policy_loss:.4f}  V={m_value_loss:.4f}  O={m_ownership_loss:.4f}  S={m_score_diff_loss:.4f}")
         if m_ownership_loss > 0:
-            status += f", O: {m_ownership_loss:.4f}, S: {m_score_diff_loss:.4f}"
-        status += "]"
-        print(status)
+            print(f"  Weighted (0.5):                                   O={0.5*m_ownership_loss:.4f}  S={0.5*m_score_diff_loss:.4f}")
+            total_weighted = m_policy_loss + m_value_loss + 0.5*m_ownership_loss + 0.5*m_score_diff_loss
+            print(f"  Total weighted loss: {total_weighted:.4f}")
+            print(f"  Contribution %:  P={100*m_policy_loss/total_weighted:.1f}%  V={100*m_value_loss/total_weighted:.1f}%  O={100*0.5*m_ownership_loss/total_weighted:.1f}%  S={100*0.5*m_score_diff_loss/total_weighted:.1f}%")
 
     # Save PyTorch checkpoint
     print(f"\nSaving model to {MODEL_CHECKPOINT}...")
