@@ -51,6 +51,8 @@ class BlankHTMFNet(nn.Module):
     - Drafting policy: all zeros (softmax → uniform distribution)
     - Movement policy: all zeros (softmax → uniform distribution)
     - Value: 0 (tanh → neutral, converts to 0.5 in Rust)
+    - Ownership: uniform distribution over 3 classes
+    - Score diff: uniform distribution over 185 bins
     """
 
     def __init__(self):
@@ -59,18 +61,24 @@ class BlankHTMFNet(nn.Module):
         # but we override forward() to ignore them
         self.dummy_param = nn.Parameter(torch.zeros(1))
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(
+        self, x: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size = x.shape[0]
         # Always output zeros for policies (softmax will make this uniform)
         drafting_policy = torch.zeros(batch_size, NUM_CELLS)
         movement_policy = torch.zeros(batch_size, MOVEMENT_POLICY_SIZE)
         # Always output zero for value (tanh=0 → neutral → 0.5 in Rust)
         value = torch.zeros(batch_size, 1)
-        return drafting_policy, movement_policy, value
+        # Ownership: uniform over 3 classes for each cell
+        ownership = torch.zeros(batch_size, NUM_CELLS, 3)
+        # Score diff: uniform over 185 bins (range -92 to +92)
+        score_diff = torch.zeros(batch_size, 185)
+        return drafting_policy, movement_policy, value, ownership, score_diff
 
 
 def export_to_onnx(model: nn.Module, path: Path):
-    """Export model to ONNX format with both policy heads."""
+    """Export model to ONNX format with all heads."""
     model.eval()
     dummy_input = torch.zeros(1, NUM_FEATURES)
 
@@ -79,12 +87,20 @@ def export_to_onnx(model: nn.Module, path: Path):
         dummy_input,
         path,
         input_names=["features"],
-        output_names=["drafting_policy", "movement_policy", "value"],
+        output_names=[
+            "drafting_policy",
+            "movement_policy",
+            "value",
+            "ownership",
+            "score_diff",
+        ],
         dynamic_axes={
             "features": {0: "batch_size"},
             "drafting_policy": {0: "batch_size"},
             "movement_policy": {0: "batch_size"},
             "value": {0: "batch_size"},
+            "ownership": {0: "batch_size"},
+            "score_diff": {0: "batch_size"},
         },
         opset_version=17,
         dynamo=False,
