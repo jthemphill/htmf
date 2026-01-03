@@ -2,7 +2,7 @@
 name = "htmf-training"
 version = "0.1.0"
 description = "Neural network training for HTMF game using PyTorch"
-requires-python = ">=3.11"
+requires-python = "==3.13.*"
 dependencies = ["numpy==2.3.5", "torch==2.9.1", "onnxscript>=0.1"]
 
 [project.optional-dependencies]
