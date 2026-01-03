@@ -48,28 +48,29 @@ class BlankHTMFNet(nn.Module):
     Blank neural network that outputs uniform policy and neutral value.
 
     The model ignores the input and always outputs:
-    - Policy: all zeros (softmax → uniform distribution)
+    - Drafting policy: all zeros (softmax → uniform distribution)
+    - Movement policy: all zeros (softmax → uniform distribution)
     - Value: 0 (tanh → neutral, converts to 0.5 in Rust)
     """
 
-    def __init__(self, policy_size: int):
+    def __init__(self):
         super().__init__()
-        self.policy_size = policy_size
         # These parameters exist to give ONNX export something to work with,
         # but we override forward() to ignore them
         self.dummy_param = nn.Parameter(torch.zeros(1))
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size = x.shape[0]
-        # Always output zeros for policy (softmax will make this uniform)
-        policy = torch.zeros(batch_size, self.policy_size)
+        # Always output zeros for policies (softmax will make this uniform)
+        drafting_policy = torch.zeros(batch_size, NUM_CELLS)
+        movement_policy = torch.zeros(batch_size, MOVEMENT_POLICY_SIZE)
         # Always output zero for value (tanh=0 → neutral → 0.5 in Rust)
         value = torch.zeros(batch_size, 1)
-        return policy, value
+        return drafting_policy, movement_policy, value
 
 
 def export_to_onnx(model: nn.Module, path: Path):
-    """Export model to ONNX format."""
+    """Export model to ONNX format with both policy heads."""
     model.eval()
     dummy_input = torch.zeros(1, NUM_FEATURES)
 
@@ -78,10 +79,11 @@ def export_to_onnx(model: nn.Module, path: Path):
         dummy_input,
         path,
         input_names=["features"],
-        output_names=["policy", "value"],
+        output_names=["drafting_policy", "movement_policy", "value"],
         dynamic_axes={
             "features": {0: "batch_size"},
-            "policy": {0: "batch_size"},
+            "drafting_policy": {0: "batch_size"},
+            "movement_policy": {0: "batch_size"},
             "value": {0: "batch_size"},
         },
         opset_version=17,
@@ -92,32 +94,25 @@ def export_to_onnx(model: nn.Module, path: Path):
 def main():
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Create blank drafting model
-    drafting_model = BlankHTMFNet(NUM_CELLS)
-    drafting_path = ARTIFACTS_DIR / "blank_model_drafting.onnx"
-    print(f"Creating blank drafting model: {drafting_path}")
-    export_to_onnx(drafting_model, drafting_path)
-
-    # Create blank movement model
-    movement_model = BlankHTMFNet(MOVEMENT_POLICY_SIZE)
-    movement_path = ARTIFACTS_DIR / "blank_model_movement.onnx"
-    print(f"Creating blank movement model: {movement_path}")
-    export_to_onnx(movement_model, movement_path)
+    # Create blank model with both policy heads
+    model = BlankHTMFNet()
+    model_path = ARTIFACTS_DIR / "blank_model.onnx"
+    print(f"Creating blank model: {model_path}")
+    export_to_onnx(model, model_path)
 
     print()
-    print("Blank models created!")
+    print("Blank model created!")
     print()
-    print("To use them, copy to the standard names:")
-    print("  cp artifacts/blank_model_drafting.onnx artifacts/model_drafting.onnx")
-    print("  cp artifacts/blank_model_movement.onnx artifacts/model_movement.onnx")
+    print("To use it, copy to the standard name:")
+    print("  cp artifacts/blank_model.onnx artifacts/model.onnx")
     print()
-    print("Or modify nn_vs_mcts.rs to load them from the blank paths.")
+    print("Or modify nn_vs_mcts.rs to load it from the blank path.")
     print()
-    print("NOTE: These blank models output uniform policy (all zeros -> 1/n after softmax)")
-    print("and neutral value (0 tanh -> 0.5 probability).")
+    print("NOTE: This blank model outputs uniform policy (all zeros -> 1/n after softmax)")
+    print("and neutral value (0 tanh -> 0.5 probability) for both drafting and movement.")
     print()
     print("The PUCT mode uses random rollouts for leaf evaluation, so the value output")
-    print("from these models is NOT used. Only the policy priors are used to guide")
+    print("from this model is NOT used. Only the policy priors are used to guide")
     print("which moves to explore first.")
 
 

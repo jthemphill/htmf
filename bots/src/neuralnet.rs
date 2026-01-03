@@ -7,8 +7,7 @@ type Model = SimplePlan<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn Ty
 
 /// Neural network wrapper for policy and value prediction
 pub struct NeuralNet {
-    drafting_model: Model,
-    movement_model: Model,
+    model: Model,
 }
 
 /// Output from neural network inference
@@ -20,24 +19,28 @@ pub struct NeuralNetOutput {
 }
 
 impl NeuralNet {
-    /// Load ONNX models from the given paths
-    pub fn load(drafting_path: &str, movement_path: &str) -> TractResult<Self> {
-        let drafting_model = tract_onnx::onnx()
-            .model_for_path(drafting_path)?
+    /// Load ONNX model from the given path
+    ///
+    /// The model should have:
+    /// - Input: features (1, 480)
+    /// - Outputs: drafting_policy (1, 60), movement_policy (1, 168), value (1, 1)
+    pub fn load(model_path: &str) -> TractResult<Self> {
+        let model = tract_onnx::onnx()
+            .model_for_path(model_path)?
             .with_input_fact(0, f32::fact([1, NUM_FEATURES]).into())?
             .into_optimized()?
             .into_runnable()?;
 
-        let movement_model = tract_onnx::onnx()
-            .model_for_path(movement_path)?
-            .with_input_fact(0, f32::fact([1, NUM_FEATURES]).into())?
-            .into_optimized()?
-            .into_runnable()?;
+        Ok(Self { model })
+    }
 
-        Ok(Self {
-            drafting_model,
-            movement_model,
-        })
+    /// Legacy method for backward compatibility with old two-file approach
+    ///
+    /// This loads the new single-file model but ignores the movement_path parameter.
+    /// Use `load()` instead for new code.
+    #[deprecated(note = "Use load() instead - only one model file is needed now")]
+    pub fn load_legacy(drafting_path: &str, _movement_path: &str) -> TractResult<Self> {
+        Self::load(drafting_path)
     }
 
     /// Run inference on the given game state
@@ -52,22 +55,19 @@ impl NeuralNet {
         let input: Tensor = tract_ndarray::Array2::from_shape_vec((1, NUM_FEATURES), features)?
             .into();
 
-        let model = if is_drafting {
-            &self.drafting_model
-        } else {
-            &self.movement_model
-        };
+        let outputs = self.model.run(tvec!(input.into()))?;
 
-        let outputs = model.run(tvec!(input.into()))?;
-
-        // Output 0: policy logits, Output 1: value (tanh output in [-1, 1])
-        let policy_logits: Vec<f32> = outputs[0]
+        // Model outputs: [0] drafting_policy, [1] movement_policy, [2] value
+        // Select the appropriate policy based on game phase
+        let policy_output_idx = if is_drafting { 0 } else { 1 };
+        let policy_logits: Vec<f32> = outputs[policy_output_idx]
             .to_array_view::<f32>()?
             .iter()
             .copied()
             .collect();
+
         // Convert tanh output [-1, 1] to probability [0, 1]
-        let raw_value: f32 = outputs[1].to_array_view::<f32>()?[[0, 0]];
+        let raw_value: f32 = outputs[2].to_array_view::<f32>()?[[0, 0]];
         let value = (raw_value + 1.0) / 2.0;
 
         Ok(NeuralNetOutput {

@@ -5,7 +5,7 @@ Train a neural network for HTMF using PyTorch.
 The network has two heads:
 - Policy head: probability distribution over moves
   - Drafting: 60 values (one per cell)
-  - Movement: 168 values (4 penguins × 6 directions × 7 distances)
+  - Movement: 168 values (4 penguins x 6 directions x 7 distances)
 - Value head: predicted win probability for current player
 
 Usage:
@@ -68,6 +68,8 @@ VALID_CELL_MASK = _build_valid_mask()
 ARTIFACTS_DIR = Path("./artifacts")
 TRAINING_DATA = ARTIFACTS_DIR / "training_data.jsonl"
 MODEL_CHECKPOINT = ARTIFACTS_DIR / "model_final.pt"
+ONNX_MODEL = ARTIFACTS_DIR / "model.onnx"
+# Legacy paths for backward compatibility
 ONNX_DRAFTING = ARTIFACTS_DIR / "model_drafting.onnx"
 ONNX_MOVEMENT = ARTIFACTS_DIR / "model_movement.onnx"
 
@@ -197,20 +199,11 @@ class ConvResidualBlock(nn.Module):
         return out
 
 
-class HTMFNet(nn.Module):
-    """
-    Neural network for HTMF with policy and value heads.
+class SharedTrunk(nn.Module):
+    """Shared convolutional trunk for processing board state."""
 
-    Architecture matches OpenSpiel's AlphaZero ResNet:
-    - Input: 8 channels × 8×8 grid (60 valid cells embedded in 64)
-    - Shared trunk: Initial conv + residual blocks
-    - Policy head: 1×1 conv → BN → ReLU → flatten → FC
-    - Value head: 1×1 conv → BN → ReLU → flatten → FC → ReLU → FC → tanh
-    """
-
-    def __init__(self, policy_size: int, num_filters: int = 64, num_blocks: int = 4):
+    def __init__(self, num_filters: int = 64, num_blocks: int = 4):
         super().__init__()
-        self.policy_size = policy_size
 
         # Initial convolution
         self.input_conv = nn.Conv2d(NUM_CHANNELS, num_filters, kernel_size=3, padding=1)
@@ -221,17 +214,6 @@ class HTMFNet(nn.Module):
             [ConvResidualBlock(num_filters) for _ in range(num_blocks)]
         )
 
-        # Policy head: 1×1 conv to reduce channels, then flatten and FC
-        self.policy_conv = nn.Conv2d(num_filters, 2, kernel_size=1)
-        self.policy_bn = nn.BatchNorm2d(2)
-        self.policy_fc = nn.Linear(2 * GRID_SIZE, policy_size)
-
-        # Value head: 1×1 conv, flatten, FC layers
-        self.value_conv = nn.Conv2d(num_filters, 1, kernel_size=1)
-        self.value_bn = nn.BatchNorm2d(1)
-        self.value_fc1 = nn.Linear(GRID_SIZE, num_filters)
-        self.value_fc2 = nn.Linear(num_filters, 1)
-
     def forward(self, x):
         # Convert flat features to grid: (batch, 480) -> (batch, 8, 8, 8)
         x = features_to_grid(x)
@@ -241,16 +223,97 @@ class HTMFNet(nn.Module):
         for block in self.blocks:
             x = block(x)
 
-        # Policy head
+        return x
+
+
+class PolicyHead(nn.Module):
+    """Policy head for outputting move probabilities."""
+
+    def __init__(self, num_filters: int, policy_size: int):
+        super().__init__()
+        self.policy_conv = nn.Conv2d(num_filters, 2, kernel_size=1)
+        self.policy_bn = nn.BatchNorm2d(2)
+        self.policy_fc = nn.Linear(2 * GRID_SIZE, policy_size)
+
+    def forward(self, x):
         policy = F.relu(self.policy_bn(self.policy_conv(x)))
         policy = policy.view(policy.size(0), -1)  # Flatten
         policy = self.policy_fc(policy)
+        return policy
 
-        # Value head
+
+class ValueHead(nn.Module):
+    """Value head for predicting win probability."""
+
+    def __init__(self, num_filters: int):
+        super().__init__()
+        self.value_conv = nn.Conv2d(num_filters, 1, kernel_size=1)
+        self.value_bn = nn.BatchNorm2d(1)
+        self.value_fc1 = nn.Linear(GRID_SIZE, num_filters)
+        self.value_fc2 = nn.Linear(num_filters, 1)
+
+    def forward(self, x):
         value = F.relu(self.value_bn(self.value_conv(x)))
         value = value.view(value.size(0), -1)  # Flatten
         value = F.relu(self.value_fc1(value))
         value = torch.tanh(self.value_fc2(value))
+        return value
+
+
+class HTMFNet(nn.Module):
+    """
+    Neural network for HTMF with shared trunk and dual policy heads.
+
+    Architecture:
+    - Input: 8 channels x 8x8 grid (60 valid cells embedded in 64)
+    - Shared trunk: Initial conv + residual blocks (shared between drafting and movement)
+    - Drafting policy head: outputs 60 cell probabilities
+    - Movement policy head: outputs 168 move probabilities (4 penguins × 6 dirs × 7 dists)
+    - Value head: predicts win probability (shared)
+    """
+
+    def __init__(self, num_filters: int = 64, num_blocks: int = 4):
+        super().__init__()
+
+        # Shared convolutional trunk
+        self.trunk = SharedTrunk(num_filters, num_blocks)
+
+        # Separate policy heads for drafting and movement
+        self.drafting_policy = PolicyHead(num_filters, NUM_CELLS)
+        self.movement_policy = PolicyHead(num_filters, MOVEMENT_POLICY_SIZE)
+
+        # Shared value head
+        self.value = ValueHead(num_filters)
+
+    def forward(self, x, is_drafting: bool | None = None):
+        """Forward pass.
+
+        Args:
+            x: Input features (batch, 480)
+            is_drafting: If True, return only drafting policy; if False, return only movement policy;
+                        if None, return both policies (for ONNX export)
+
+        Returns:
+            - If is_drafting is True/False: (policy, value) tuple
+            - If is_drafting is None: (drafting_policy, movement_policy, value) tuple
+        """
+        # Shared trunk
+        trunk_out = self.trunk(x)
+
+        # Select appropriate policy head(s)
+        if is_drafting is None:
+            # Return both policies (for ONNX export)
+            drafting_policy = self.drafting_policy(trunk_out)
+            movement_policy = self.movement_policy(trunk_out)
+            value = self.value(trunk_out)
+            return drafting_policy, movement_policy, value
+        elif is_drafting:
+            policy = self.drafting_policy(trunk_out)
+        else:
+            policy = self.movement_policy(trunk_out)
+
+        # Value head (always the same)
+        value = self.value(trunk_out)
 
         return policy, value
 
@@ -262,6 +325,7 @@ def train_model(
     values: torch.Tensor,
     optimizer: torch.optim.Optimizer,
     device: torch.device,
+    is_drafting: bool,
     batch_size: int = 256,
 ) -> tuple[float, float]:
     """Train the model for one epoch and return (policy_loss, value_loss)."""
@@ -288,7 +352,7 @@ def train_model(
 
         optimizer.zero_grad()
 
-        pred_policy, pred_value = model(batch_features)
+        pred_policy, pred_value = model(batch_features, is_drafting)
 
         # Policy loss: cross-entropy with target distribution
         # Target policies are probability distributions from MCTS
@@ -314,18 +378,34 @@ def train_model(
 
 
 def export_to_onnx(model: HTMFNet, path: Path):
-    """Export model to ONNX format."""
+    """Export model to ONNX format with both policy heads.
+
+    The exported model has:
+    - Input: features (batch, 480)
+    - Outputs: drafting_policy (batch, 60), movement_policy (batch, 168), value (batch, 1)
+    """
     # Move model to CPU for ONNX export (required for compatibility)
     model = model.cpu()
     model.eval()
     dummy_input = torch.zeros(1, NUM_FEATURES)
 
+    # Create a wrapper that always outputs both policies
+    class ONNXWrapper(nn.Module):
+        def __init__(self, model):
+            super().__init__()
+            self.model = model
+
+        def forward(self, x):
+            return self.model(x, is_drafting=None)
+
+    wrapper = ONNXWrapper(model)
+
     torch.onnx.export(
-        model,
+        wrapper,
         dummy_input,
         path,
         input_names=["features"],
-        output_names=["policy", "value"],
+        output_names=["drafting_policy", "movement_policy", "value"],
         dynamo=False,  # Use legacy exporter for Python 3.14 compatibility
     )
 
@@ -373,15 +453,8 @@ def main():
 
     print(f"Total samples: {len(dataset)}")
 
-    # Create models
-    drafting_model = HTMFNet(
-        policy_size=NUM_CELLS, num_filters=args.num_filters, num_blocks=args.num_blocks
-    ).to(device)
-    movement_model = HTMFNet(
-        policy_size=MOVEMENT_POLICY_SIZE,
-        num_filters=args.num_filters,
-        num_blocks=args.num_blocks,
-    ).to(device)
+    # Create single shared model
+    model = HTMFNet(num_filters=args.num_filters, num_blocks=args.num_blocks).to(device)
 
     # Load existing weights if available
     if MODEL_CHECKPOINT.exists():
@@ -389,13 +462,11 @@ def main():
         checkpoint = torch.load(
             MODEL_CHECKPOINT, map_location=device, weights_only=True
         )
-        drafting_model.load_state_dict(checkpoint["drafting_model"])
-        movement_model.load_state_dict(checkpoint["movement_model"])
+        model.load_state_dict(checkpoint["model"])
         print("Loaded existing model weights")
 
-    # Optimizers
-    drafting_optimizer = torch.optim.Adam(drafting_model.parameters(), lr=args.lr)
-    movement_optimizer = torch.optim.Adam(movement_model.parameters(), lr=args.lr)
+    # Single optimizer for the entire model
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     print(f"\nTraining for {args.epochs} epochs...")
     print(f"Learning rate: {args.lr}")
@@ -403,26 +474,28 @@ def main():
     print()
 
     for epoch in range(1, args.epochs + 1):
-        # Train drafting model
+        # Train on drafting data
         d_policy_loss, d_value_loss = train_model(
-            drafting_model,
+            model,
             drafting_features,
             drafting_policies,
             drafting_values,
-            drafting_optimizer,
+            optimizer,
             device,
-            args.batch_size,
+            is_drafting=True,
+            batch_size=args.batch_size,
         )
 
-        # Train movement model
+        # Train on movement data
         m_policy_loss, m_value_loss = train_model(
-            movement_model,
+            model,
             movement_features,
             movement_policies,
             movement_values,
-            movement_optimizer,
+            optimizer,
             device,
-            args.batch_size,
+            is_drafting=False,
+            batch_size=args.batch_size,
         )
 
         print(
@@ -435,20 +508,16 @@ def main():
     print(f"\nSaving model to {MODEL_CHECKPOINT}...")
     torch.save(
         {
-            "drafting_model": drafting_model.state_dict(),
-            "movement_model": movement_model.state_dict(),
+            "model": model.state_dict(),
             "num_filters": args.num_filters,
             "num_blocks": args.num_blocks,
         },
         MODEL_CHECKPOINT,
     )
 
-    # Export to ONNX
-    print(f"Exporting drafting model to {ONNX_DRAFTING}...")
-    export_to_onnx(drafting_model, ONNX_DRAFTING)
-
-    print(f"Exporting movement model to {ONNX_MOVEMENT}...")
-    export_to_onnx(movement_model, ONNX_MOVEMENT)
+    # Export to ONNX (single file with both policy heads)
+    print(f"Exporting model to {ONNX_MODEL}...")
+    export_to_onnx(model, ONNX_MODEL)
 
     print("\nTraining complete!")
     return 0

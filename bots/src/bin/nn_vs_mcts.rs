@@ -41,10 +41,7 @@ fn main() {
         None
     } else {
         eprintln!("Loading neural network...");
-        match NeuralNet::load(
-            "training/artifacts/model_drafting.onnx",
-            "training/artifacts/model_movement.onnx",
-        ) {
+        match NeuralNet::load("training/artifacts/model.onnx") {
             Ok(model) => {
                 eprintln!("Neural network loaded successfully");
                 Some(Arc::new(model))

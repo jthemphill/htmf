@@ -73,10 +73,7 @@ fn main() {
     // Load neural network if requested
     let nn: Option<Arc<NeuralNet>> = if use_nn {
         eprintln!("Loading neural network...");
-        match NeuralNet::load(
-            "training/artifacts/model_drafting.onnx",
-            "training/artifacts/model_movement.onnx",
-        ) {
+        match NeuralNet::load("training/artifacts/model.onnx") {
             Ok(model) => {
                 eprintln!("Neural network loaded successfully");
                 Some(Arc::new(model))
