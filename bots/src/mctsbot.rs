@@ -829,11 +829,8 @@ fn test_neural_network_guided_game() {
 
     // Load neural network
     let nn = Arc::new(
-        NeuralNet::load(
-            "../training/artifacts/model_drafting.onnx",
-            "../training/artifacts/model_movement.onnx",
-        )
-        .expect("Failed to load neural network"),
+        NeuralNet::load("../training/artifacts/model.onnx")
+            .expect("Failed to load neural network"),
     );
 
     let mut game = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(42));

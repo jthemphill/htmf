@@ -24,8 +24,7 @@ from pathlib import Path
 ARTIFACTS_DIR = Path("./artifacts")
 TRAINING_DATA = ARTIFACTS_DIR / "training_data.jsonl"
 MODEL_FINAL = ARTIFACTS_DIR / "model_final.pt"
-ONNX_DRAFTING = ARTIFACTS_DIR / "model_drafting.onnx"
-ONNX_MOVEMENT = ARTIFACTS_DIR / "model_movement.onnx"
+ONNX_MODEL = ARTIFACTS_DIR / "model.onnx"
 ITERATIONS_DIR = ARTIFACTS_DIR / "iterations"
 
 
@@ -154,7 +153,7 @@ def save_iteration(iteration: int):
     iter_dir = ITERATIONS_DIR / f"iter_{iteration:03d}"
     iter_dir.mkdir(parents=True, exist_ok=True)
 
-    for src in [MODEL_FINAL, ONNX_DRAFTING, ONNX_MOVEMENT]:
+    for src in [MODEL_FINAL, ONNX_MODEL]:
         if src.exists():
             shutil.copy(src, iter_dir / src.name)
 
@@ -189,7 +188,7 @@ def main():
     # Fresh start if requested
     if args.fresh:
         print("Starting fresh - removing existing model and data...")
-        for f in [MODEL_FINAL, ONNX_DRAFTING, ONNX_MOVEMENT, TRAINING_DATA]:
+        for f in [MODEL_FINAL, ONNX_MODEL, TRAINING_DATA]:
             if f.exists():
                 f.unlink()
                 print(f"  Removed {f}")

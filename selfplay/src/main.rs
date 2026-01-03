@@ -52,6 +52,16 @@ pub struct TrainingSample {
     pub player: usize,
     /// Whether this is drafting phase
     pub is_drafting: bool,
+    /// Ownership prediction target: which player owns each cell at game end
+    /// Array of 60 values, each in [0, 1, 2]:
+    ///   0 = player 0 claimed this cell
+    ///   1 = player 1 claimed this cell
+    ///   2 = neither player claimed this cell
+    pub ownership: Vec<u8>,
+    /// Score difference prediction target (from current player's perspective)
+    /// Stored as bin index in range [0, 184] where:
+    ///   bin_index = (player_score - opponent_score) - (-92) = score_diff + 92
+    pub score_diff: u8,
 }
 
 fn main() {
@@ -73,10 +83,7 @@ fn main() {
     // Load neural network if requested
     let nn: Option<Arc<NeuralNet>> = if use_nn {
         eprintln!("Loading neural network...");
-        match NeuralNet::load(
-            "training/artifacts/model_drafting.onnx",
-            "training/artifacts/model_movement.onnx",
-        ) {
+        match NeuralNet::load("training/artifacts/model.onnx") {
             Ok(model) => {
                 eprintln!("Neural network loaded successfully");
                 Some(Arc::new(model))
@@ -404,15 +411,36 @@ fn play_game(nplayouts: usize, nn: Option<Arc<NeuralNet>>) -> GameResult {
         [0.0, 1.0]
     };
 
+    // Compute ownership targets from final game state
+    // Each cell is owned by the player who claimed it (or 2 if unclaimed)
+    let mut ownership = vec![2u8; NUM_CELLS]; // Default: unclaimed
+    for cell in game.board.claimed[0].into_iter() {
+        ownership[cell as usize] = 0;
+    }
+    for cell in game.board.claimed[1].into_iter() {
+        ownership[cell as usize] = 1;
+    }
+
+    // Compute score difference targets (per-player perspective)
+    let score_diffs: [i32; 2] = [
+        scores[0] as i32 - scores[1] as i32,
+        scores[1] as i32 - scores[0] as i32,
+    ];
+
     // Convert pending samples to final training samples
     let samples: Vec<TrainingSample> = pending_samples
         .into_iter()
-        .map(|s| TrainingSample {
-            features: s.features,
-            policy: s.policy,
-            value: values[s.player],
-            player: s.player,
-            is_drafting: s.is_drafting,
+        .map(|s| {
+            let score_diff_bin = (score_diffs[s.player] + 92) as u8;
+            TrainingSample {
+                features: s.features,
+                policy: s.policy,
+                value: values[s.player],
+                player: s.player,
+                is_drafting: s.is_drafting,
+                ownership: ownership.clone(),
+                score_diff: score_diff_bin,
+            }
         })
         .collect();
 

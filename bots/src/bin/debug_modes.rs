@@ -146,10 +146,7 @@ fn main() {
     );
 
     // Test 2: Try to load NN and compare
-    match NeuralNet::load(
-        "training/artifacts/model_drafting.onnx",
-        "training/artifacts/model_movement.onnx",
-    ) {
+    match NeuralNet::load("training/artifacts/model.onnx") {
         Ok(nn) => {
             let nn = Arc::new(nn);
 

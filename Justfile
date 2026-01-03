@@ -70,6 +70,34 @@ install_training:
     @command -v uv > /dev/null || (echo "uv not found. Please install from https://docs.astral.sh/uv/" && exit 1)
     cd training && uv sync
 
-# Run one iteration of selfplay and training, promoting the model if it improves
-train: install_cargo install_training
-    bun run scripts/train.ts
+# Generate selfplay training data (traditional MCTS, high quality for bootstrapping)
+selfplay GAMES="100" PLAYOUTS="20000": install_cargo
+    mkdir -p training/artifacts
+    cargo run --release -p selfplay -- {{GAMES}} {{PLAYOUTS}} > training/artifacts/training_data.jsonl
+    @echo "Generated training data with auxiliary targets (ownership, score_diff)"
+
+# Generate selfplay training data using neural network guidance (faster, more games)
+selfplay_nn GAMES="200" PLAYOUTS="800": install_cargo
+    mkdir -p training/artifacts
+    cargo run --release -p selfplay -- {{GAMES}} {{PLAYOUTS}} --nn >> training/artifacts/training_data.jsonl
+    @echo "Generated NN-guided training data with auxiliary targets"
+
+# Train the model on existing data
+train_only EPOCHS="20": install_training
+    cd training && uv run train.py --epochs {{EPOCHS}}
+
+# Run one iteration: selfplay + training (traditional MCTS for bootstrapping)
+train GAMES="100" PLAYOUTS="20000" EPOCHS="20": install_cargo install_training
+    @echo "Running selfplay with {{GAMES}} games, {{PLAYOUTS}} playouts..."
+    just selfplay {{GAMES}} {{PLAYOUTS}}
+    @echo "Training for {{EPOCHS}} epochs..."
+    just train_only {{EPOCHS}}
+    @echo "Training iteration complete!"
+
+# Run iterative training loop (AlphaZero-style with NN-guided selfplay)
+iterate ITERATIONS="20" GAMES="200" PLAYOUTS="1000" EPOCHS="20": install_cargo install_training
+    cd training && uv run iterate.py --iterations {{ITERATIONS}} --games {{GAMES}} --playouts {{PLAYOUTS}} --epochs {{EPOCHS}}
+
+# Create blank models for debugging
+blank_models: install_training
+    cd training && uv run create_blank_models.py
