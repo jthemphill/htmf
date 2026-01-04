@@ -96,7 +96,7 @@ def merge_training_data(new_data: Path, max_samples: int = 100_000):
     print(f"Training data: {len(all_samples)} samples (added {len(new_samples)} new)")
 
 
-def train_model(epochs: int, learning_rate: float = 0.001) -> bool:
+def train_model(epochs: int, learning_rate: float = 0.001, num_filters: int = 64, num_blocks: int = 4) -> bool:
     """Train the model and return True if it improved."""
     print(f"\nTraining for {epochs} epochs...")
     result = run_command(
@@ -108,6 +108,10 @@ def train_model(epochs: int, learning_rate: float = 0.001) -> bool:
             str(epochs),
             "--lr",
             str(learning_rate),
+            "--num-filters",
+            str(num_filters),
+            "--num-blocks",
+            str(num_blocks),
         ],
         cwd=str(Path(__file__).parent),
     )
@@ -175,6 +179,12 @@ def main():
         "--epochs", type=int, default=20, help="Training epochs per iteration"
     )
     parser.add_argument(
+        "--num-filters", type=int, default=64, help="Number of convolutional filters"
+    )
+    parser.add_argument(
+        "--num-blocks", type=int, default=4, help="Number of residual blocks"
+    )
+    parser.add_argument(
         "--bootstrap", action="store_true", help="Start with traditional MCTS data"
     )
     parser.add_argument(
@@ -208,7 +218,7 @@ def main():
         # Generate high-quality data with many playouts
         new_data = generate_selfplay_data(args.games * 2, args.playouts, use_nn=False)
         merge_training_data(new_data)
-        train_model(args.epochs * 2)  # Train longer for initial model
+        train_model(args.epochs * 2, num_filters=args.num_filters, num_blocks=args.num_blocks)  # Train longer for initial model
         save_iteration(0)
 
     for iteration in range(1, args.iterations + 1):
@@ -221,7 +231,7 @@ def main():
         merge_training_data(new_data)
 
         # Train on all data
-        train_model(args.epochs)
+        train_model(args.epochs, num_filters=args.num_filters, num_blocks=args.num_blocks)
 
         # Save this iteration
         save_iteration(iteration)
