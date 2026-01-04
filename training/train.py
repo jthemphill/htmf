@@ -706,8 +706,16 @@ def main():
     # Single optimizer for the entire model
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
+    # Learning rate scheduler: cosine annealing with warmup
+    # Warmup for first 10% of epochs, then cosine decay
+    warmup_epochs = max(1, args.epochs // 10)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=args.epochs - warmup_epochs, eta_min=args.lr * 0.1
+    )
+
     print(f"\nTraining for {args.epochs} epochs...")
-    print(f"Learning rate: {args.lr}")
+    print(f"Learning rate: {args.lr} (with cosine annealing schedule)")
+    print(f"Warmup epochs: {warmup_epochs}")
     print(f"Batch size: {args.batch_size}")
     print()
 
@@ -762,6 +770,19 @@ def main():
             total_weighted = m_policy_loss + m_value_loss + 0.5*m_ownership_loss + 0.5*m_score_diff_loss
             print(f"  Total weighted loss: {total_weighted:.4f}")
             print(f"  Contribution %:  P={100*m_policy_loss/total_weighted:.1f}%  V={100*m_value_loss/total_weighted:.1f}%  O={100*0.5*m_ownership_loss/total_weighted:.1f}%  S={100*0.5*m_score_diff_loss/total_weighted:.1f}%")
+
+        # Update learning rate (warmup for first N epochs, then cosine annealing)
+        current_lr = optimizer.param_groups[0]['lr']
+        if epoch <= warmup_epochs:
+            # Linear warmup
+            new_lr = args.lr * (epoch / warmup_epochs)
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = new_lr
+            print(f"\nLearning rate: {new_lr:.6f} (warmup {epoch}/{warmup_epochs})")
+        else:
+            scheduler.step()
+            current_lr = optimizer.param_groups[0]['lr']
+            print(f"\nLearning rate: {current_lr:.6f} (cosine annealing)")
 
     # Save PyTorch checkpoint
     print(f"\nSaving model to {MODEL_CHECKPOINT}...")
