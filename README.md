@@ -1,6 +1,7 @@
 # Hey, that's my fish!
 
 [![WWW build](https://github.com/jthemphill/htmf/actions/workflows/www-build.yml/badge.svg)](https://github.com/jthemphill/htmf/actions/workflows/www-build.yml)
+[![PR Preview](https://github.com/jthemphill/htmf/actions/workflows/pr-preview.yml/badge.svg)](https://github.com/jthemphill/htmf/actions/workflows/pr-preview.yml)
 
 ## Simple webapp version of a deceptively simple children's game
 
@@ -26,3 +27,11 @@ To run all tests:
 ```sh
 just test
 ```
+
+## Pull Request Previews
+
+When you open a pull request, a preview of your changes will be automatically deployed to GitHub Pages. The preview URL will be posted as a comment on your PR, allowing reviewers to test your changes before merging.
+
+Preview URLs follow the format: `https://jthemphill.github.io/htmf/pr-preview/pr-{number}/`
+
+The preview will be automatically updated when you push new commits, and cleaned up when the PR is closed.
