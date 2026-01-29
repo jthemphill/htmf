@@ -1,92 +1,378 @@
+/* CSS Custom Properties for Theming */
+:root {
+  /* Light mode colors (default) */
+  --color-bg: #f5f5f5;
+  --color-text: #1a1a1a;
+  --color-text-muted: #666666;
+
+  /* Cell colors */
+  --color-cell: #eeeeee;
+  --color-cell-hover: #cccccc;
+  --color-cell-possible: #d1fec8;
+  --color-cell-possible-hover: #10b0d0;
+  --color-cell-highlighted: #fffe9f;
+  --color-cell-claimed: #555555;
+  --color-cell-stroke: #7c37dc;
+
+  /* Fish and penguin colors */
+  --color-fish: #888888;
+  --color-penguin-accent: #fb8b00;
+  --color-penguin-eyes: #ffffff;
+
+  /* Player colors */
+  --color-player-human: #2563eb;
+  --color-player-bot: #dc2626;
+
+  /* UI colors */
+  --color-button-bg: #e5e5e5;
+  --color-button-hover: #d4d4d4;
+  --color-button-text: #1a1a1a;
+  --color-border: #d4d4d4;
+  --color-progress-bg: #e5e5e5;
+  --color-progress-fill: #2563eb;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+
+  color-scheme: light dark;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #1a1a1a;
+    --color-text: #f5f5f5;
+    --color-text-muted: #a3a3a3;
+
+    /* Cell colors - darker variants */
+    --color-cell: #3a3a3a;
+    --color-cell-hover: #4a4a4a;
+    --color-cell-possible: #2d5a28;
+    --color-cell-possible-hover: #0e7490;
+    --color-cell-highlighted: #6b5a00;
+    --color-cell-claimed: #2a2a2a;
+    --color-cell-stroke: #a855f7;
+
+    /* Fish - lighter for contrast */
+    --color-fish: #a3a3a3;
+
+    /* Player colors - slightly adjusted for dark mode */
+    --color-player-human: #3b82f6;
+    --color-player-bot: #ef4444;
+
+    /* UI colors */
+    --color-button-bg: #3a3a3a;
+    --color-button-hover: #4a4a4a;
+    --color-button-text: #f5f5f5;
+    --color-border: #404040;
+    --color-progress-bg: #3a3a3a;
+    --color-progress-fill: #3b82f6;
+  }
+}
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  min-height: 100svh;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+/* App layout - responsive flex container */
 .app {
   display: flex;
   flex-wrap: wrap;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  min-height: 100svh;
+  align-items: flex-start;
+  justify-content: center;
 }
 
-.info-col {
-  display: flex;
-  flex-direction: column;
-}
-
+/* Board - uses svmin for small viewport support */
 .board {
-  height: 100vmin;
-  width: 100vmin;
+  height: min(100svmin, calc(100svh - var(--spacing-md) * 2));
+  width: min(100svmin, calc(100svw - var(--spacing-md) * 2));
+  max-height: 100svmin;
+  max-width: 100svmin;
+  flex-shrink: 0;
 }
 
+/* Cell styles */
 .board .cell {
-  fill: #eeeeee;
+  fill: var(--color-cell);
+  cursor: pointer;
+  transition: fill 0.15s ease;
 }
 
 .board .cell:hover {
-  fill: #cccccc;
+  fill: var(--color-cell-hover);
 }
 
 .board .cell polygon {
-  stroke: #7c37dc;
+  stroke: var(--color-cell-stroke);
+  stroke-width: 1;
 }
 
 .board .cell.possible {
-  fill: #d1fec8;
+  fill: var(--color-cell-possible);
 }
 
 .board .cell.possible:hover {
-  fill: #10b0d0;
+  fill: var(--color-cell-possible-hover);
 }
 
 .board .cell.highlighted {
-  fill: #fffe9f;
+  fill: var(--color-cell-highlighted);
 }
 
 .board .cell.claimed {
-  fill: #555555;
+  fill: var(--color-cell-claimed);
+  cursor: default;
 }
 
+/* Fish markers */
 .board .fish {
-  fill: #888888;
+  fill: var(--color-fish);
 }
 
+/* Penguin styles */
 .penguin {
   fill-opacity: 1;
   stroke: none;
 }
 
 .penguin.beak {
-  fill: #fb8b00;
+  fill: var(--color-penguin-accent);
 }
 
 .penguin.eyes {
-  fill: #ffffff;
+  fill: var(--color-penguin-eyes);
 }
 
 .penguin.foot {
-  fill: #fb8b00;
+  fill: var(--color-penguin-accent);
 }
 
 .human.penguin {
-  color: blue;
-  fill: blue;
+  color: var(--color-player-human);
+  fill: var(--color-player-human);
 }
 
 .bot.penguin {
-  color: red;
-  fill: red;
+  color: var(--color-player-bot);
+  fill: var(--color-player-bot);
 }
 
+/* Info column */
+.info-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  min-width: 200px;
+  max-width: 300px;
+  flex: 1;
+}
+
+.info-col p {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.info-col .tree-size,
+.info-col .memory-usage,
+.info-col .memory-ratio,
+.info-col .playout-counter {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+/* Progress bar */
 .info-col progress {
   width: 100%;
+  height: 8px;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--color-progress-bg);
 }
 
+.info-col progress::-webkit-progress-bar {
+  background-color: var(--color-progress-bg);
+  border-radius: 4px;
+}
+
+.info-col progress::-webkit-progress-value {
+  background-color: var(--color-progress-fill);
+  border-radius: 4px;
+}
+
+.info-col progress::-moz-progress-bar {
+  background-color: var(--color-progress-fill);
+  border-radius: 4px;
+}
+
+/* Win chance meter */
 .info-col .win-chance {
   display: flex;
   flex-direction: column;
+  gap: var(--spacing-xs);
 }
 
+.info-col .win-chance meter {
+  width: 100%;
+  height: 16px;
+}
+
+.info-col .win-chance label {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+/* Scores block */
+.scores-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.scores-block .human {
+  color: var(--color-player-human);
+  font-weight: 500;
+}
+
+.scores-block .bot {
+  color: var(--color-player-bot);
+  font-weight: 500;
+}
+
+/* Memory usage block */
+.memory-usage-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* Bot controls */
 .bot-controls {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
 }
 
 .bot-controls button {
-  padding: 0.5rem 1rem;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-button-bg);
+  color: var(--color-button-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.15s ease;
+}
+
+.bot-controls button:hover:not(:disabled) {
+  background-color: var(--color-button-hover);
+}
+
+.bot-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive breakpoints */
+
+/* Mobile portrait */
+@media (max-width: 480px) {
+  .app {
+    flex-direction: column;
+    align-items: center;
+    padding: var(--spacing-sm);
+  }
+
+  .board {
+    height: min(90svmin, calc(100svw - var(--spacing-sm) * 2));
+    width: min(90svmin, calc(100svw - var(--spacing-sm) * 2));
+  }
+
+  .info-col {
+    width: 100%;
+    max-width: none;
+    padding: 0 var(--spacing-sm);
+  }
+}
+
+/* Tablet and small desktop */
+@media (min-width: 481px) and (max-width: 900px) {
+  .app {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .board {
+    height: min(70svmin, calc(100svh - 200px));
+    width: min(70svmin, calc(100svw - var(--spacing-md) * 2));
+  }
+
+  .info-col {
+    width: 100%;
+    max-width: 400px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .info-col > * {
+    min-width: 45%;
+  }
+}
+
+/* Large screens - side by side layout */
+@media (min-width: 901px) {
+  .app {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .board {
+    height: min(85svmin, calc(100svh - var(--spacing-md) * 2));
+    width: min(85svmin, calc(100svh - var(--spacing-md) * 2));
+  }
+}
+
+/* Landscape mobile - optimize for horizontal space */
+@media (max-height: 500px) and (orientation: landscape) {
+  .app {
+    flex-direction: row;
+    padding: var(--spacing-sm);
+  }
+
+  .board {
+    height: calc(100svh - var(--spacing-sm) * 2);
+    width: calc(100svh - var(--spacing-sm) * 2);
+  }
+
+  .info-col {
+    max-width: 250px;
+    font-size: 0.875rem;
+  }
+
+  .bot-controls button {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
 }
