@@ -8,9 +8,9 @@ edition = "2021"
 arrayvec = "0.7.6"
 getrandom = "0.3.3"
 rand = "0.9.2"
-serde = "1.0.217"
-serde_derive = "1.0.217"
-serde_json = "1.0.134"
+serde = "1.0.228"
+serde_derive = "1.0.228"
+serde_json = "1.0.149"
 
 [dev-dependencies]
 criterion = "0.7"
