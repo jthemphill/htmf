@@ -1,4 +1,5 @@
-import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, type PluginOption } from "vite";
 
 // Some JS features are disabled unless you use these HTTP headers to promise not to load third-party scripts.
@@ -32,11 +33,8 @@ export default defineConfig({
     sourcemap: true,
   },
   plugins: [
-    react({
-      babel: {
-        plugins: [["babel-plugin-react-compiler", { target: "19" }]],
-      },
-    }),
+    react(),
+    babel({ presets: [reactCompilerPreset({ target: "19" })] }),
     setUpCrossOriginIsolation(),
   ],
   resolve: { dedupe: ["react", "react-dom"] },
