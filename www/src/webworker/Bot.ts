@@ -15,6 +15,7 @@ import {
   type WorkerRequest,
   type WorkerResponse,
 } from "../browser/WorkerProtocol";
+import PolicyModel from "./PolicyModel";
 
 function getGameState(game: wasm.Game): GameState {
   const fish = [];
@@ -65,6 +66,8 @@ class Bot {
   forcedMove = false;
   ponderStartTime?: number;
   totalCompletedPonderTimeMs = 0;
+  policyModel: PolicyModel = new PolicyModel();
+  applyingPolicyPriors = false;
 
   constructor(
     wasmInternals: wasm.InitOutput,
@@ -72,6 +75,7 @@ class Bot {
   ) {
     this.wasmInternals = wasmInternals;
     this.postMessage = postMessage;
+    void this.policyModel.load();
     this.ponder();
     this.postGameState({});
   }
@@ -88,6 +92,7 @@ class Bot {
     }
     this.ponderStartTime = performance.now();
     this.ponderer = self.setInterval(() => {
+      void this.refreshPolicyPriors();
       const activePlayer = this.game.active_player();
       if (activePlayer === BOT_PLAYER) {
         // We need to make a move soon
@@ -143,6 +148,19 @@ class Bot {
 
   playout(): void {
     this.game.playout();
+  }
+
+  async refreshPolicyPriors(): Promise<void> {
+    if (this.applyingPolicyPriors) {
+      return;
+    }
+
+    this.applyingPolicyPriors = true;
+    try {
+      await this.policyModel.applyRootPriors(this.game);
+    } finally {
+      this.applyingPolicyPriors = false;
+    }
   }
 
   getState(): GameState {

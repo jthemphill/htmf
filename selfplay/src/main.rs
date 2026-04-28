@@ -7,28 +7,42 @@ extern crate htmf;
 extern crate htmf_bots;
 
 use std::sync::{mpsc, Arc};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use rayon::prelude::*;
 use serde::Serialize;
 
 use htmf::board::*;
 use htmf::game::*;
-use htmf::hex::Cube;
 use htmf::NUM_CELLS;
 use htmf_bots::mctsbot::*;
+use htmf_bots::policy::{move_to_policy_index, MOVEMENT_POLICY_SIZE, POLICY_VERSION};
 use htmf_bots::NeuralNet;
 
-// Compressed movement policy: 4 penguins × 6 directions × 7 max distances = 168 values
-const NUM_PENGUINS: usize = 4;
-const NUM_DIRECTIONS: usize = 6;
-const MAX_DISTANCE: usize = 7;
-pub const MOVEMENT_POLICY_SIZE: usize = NUM_PENGUINS * NUM_DIRECTIONS * MAX_DISTANCE; // 168
-
 const NUM_PLAYERS: usize = 2;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TeacherMetadata {
+    pub teacher: String,
+    pub teacher_playouts: usize,
+    pub model_prior_weight: f32,
+    pub run_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub teacher_model: Option<String>,
+}
 
 /// A training sample containing the game state, MCTS policy, and eventual outcome
 #[derive(Debug, Clone, Serialize)]
 pub struct TrainingSample {
+    /// Policy encoding version. Version 2 uses absolute movement source-cell encoding.
+    pub policy_version: u8,
+    /// Teacher/search configuration that generated this policy target.
+    pub teacher: String,
+    pub teacher_playouts: usize,
+    pub model_prior_weight: f32,
+    pub run_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub teacher_model: Option<String>,
     /// Board features as a flat array
     /// Layout: 8 channels x 60 cells = 480 values
     /// Channels:
@@ -43,13 +57,15 @@ pub struct TrainingSample {
     pub features: Vec<f32>,
     /// MCTS visit distribution over all possible moves (policy target)
     /// For placement: 60 values (one per cell)
-    /// For movement: 168 values (4 penguins × 6 directions × 7 distances)
-    ///   Index = penguin_idx * 42 + direction * 7 + (distance - 1)
+    /// For movement: 2520 values (60 source cells × 6 directions × 7 distances)
+    ///   Index = source_cell * 42 + direction * 7 + (distance - 1)
     pub policy: Vec<f32>,
     /// Game outcome from current player's perspective: 1.0 = win, 0.5 = draw, 0.0 = loss
     pub value: f32,
     /// Current player (0 or 1)
     pub player: usize,
+    /// Zero-based move number when this position was searched.
+    pub turn: usize,
     /// Whether this is drafting phase
     pub is_drafting: bool,
     /// Ownership prediction target: which player owns each cell at game end
@@ -69,7 +85,11 @@ fn main() {
 
     // Check for --nn flag
     let use_nn = args.iter().any(|a| a == "--nn");
-    let numeric_args: Vec<&String> = args.iter().skip(1).filter(|a| !a.starts_with("--")).collect();
+    let numeric_args: Vec<&String> = args
+        .iter()
+        .skip(1)
+        .filter(|a| !a.starts_with("--"))
+        .collect();
 
     let ntrials: usize = numeric_args
         .first()
@@ -90,7 +110,7 @@ fn main() {
             }
             Err(e) => {
                 eprintln!("Failed to load neural network: {:?}", e);
-                eprintln!("Falling back to traditional MCTS");
+                eprintln!("Falling back to uniform priors");
                 None
             }
         }
@@ -98,7 +118,13 @@ fn main() {
         None
     };
 
-    let mode = if nn.is_some() { "NN-guided MCTS" } else { "Traditional MCTS" };
+    let metadata = Arc::new(build_teacher_metadata(nplayouts, nn.is_some(), use_nn));
+
+    let mode = if nn.is_some() {
+        "NN-guided priors"
+    } else {
+        "uniform-prior baseline"
+    };
     eprintln!(
         "Running {} games with {} playouts per move ({})",
         ntrials, nplayouts, mode
@@ -124,7 +150,10 @@ fn main() {
 
     let results: Vec<(usize, usize)> = (0..ntrials)
         .into_par_iter()
-        .map_with(nn.clone(), |nn, _| play_game(nplayouts, nn.clone()))
+        .map_with((nn.clone(), metadata.clone()), |state, _| {
+            let (nn, metadata) = state;
+            play_game(nplayouts, nn.clone(), metadata.as_ref())
+        })
         .map_with(mpsc::Sender::clone(&logger_tx), |logger_tx, result| {
             let _ = logger_tx.send(Ok(result.samples));
             (result.winner, result.num_moves)
@@ -145,6 +174,53 @@ fn main() {
     eprintln!("Player 1 wins: {} / {}", wins[1], ntrials);
     eprintln!("Total moves: {}", total_moves);
     eprintln!("Total training samples: {}", total_samples);
+}
+
+fn build_teacher_metadata(
+    nplayouts: usize,
+    nn_loaded: bool,
+    nn_requested: bool,
+) -> TeacherMetadata {
+    let requested_teacher = std::env::var("HTMF_SELFPLAY_TEACHER").unwrap_or_else(|_| {
+        if nn_requested {
+            "nn_root".to_owned()
+        } else {
+            "uniform".to_owned()
+        }
+    });
+    let teacher = if nn_loaded && requested_teacher == "nn_root" {
+        "nn_root".to_owned()
+    } else {
+        "uniform".to_owned()
+    };
+    let model_prior_weight = if teacher == "nn_root" {
+        std::env::var("HTMF_MODEL_PRIOR_WEIGHT")
+            .ok()
+            .and_then(|value| value.parse::<f32>().ok())
+            .unwrap_or(0.05)
+    } else {
+        0.0
+    };
+    let run_id = std::env::var("HTMF_SELFPLAY_RUN_ID").unwrap_or_else(|_| {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_secs())
+            .unwrap_or_default();
+        format!("manual_{teacher}_{timestamp}")
+    });
+    let teacher_model = if teacher == "nn_root" {
+        std::env::var("HTMF_TEACHER_MODEL").ok()
+    } else {
+        None
+    };
+
+    TeacherMetadata {
+        teacher,
+        teacher_playouts: nplayouts,
+        model_prior_weight,
+        run_id,
+        teacher_model,
+    }
 }
 
 struct GameResult {
@@ -203,54 +279,8 @@ fn extract_features(game: &GameState, current_player: usize) -> Vec<f32> {
     features
 }
 
-/// Convert a move from (src, dst) to (direction, distance)
-/// Direction is 0-5 based on Cube::neighbors() order
-/// Distance is 1-7 (number of cells traveled)
-fn move_to_direction_distance(src: u8, dst: u8) -> Option<(usize, usize)> {
-    let src_hex = Board::index_to_evenr(src);
-    let dst_hex = Board::index_to_evenr(dst);
-    let src_cube = Cube::from_evenr(&src_hex);
-    let dst_cube = Cube::from_evenr(&dst_hex);
-
-    // Calculate the delta in cube coordinates
-    let dx = dst_cube.x - src_cube.x;
-    let dy = dst_cube.y - src_cube.y;
-    let dz = dst_cube.z - src_cube.z;
-
-    // Determine direction based on which axis is constant (the other two change)
-    // Direction 0: (+x, -y, 0z) East
-    // Direction 1: (+x, 0y, -z) Northeast
-    // Direction 2: (0x, +y, -z) Northwest
-    // Direction 3: (-x, +y, 0z) West
-    // Direction 4: (-x, 0y, +z) Southwest
-    // Direction 5: (0x, -y, +z) Southeast
-
-    let direction = if dz == 0 {
-        // z constant: East (0) or West (3)
-        if dx > 0 { 0 } else { 3 }
-    } else if dy == 0 {
-        // y constant: Northeast (1) or Southwest (4)
-        if dx > 0 { 1 } else { 4 }
-    } else if dx == 0 {
-        // x constant: Northwest (2) or Southeast (5)
-        if dy > 0 { 2 } else { 5 }
-    } else {
-        // Not a valid hex line move
-        return None;
-    };
-
-    // Distance is the absolute delta on any non-zero axis
-    let distance = dx.abs().max(dy.abs()).max(dz.abs()) as usize;
-
-    if distance == 0 || distance > MAX_DISTANCE {
-        return None;
-    }
-
-    Some((direction, distance))
-}
-
 /// Extract MCTS policy from tree node visit counts
-fn extract_policy(mcts: &MCTSBot, game: &GameState, current_player: usize) -> Vec<f32> {
+fn extract_policy(mcts: &MCTSBot, game: &GameState, _current_player: usize) -> Vec<f32> {
     let is_drafting = !game.finished_drafting();
 
     if is_drafting {
@@ -277,30 +307,17 @@ fn extract_policy(mcts: &MCTSBot, game: &GameState, current_player: usize) -> Ve
 
         policy
     } else {
-        // Compressed movement policy: 4 penguins × 6 directions × 7 distances = 168 values
+        // Absolute movement policy: 60 source cells × 6 directions × 7 distances = 2520 values
         let mut policy = vec![0.0f32; MOVEMENT_POLICY_SIZE];
         let mut total_visits = 0u32;
-
-        // Get current player's penguins in sorted order for consistent indexing
-        let mut penguins: Vec<u8> = game.board.penguins[current_player].into_iter().collect();
-        penguins.sort();
 
         if let Some(children) = mcts.root.children.get() {
             for (mov, child) in children {
                 if let Move::Move((src, dst)) = mov {
-                    // Find which penguin index this is
-                    let penguin_idx = penguins.iter().position(|&p| p == *src);
-                    if let Some(penguin_idx) = penguin_idx {
-                        if let Some((direction, distance)) = move_to_direction_distance(*src, *dst) {
-                            let (_, visits) = child.rewards_visits.get();
-                            // Index = penguin_idx * 42 + direction * 7 + (distance - 1)
-                            let idx = penguin_idx * (NUM_DIRECTIONS * MAX_DISTANCE)
-                                    + direction * MAX_DISTANCE
-                                    + (distance - 1);
-                            policy[idx] = visits as f32;
-                            total_visits += visits;
-                        }
-                    }
+                    let idx = move_to_policy_index(&Move::Move((*src, *dst)), false);
+                    let (_, visits) = child.rewards_visits.get();
+                    policy[idx] = visits as f32;
+                    total_visits += visits;
                 }
             }
         }
@@ -329,13 +346,17 @@ fn get_temperature(move_num: usize) -> f32 {
     }
 }
 
-fn play_game(nplayouts: usize, nn: Option<Arc<NeuralNet>>) -> GameResult {
+fn play_game(
+    nplayouts: usize,
+    nn: Option<Arc<NeuralNet>>,
+    metadata: &TeacherMetadata,
+) -> GameResult {
     let mut game = GameState::new_two_player(&mut rand::rng());
     let mut bots: Vec<MCTSBot> = (0..NUM_PLAYERS)
         .map(|i| {
-            // Always use PUCT mode (with_neural_net) - it outperforms pure UCB1
-            // Pass the NN if available for policy priors, otherwise uses uniform priors
-            MCTSBot::with_neural_net(game.clone(), Player { id: i }, nn.clone())
+            // Always use the production PUCT path. If an NN is present, apply it
+            // only to the root before each search, matching browser serving.
+            MCTSBot::new(game.clone(), Player { id: i })
         })
         .collect();
 
@@ -344,12 +365,20 @@ fn play_game(nplayouts: usize, nn: Option<Arc<NeuralNet>>) -> GameResult {
         features: Vec<f32>,
         policy: Vec<f32>,
         player: usize,
+        turn: usize,
         is_drafting: bool,
     }
     let mut pending_samples: Vec<PendingSample> = vec![];
     let mut num_moves = 0;
 
     while let Some(p) = game.active_player() {
+        if let Some(nn) = &nn {
+            match nn.predict(&game, p.id) {
+                Ok(output) => bots[p.id].update_root_priors_from_logits(&output.policy_logits),
+                Err(err) => eprintln!("Model prior inference failed; using uniform root: {err}"),
+            }
+        }
+
         // Run MCTS playouts
         for _ in 0..nplayouts {
             bots[p.id].playout();
@@ -364,6 +393,7 @@ fn play_game(nplayouts: usize, nn: Option<Arc<NeuralNet>>) -> GameResult {
             features,
             policy,
             player: p.id,
+            turn: num_moves,
             is_drafting,
         });
 
@@ -433,10 +463,17 @@ fn play_game(nplayouts: usize, nn: Option<Arc<NeuralNet>>) -> GameResult {
         .map(|s| {
             let score_diff_bin = (score_diffs[s.player] + 92) as u8;
             TrainingSample {
+                policy_version: POLICY_VERSION,
+                teacher: metadata.teacher.clone(),
+                teacher_playouts: metadata.teacher_playouts,
+                model_prior_weight: metadata.model_prior_weight,
+                run_id: metadata.run_id.clone(),
+                teacher_model: metadata.teacher_model.clone(),
                 features: s.features,
                 policy: s.policy,
                 value: values[s.player],
                 player: s.player,
+                turn: s.turn,
                 is_drafting: s.is_drafting,
                 ownership: ownership.clone(),
                 score_diff: score_diff_bin,
@@ -454,7 +491,14 @@ fn play_game(nplayouts: usize, nn: Option<Arc<NeuralNet>>) -> GameResult {
 #[test]
 fn test_selfplay_generates_samples() {
     let nplayouts = 50;
-    let result = play_game(nplayouts, None);
+    let metadata = TeacherMetadata {
+        teacher: "uniform".to_owned(),
+        teacher_playouts: nplayouts,
+        model_prior_weight: 0.0,
+        run_id: "test_uniform".to_owned(),
+        teacher_model: None,
+    };
+    let result = play_game(nplayouts, None, &metadata);
 
     // Should have samples for each move in the game
     assert!(
@@ -471,17 +515,28 @@ fn test_selfplay_generates_samples() {
     // Check first sample has correct feature dimensions
     let first = &result.samples[0];
     assert_eq!(
+        first.policy_version, POLICY_VERSION,
+        "Samples should declare the current policy encoding version"
+    );
+    assert_eq!(first.teacher, "uniform");
+    assert_eq!(first.teacher_playouts, nplayouts);
+    assert_eq!(first.model_prior_weight, 0.0);
+    assert_eq!(first.run_id, "test_uniform");
+    assert!(first.teacher_model.is_none());
+    assert_eq!(
         first.features.len(),
         8 * NUM_CELLS,
         "Features should be 8 channels x 60 cells"
     );
+    assert_eq!(first.turn, 0, "First sample should be turn 0");
 
     // First 8 moves are drafting
-    for sample in result.samples.iter().take(8) {
+    for (turn, sample) in result.samples.iter().take(8).enumerate() {
         assert!(
             sample.is_drafting,
             "First 8 samples should be drafting phase"
         );
+        assert_eq!(sample.turn, turn, "Sample turn should match move number");
         assert_eq!(
             sample.policy.len(),
             NUM_CELLS,
@@ -489,7 +544,7 @@ fn test_selfplay_generates_samples() {
         );
     }
 
-    // After drafting, policy should be movement (168 values - compressed)
+    // After drafting, policy should be movement (2520 values - absolute source-cell encoding)
     if result.samples.len() > 8 {
         let movement_sample = &result.samples[8];
         assert!(
@@ -499,8 +554,9 @@ fn test_selfplay_generates_samples() {
         assert_eq!(
             movement_sample.policy.len(),
             MOVEMENT_POLICY_SIZE,
-            "Movement policy should be 168 values (4 penguins × 6 directions × 7 distances)"
+            "Movement policy should be 2520 values (60 cells × 6 directions × 7 distances)"
         );
+        assert_eq!(movement_sample.turn, 8, "First movement sample should be turn 8");
     }
 
     // Values should be valid (0.0, 0.5, or 1.0)

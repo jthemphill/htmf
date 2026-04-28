@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
  * @type {ReturnType<typeof defineConfig>}
  */
 const config = defineConfig([
-  globalIgnores(["dist/**/*"]),
+  globalIgnores(["dist", "dist/**/*", "**/dist/**/*"]),
   {
     languageOptions: {
       globals: {

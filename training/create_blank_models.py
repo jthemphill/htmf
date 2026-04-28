@@ -6,27 +6,14 @@ These models are useful for debugging:
 - Policy: All zeros → softmax gives 1/n for each legal move (uniform)
 - Value: Always 0 (tanh) → converted to 0.5 in Rust (neutral)
 
-With these models, the AlphaZero bot should explore uniformly but still
-use the PUCT formula. Comparing this to pure MCTS helps isolate bugs.
+With these models, the bot should explore uniformly through the same PUCT
+path used by the production uniform-prior baseline.
 
-IMPORTANT: Even with these "blank" models, AlphaZero will NOT behave
-identically to pure MCTS because:
+IMPORTANT: Even with these "blank" models, only the policy output is used by
+search; the neutral value head is intentionally ignored by the production bot.
 
-1. PUCT vs UCB1 selection:
-   - MCTS UCB1: unvisited nodes get INFINITY (always explore first)
-   - AlphaZero PUCT: unvisited nodes get Q=0.5 + exploration term (finite)
-
-2. Leaf evaluation:
-   - MCTS: Random rollout to game end → actual win/loss/draw
-   - Blank model: Always returns value=0.5 → Q-values stay at 0.5
-
-3. This means with blank models:
-   - All nodes will have Q ≈ 0.5 (no learning of which moves are good)
-   - Selection driven purely by exploration term: C_PUCT * P * sqrt(N) / (1+n)
-   - With uniform priors, exploration favors less-visited nodes
-
-The UniformPriorRollout mode in Rust is a better debugging tool because
-it uses random rollouts (like MCTS) but with PUCT selection.
+This is useful for verifying that ONNX inference and the native
+UniformPriorProvider produce the same legal-move priors.
 """
 
 from pathlib import Path
@@ -38,7 +25,10 @@ import torch.nn as nn
 NUM_CELLS = 60
 NUM_CHANNELS = 8
 NUM_FEATURES = NUM_CHANNELS * NUM_CELLS  # 480
-MOVEMENT_POLICY_SIZE = 4 * 6 * 7  # 168 (penguins × directions × distances)
+NUM_DIRECTIONS = 6
+MAX_DISTANCE = 7
+POLICY_VERSION = 2
+MOVEMENT_POLICY_SIZE = NUM_CELLS * NUM_DIRECTIONS * MAX_DISTANCE  # 2520
 
 ARTIFACTS_DIR = Path("./artifacts")
 
@@ -126,6 +116,9 @@ def main():
     print()
     print("NOTE: This blank model outputs uniform policy (all zeros -> 1/n after softmax)")
     print("and neutral value (0 tanh -> 0.5 probability) for both drafting and movement.")
+    print()
+    print(f"Policy encoding version: {POLICY_VERSION}")
+    print("Movement policy: source_cell * 42 + direction * 7 + distance_minus_one")
     print()
     print("The PUCT mode uses random rollouts for leaf evaluation, so the value output")
     print("from this model is NOT used. Only the policy priors are used to guide")

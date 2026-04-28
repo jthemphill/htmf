@@ -214,14 +214,14 @@ impl Board {
         // For each of the 6 directions
         for dir in 0..6 {
             let ray = RAY_MASKS[cell_idx as usize][dir];
-            
+
             // If we intersect with occupied cells:
             let blockers = ray & occupied;
             if blockers != 0 {
                 // There is a blocker.
                 // If the direction is increasing index (forward), the first blocker is the one with the smallest index (trailing_zeros).
                 // If the direction is decreasing index (backward), the first blocker is the one with the largest index (leading_zeros).
-                
+
                 // We need to know which directions are "positive" and "negative" in terms of bit index.
                 // 0: East (+1) -> Positive
                 // 1: NorthEast (depends on row parity, but generally -row_len) -> Negative
@@ -229,7 +229,7 @@ impl Board {
                 // 3: West (-1) -> Negative
                 // 4: SouthWest -> Positive
                 // 5: SouthEast -> Positive
-                
+
                 if dir == 0 || dir == 4 || dir == 5 {
                     // Positive direction: we want everything strictly less than the smallest blocker
                     let first_blocker_idx = blockers.trailing_zeros();
@@ -244,7 +244,7 @@ impl Board {
                     // !((1 << (idx + 1)) - 1)
                     // Or simpler: !((1 << (first_blocker_idx + 1)).wrapping_sub(1))
                     // Be careful with overflow if idx is 63.
-                    
+
                     let mask = if first_blocker_idx == 63 {
                         0
                     } else {
@@ -257,7 +257,7 @@ impl Board {
                 moves |= ray;
             }
         }
-        
+
         CellSet { data: moves }
     }
 
@@ -710,8 +710,12 @@ mod tests {
 
             let mut board = Board::new::<StdRng>(&mut SeedableRng::seed_from_u64(0));
             // Overwrite claimed sets with random data
-            board.claimed[0] = CellSet { data: claimed_mask_0 };
-            board.claimed[1] = CellSet { data: claimed_mask_1 };
+            board.claimed[0] = CellSet {
+                data: claimed_mask_0,
+            };
+            board.claimed[1] = CellSet {
+                data: claimed_mask_1,
+            };
 
             // Ensure src is not claimed (moves() might assume it? No, but usually we move from our own penguin)
             // But moves() signature is just (cell_idx).

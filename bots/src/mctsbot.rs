@@ -1,22 +1,83 @@
 use crate::neuralnet::NeuralNet;
-use htmf::board::Board;
-use htmf::hex::Cube;
+use crate::policy::{move_to_policy_index, policy_size};
 use rand::prelude::*;
 use std::cell::OnceCell;
+use std::fmt;
 use std::sync::Arc;
 
 const NUM_PLAYERS: usize = 2;
 
-const NUM_DIRECTIONS: usize = 6;
-const MAX_DISTANCE: usize = 7;
-
 /// Exploration constant for PUCT formula (AlphaZero uses ~1.0-2.0)
 const C_PUCT: f32 = 1.0;
+/// Keep the production uniform prior as an anchor while the learned policy is weak.
+const DEFAULT_MODEL_PRIOR_WEIGHT: f32 = 0.05;
+
+fn model_prior_weight() -> f32 {
+    std::env::var("HTMF_MODEL_PRIOR_WEIGHT")
+        .ok()
+        .and_then(|value| value.parse::<f32>().ok())
+        .filter(|value| (0.0..=1.0).contains(value))
+        .unwrap_or(DEFAULT_MODEL_PRIOR_WEIGHT)
+}
+
+#[derive(Debug)]
+pub struct PriorError {
+    message: String,
+}
+
+impl PriorError {
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+}
+
+impl fmt::Display for PriorError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for PriorError {}
+
+pub trait PriorProvider: Send + Sync {
+    fn policy_logits(
+        &self,
+        game: &htmf::game::GameState,
+        current_player: usize,
+    ) -> Result<Vec<f32>, PriorError>;
+}
+
+#[derive(Debug, Default)]
+pub struct UniformPriorProvider;
+
+impl PriorProvider for UniformPriorProvider {
+    fn policy_logits(
+        &self,
+        game: &htmf::game::GameState,
+        _current_player: usize,
+    ) -> Result<Vec<f32>, PriorError> {
+        Ok(vec![0.0; policy_size(!game.finished_drafting())])
+    }
+}
+
+impl PriorProvider for NeuralNet {
+    fn policy_logits(
+        &self,
+        game: &htmf::game::GameState,
+        current_player: usize,
+    ) -> Result<Vec<f32>, PriorError> {
+        self.predict(game, current_player)
+            .map(|output| output.policy_logits)
+            .map_err(|err| PriorError::new(format!("ONNX prior inference failed: {err}")))
+    }
+}
 
 /**
  * Games are connected to each other via Moves.
  */
-#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Move {
     Place(u8),
     Move((u8, u8)),
@@ -116,7 +177,7 @@ impl TreeNode {
         &mut self,
         game: &Game,
         policy_logits: &[f32],
-        current_player: usize,
+        _current_player: usize,
         node_count: &mut usize,
     ) {
         if self.children.get().is_some() {
@@ -126,31 +187,29 @@ impl TreeNode {
         let is_drafting = !game.state.finished_drafting();
         let moves: Vec<Move> = game.available_moves().collect();
 
-        // Get sorted penguin list for consistent indexing (only needed for movement)
-        let mut penguins: Vec<u8> = game.state.board.penguins[current_player]
-            .into_iter()
-            .collect();
-        penguins.sort();
-
         // Convert logits to probabilities with softmax over legal moves only
         let mut max_logit = f32::NEG_INFINITY;
         for m in &moves {
-            let idx = move_to_policy_index(m, is_drafting, &penguins);
-            max_logit = max_logit.max(policy_logits[idx]);
+            let idx = move_to_policy_index(m, is_drafting);
+            max_logit = max_logit.max(policy_logits.get(idx).copied().unwrap_or(0.0));
         }
 
         let mut sum_exp = 0.0f32;
         let mut priors: Vec<f32> = Vec::with_capacity(moves.len());
         for m in &moves {
-            let idx = move_to_policy_index(m, is_drafting, &penguins);
-            let exp_val = (policy_logits[idx] - max_logit).exp();
+            let idx = move_to_policy_index(m, is_drafting);
+            let exp_val = (policy_logits.get(idx).copied().unwrap_or(0.0) - max_logit).exp();
             priors.push(exp_val);
             sum_exp += exp_val;
         }
 
-        // Normalize
+        // Normalize and blend with uniform so weak models cannot completely
+        // dominate the production baseline search.
+        let model_prior_weight = model_prior_weight();
+        let uniform_prior = 1.0 / priors.len() as f32;
         for p in &mut priors {
-            *p /= sum_exp;
+            *p = model_prior_weight * (*p / sum_exp)
+                + (1.0 - model_prior_weight) * uniform_prior;
         }
 
         let children: Vec<_> = moves
@@ -179,89 +238,6 @@ impl TreeNode {
 
         *node_count += children.len();
         let _ = self.children.set(children);
-    }
-}
-
-/// Convert a move from (src, dst) to (direction, distance)
-/// Direction is 0-5 based on Cube::neighbors() order
-/// Distance is 1-7 (number of cells traveled)
-fn move_to_direction_distance(src: u8, dst: u8) -> Option<(usize, usize)> {
-    let src_hex = Board::index_to_evenr(src);
-    let dst_hex = Board::index_to_evenr(dst);
-    let src_cube = Cube::from_evenr(&src_hex);
-    let dst_cube = Cube::from_evenr(&dst_hex);
-
-    // Calculate the delta in cube coordinates
-    let dx = dst_cube.x - src_cube.x;
-    let dy = dst_cube.y - src_cube.y;
-    let dz = dst_cube.z - src_cube.z;
-
-    // Determine direction based on which axis is constant (the other two change)
-    // Direction 0: (+x, -y, 0z) East
-    // Direction 1: (+x, 0y, -z) Northeast
-    // Direction 2: (0x, +y, -z) Northwest
-    // Direction 3: (-x, +y, 0z) West
-    // Direction 4: (-x, 0y, +z) Southwest
-    // Direction 5: (0x, -y, +z) Southeast
-
-    let direction = if dz == 0 {
-        // z constant: East (0) or West (3)
-        if dx > 0 {
-            0
-        } else {
-            3
-        }
-    } else if dy == 0 {
-        // y constant: Northeast (1) or Southwest (4)
-        if dx > 0 {
-            1
-        } else {
-            4
-        }
-    } else if dx == 0 {
-        // x constant: Northwest (2) or Southeast (5)
-        if dy > 0 {
-            2
-        } else {
-            5
-        }
-    } else {
-        // Not a valid hex line move
-        return None;
-    };
-
-    // Distance is the absolute delta on any non-zero axis
-    let distance = dx.abs().max(dy.abs()).max(dz.abs()) as usize;
-
-    if distance == 0 || distance > MAX_DISTANCE {
-        return None;
-    }
-
-    Some((direction, distance))
-}
-
-/// Convert a move to its index in the policy output
-/// For movement phase, this uses the compressed format: penguin_idx * 42 + direction * 7 + (distance - 1)
-fn move_to_policy_index(m: &Move, is_drafting: bool, penguins: &[u8]) -> usize {
-    match m {
-        Move::Place(dst) => {
-            debug_assert!(is_drafting);
-            *dst as usize
-        }
-        Move::Move((src, dst)) => {
-            debug_assert!(!is_drafting);
-            // Find penguin index
-            let penguin_idx = penguins.iter().position(|&p| p == *src).unwrap_or(0);
-            // Get direction and distance
-            if let Some((direction, distance)) = move_to_direction_distance(*src, *dst) {
-                penguin_idx * (NUM_DIRECTIONS * MAX_DISTANCE)
-                    + direction * MAX_DISTANCE
-                    + (distance - 1)
-            } else {
-                // Fallback - should not happen with valid moves
-                0
-            }
-        }
     }
 }
 
@@ -399,7 +375,7 @@ fn get_reward(game: &htmf::game::GameState, p: usize) -> f32 {
 fn playout_puct(
     root: &mut TreeNode,
     root_game: &Game,
-    nn: &Option<Arc<NeuralNet>>,
+    prior_provider: &Arc<dyn PriorProvider>,
     node_count: &mut usize,
 ) -> (Vec<Move>, Game) {
     let rng = &mut rand::rng();
@@ -418,18 +394,11 @@ fn playout_puct(
     // At a leaf - expand with priors (from NN if available, otherwise uniform)
     if !game.state.game_over() {
         let current_player = game.current_player().id;
-        if let Some(nn) = nn {
-            let output = nn
-                .predict(&game.state, current_player)
-                .expect("NN prediction failed");
-            expand_node.expand_with_priors(
-                &game,
-                &output.policy_logits,
-                current_player,
-                node_count,
-            );
-        } else {
-            expand_node.expand_with_uniform_priors(&game, node_count);
+        match prior_provider.policy_logits(&game.state, current_player) {
+            Ok(policy_logits) => {
+                expand_node.expand_with_priors(&game, &policy_logits, current_player, node_count);
+            }
+            Err(_) => expand_node.expand_with_uniform_priors(&game, node_count),
         }
 
         // Select one child to expand into (using PUCT)
@@ -477,12 +446,10 @@ pub struct UpdateStats {
 /// Mode of operation for MCTS
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MCTSMode {
-    /// Pure MCTS with UCB1 selection and random rollouts
+    /// Production baseline: PUCT with uniform priors and random rollouts.
     Pure,
     /// PUCT selection with random rollouts.
-    /// Uses neural network policy priors if available, otherwise uniform priors.
-    /// This mode outperforms Pure MCTS and provides a foundation for incremental
-    /// improvement through training - each generation can improve on the last.
+    /// Uses neural network policy priors when a model is provided.
     NeuralNet,
 }
 
@@ -491,32 +458,13 @@ pub struct MCTSBot {
     pub root_game: Game,
     pub me: htmf::board::Player,
     pub num_nodes: usize,
-    /// Optional neural network for guided search
-    nn: Option<Arc<NeuralNet>>,
-    /// Mode of operation
-    mode: MCTSMode,
+    /// Source of policy priors used by PUCT.
+    prior_provider: Arc<dyn PriorProvider>,
 }
 
 impl MCTSBot {
     pub fn new(game: htmf::game::GameState, me: htmf::board::Player) -> Self {
-        let root_game = Game {
-            state: game.clone(),
-        };
-        let mut bot = MCTSBot {
-            root: TreeNode::new(),
-            root_game,
-            me,
-            num_nodes: 1,
-            nn: None,
-            mode: MCTSMode::Pure,
-        };
-
-        if game.active_player().is_some() {
-            bot.root
-                .expand_with_uniform_priors(&bot.root_game.clone(), &mut bot.num_nodes);
-        }
-
-        bot
+        Self::with_prior_provider(game, me, Arc::new(UniformPriorProvider), MCTSMode::Pure)
     }
 
     /// Create an MCTS bot that uses PUCT selection with random rollouts.
@@ -525,12 +473,24 @@ impl MCTSBot {
     /// (guiding which moves to explore first). Otherwise, uniform priors are used.
     ///
     /// This mode uses random rollouts for leaf evaluation (not NN value prediction),
-    /// which provides a strong baseline that outperforms pure UCB1-based MCTS.
-    /// Training can then incrementally improve the policy priors.
+    /// matching the uniform-prior production baseline. Training can then
+    /// incrementally improve the policy priors.
     pub fn with_neural_net(
         game: htmf::game::GameState,
         me: htmf::board::Player,
         nn: Option<Arc<NeuralNet>>,
+    ) -> Self {
+        let prior_provider: Arc<dyn PriorProvider> = nn
+            .map(|nn| nn as Arc<dyn PriorProvider>)
+            .unwrap_or_else(|| Arc::new(UniformPriorProvider));
+        Self::with_prior_provider(game, me, prior_provider, MCTSMode::NeuralNet)
+    }
+
+    pub fn with_prior_provider(
+        game: htmf::game::GameState,
+        me: htmf::board::Player,
+        prior_provider: Arc<dyn PriorProvider>,
+        _mode: MCTSMode,
     ) -> Self {
         let mut bot = MCTSBot {
             root: TreeNode::new(),
@@ -539,11 +499,10 @@ impl MCTSBot {
             },
             me,
             num_nodes: 1,
-            nn,
-            mode: MCTSMode::NeuralNet,
+            prior_provider,
         };
 
-        // Initialize root with priors (from NN if available, otherwise uniform)
+        // Initialize root with priors. The uniform provider is the production baseline.
         if let Some(p) = game.active_player() {
             bot.expand_node_with_priors(&bot.root_game.clone(), p.id);
         }
@@ -553,19 +512,22 @@ impl MCTSBot {
 
     /// Expand a node with priors (from NN if available, otherwise uniform)
     fn expand_node_with_priors(&mut self, game: &Game, current_player: usize) {
-        if let Some(nn) = &self.nn {
-            let output = nn
-                .predict(&game.state, current_player)
-                .expect("NN prediction failed");
-            self.root.expand_with_priors(
-                game,
-                &output.policy_logits,
-                current_player,
-                &mut self.num_nodes,
-            );
-        } else {
-            self.root
-                .expand_with_uniform_priors(game, &mut self.num_nodes);
+        match self
+            .prior_provider
+            .policy_logits(&game.state, current_player)
+        {
+            Ok(policy_logits) => {
+                self.root.expand_with_priors(
+                    game,
+                    &policy_logits,
+                    current_player,
+                    &mut self.num_nodes,
+                );
+            }
+            Err(_) => {
+                self.root
+                    .expand_with_uniform_priors(game, &mut self.num_nodes);
+            }
         }
     }
 
@@ -593,20 +555,8 @@ impl MCTSBot {
             // New state not found in tree - start fresh
             self.root = dummy;
 
-            // Initialize based on mode
-            match self.mode {
-                MCTSMode::NeuralNet => {
-                    if let Some(p) = game_state.active_player() {
-                        self.expand_node_with_priors(&new_game, p.id);
-                    }
-                }
-                MCTSMode::Pure => {
-                    // Pure mode also uses PUCT, so pre-expand with uniform priors
-                    if game_state.active_player().is_some() {
-                        self.root
-                            .expand_with_uniform_priors(&new_game, &mut self.num_nodes);
-                    }
-                }
+            if let Some(p) = game_state.active_player() {
+                self.expand_node_with_priors(&new_game, p.id);
             }
         }
 
@@ -618,7 +568,7 @@ impl MCTSBot {
         let (path, game) = playout_puct(
             &mut self.root,
             &self.root_game,
-            &self.nn,
+            &self.prior_provider,
             &mut self.num_nodes,
         );
         backprop(&mut self.root, &self.root_game, path, game);
@@ -700,6 +650,42 @@ impl MCTSBot {
         match best_move {
             Move::Move((src, dst)) => htmf::game::Action::Move(src, dst),
             Move::Place(dst) => htmf::game::Action::Place(dst),
+        }
+    }
+
+    pub fn update_root_priors_from_logits(&mut self, policy_logits: &[f32]) {
+        if self.root_game.state.active_player().is_none() {
+            return;
+        }
+        let Some(children) = self.root.children.get_mut() else {
+            return;
+        };
+
+        let is_drafting = !self.root_game.state.finished_drafting();
+        let mut max_logit = f32::NEG_INFINITY;
+        for (m, _) in children.iter() {
+            let idx = move_to_policy_index(m, is_drafting);
+            max_logit = max_logit.max(policy_logits.get(idx).copied().unwrap_or(0.0));
+        }
+
+        let mut sum_exp = 0.0f32;
+        let mut priors = Vec::with_capacity(children.len());
+        for (m, _) in children.iter() {
+            let idx = move_to_policy_index(m, is_drafting);
+            let exp_val = (policy_logits.get(idx).copied().unwrap_or(0.0) - max_logit).exp();
+            priors.push(exp_val);
+            sum_exp += exp_val;
+        }
+
+        if sum_exp <= 0.0 || !sum_exp.is_finite() {
+            return;
+        }
+
+        let model_prior_weight = model_prior_weight();
+        let uniform_prior = 1.0 / priors.len() as f32;
+        for ((_, child), prior) in children.iter_mut().zip(priors) {
+            child.prior = model_prior_weight * (prior / sum_exp)
+                + (1.0 - model_prior_weight) * uniform_prior;
         }
     }
 
@@ -799,6 +785,31 @@ fn test_tree_size_optimization() {
 }
 
 #[test]
+fn test_uniform_prior_paths_match_at_root() {
+    use htmf::board::Player;
+    use htmf::game::GameState;
+
+    let game = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(7));
+    let baseline = MCTSBot::new(game.clone(), Player { id: 0 });
+    let explicit_uniform = MCTSBot::with_neural_net(game, Player { id: 0 }, None);
+
+    let baseline_children = baseline.root.children.get().unwrap();
+    let explicit_children = explicit_uniform.root.children.get().unwrap();
+
+    assert_eq!(baseline_children.len(), explicit_children.len());
+    for ((baseline_move, baseline_child), (uniform_move, uniform_child)) in
+        baseline_children.iter().zip(explicit_children)
+    {
+        assert_eq!(baseline_move, uniform_move);
+        assert_eq!(baseline_child.prior, uniform_child.prior);
+        assert_eq!(
+            baseline_child.rewards_visits.get(),
+            uniform_child.rewards_visits.get()
+        );
+    }
+}
+
+#[test]
 fn test_memory_usage() {
     use htmf::board::Player;
     use htmf::game::GameState;
@@ -829,8 +840,7 @@ fn test_neural_network_guided_game() {
 
     // Load neural network
     let nn = Arc::new(
-        NeuralNet::load("../training/artifacts/model.onnx")
-            .expect("Failed to load neural network"),
+        NeuralNet::load("../training/artifacts/model.onnx").expect("Failed to load neural network"),
     );
 
     let mut game = GameState::new_two_player::<StdRng>(&mut SeedableRng::seed_from_u64(42));

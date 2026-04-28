@@ -20,12 +20,15 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import replay
+
 # Paths
 ARTIFACTS_DIR = Path("./artifacts")
 TRAINING_DATA = ARTIFACTS_DIR / "training_data.jsonl"
 MODEL_FINAL = ARTIFACTS_DIR / "model_final.pt"
 ONNX_MODEL = ARTIFACTS_DIR / "model.onnx"
 ITERATIONS_DIR = ARTIFACTS_DIR / "iterations"
+BROWSER_MODEL = Path("../www/public/models/htmf-policy.onnx")
 
 
 def run_command(cmd: list[str], cwd: str | None = None) -> subprocess.CompletedProcess:
@@ -39,8 +42,12 @@ def run_command(cmd: list[str], cwd: str | None = None) -> subprocess.CompletedP
 
 def generate_selfplay_data(num_games: int, num_playouts: int, use_nn: bool) -> Path:
     """Generate self-play training data."""
+    replay.SELFPLAY_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = ARTIFACTS_DIR / f"selfplay_{timestamp}.jsonl"
+    mode = "nn" if use_nn else "uniform"
+    output_file = replay.SELFPLAY_DIR / (
+        f"selfplay_{timestamp}_{mode}_g{num_games}_p{num_playouts}.jsonl"
+    )
 
     cmd = [
         "cargo",
@@ -72,84 +79,89 @@ def generate_selfplay_data(num_games: int, num_playouts: int, use_nn: bool) -> P
 
 
 def merge_training_data(new_data: Path, max_samples: int = 100_000):
-    """Merge new data into the main training file, keeping recent samples."""
-    # Read existing data
-    existing_samples = []
-    if TRAINING_DATA.exists():
-        with open(TRAINING_DATA) as f:
-            existing_samples = f.readlines()
-
-    # Read new data
+    """Rebuild the active training file from durable policy-v2 selfplay runs."""
     with open(new_data) as f:
-        new_samples = f.readlines()
-
-    # Combine, keeping most recent samples
-    all_samples = existing_samples + new_samples
-    if len(all_samples) > max_samples:
-        # Keep the most recent samples (at the end)
-        all_samples = all_samples[-max_samples:]
-
-    # Write back
-    with open(TRAINING_DATA, "w") as f:
-        f.writelines(all_samples)
-
-    print(f"Training data: {len(all_samples)} samples (added {len(new_samples)} new)")
+        new_samples = sum(1 for _ in f)
+    total_samples = replay.build_replay(max_samples=max_samples)
+    print(f"Training data: {total_samples} samples (added {new_samples} new)")
 
 
-def train_model(epochs: int, learning_rate: float = 0.001, num_filters: int = 64, num_blocks: int = 4) -> bool:
+def train_model(
+    epochs: int,
+    learning_rate: float = 0.001,
+    num_filters: int | None = None,
+    num_blocks: int | None = None,
+) -> bool:
     """Train the model and return True if it improved."""
     print(f"\nTraining for {epochs} epochs...")
-    result = run_command(
-        [
-            "uv",
-            "run",
-            "train.py",
-            "--epochs",
-            str(epochs),
-            "--lr",
-            str(learning_rate),
-            "--num-filters",
-            str(num_filters),
-            "--num-blocks",
-            str(num_blocks),
-        ],
-        cwd=str(Path(__file__).parent),
-    )
+    cmd = [
+        "uv",
+        "run",
+        "train.py",
+        "--epochs",
+        str(epochs),
+        "--lr",
+        str(learning_rate),
+    ]
+    if num_filters is not None:
+        cmd.extend(["--num-filters", str(num_filters)])
+    if num_blocks is not None:
+        cmd.extend(["--num-blocks", str(num_blocks)])
+
+    result = run_command(cmd, cwd=str(Path(__file__).parent))
 
     return result.returncode == 0
 
 
 def evaluate_models(
-    num_games: int = 20, num_playouts: int = 100
-) -> tuple[int, int, int]:
+    num_pairs: int = 100, num_playouts: int = 400, uniform_vs_uniform: bool = False
+) -> tuple[int, int, int, float]:
     """
-    Evaluate new model vs old model.
-    Returns (new_wins, old_wins, draws)
+    Evaluate the model against the production uniform-prior baseline.
+    Returns (model_wins, baseline_wins, draws, score)
     """
-    print(f"\nEvaluating new model ({num_games} games, {num_playouts} playouts)...")
+    print(f"\nEvaluating model ({num_pairs} pairs, {num_playouts} playouts)...")
+    cmd = [
+        "cargo",
+        "run",
+        "--release",
+        "--bin",
+        "nn_vs_mcts",
+        "--",
+        str(num_pairs),
+        str(num_playouts),
+    ]
+    if uniform_vs_uniform:
+        cmd.append("--uniform-vs-uniform")
     result = subprocess.run(
-        ["cargo", "run", "--release", "--bin", "nn_vs_mcts", "--"],
+        cmd,
         capture_output=True,
         text=True,
         cwd=str(Path(__file__).parent.parent),
     )
+    if result.returncode != 0:
+        print(result.stdout)
+        print(result.stderr)
+        raise RuntimeError(f"evaluation failed with exit code {result.returncode}")
 
     # Parse results from output
-    # Looking for lines like "NN wins: X (Y%)"
-    nn_wins = 0
-    mcts_wins = 0
+    model_wins = 0
+    baseline_wins = 0
     draws = 0
+    score = 0.0
 
     for line in result.stdout.split("\n") + result.stderr.split("\n"):
-        if "NN wins:" in line:
-            nn_wins = int(line.split(":")[1].split("(")[0].strip())
-        elif "MCTS wins:" in line:
-            mcts_wins = int(line.split(":")[1].split("(")[0].strip())
+        if "Model wins:" in line:
+            model_wins = int(line.split(":")[1].split("(")[0].strip())
+        elif "Baseline wins:" in line:
+            baseline_wins = int(line.split(":")[1].split("(")[0].strip())
         elif "Draws:" in line:
             draws = int(line.split(":")[1].split("(")[0].strip())
+        elif "Score:" in line:
+            score = float(line.split(":")[1].strip())
 
-    print(f"Results: NN={nn_wins}, MCTS={mcts_wins}, Draws={draws}")
-    return nn_wins, mcts_wins, draws
+    print(f"Results: model={model_wins}, baseline={baseline_wins}, draws={draws}, score={score:.3f}")
+    return model_wins, baseline_wins, draws, score
 
 
 def save_iteration(iteration: int):
@@ -162,6 +174,36 @@ def save_iteration(iteration: int):
             shutil.copy(src, iter_dir / src.name)
 
     print(f"Saved iteration {iteration} to {iter_dir}")
+
+
+def promote_browser_model():
+    """Copy the current ONNX model to the browser-served artifact path."""
+    BROWSER_MODEL.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(ONNX_MODEL, BROWSER_MODEL)
+    print(f"Promoted browser model -> {BROWSER_MODEL}")
+
+
+def backup_current_model() -> Path | None:
+    """Save the current training artifacts so a failed iteration can roll back."""
+    existing = [p for p in [MODEL_FINAL, ONNX_MODEL] if p.exists()]
+    if not existing:
+        return None
+
+    backup_dir = ARTIFACTS_DIR / "rollback"
+    if backup_dir.exists():
+        shutil.rmtree(backup_dir)
+    backup_dir.mkdir(parents=True)
+    for src in existing:
+        shutil.copy(src, backup_dir / src.name)
+    return backup_dir
+
+
+def restore_model_backup(backup_dir: Path | None):
+    if backup_dir is None:
+        return
+    for src in backup_dir.iterdir():
+        shutil.copy(src, ARTIFACTS_DIR / src.name)
+    print(f"Restored previous model from {backup_dir}")
 
 
 def main():
@@ -179,13 +221,31 @@ def main():
         "--epochs", type=int, default=20, help="Training epochs per iteration"
     )
     parser.add_argument(
-        "--num-filters", type=int, default=64, help="Number of convolutional filters"
+        "--eval-pairs", type=int, default=100, help="Paired evaluation seeds per iteration"
     )
     parser.add_argument(
-        "--num-blocks", type=int, default=4, help="Number of residual blocks"
+        "--eval-playouts", type=int, default=400, help="Evaluation playouts per move"
     )
     parser.add_argument(
-        "--bootstrap", action="store_true", help="Start with traditional MCTS data"
+        "--promotion-score",
+        type=float,
+        default=0.53,
+        help="Minimum model score vs uniform baseline required for promotion",
+    )
+    parser.add_argument(
+        "--num-filters",
+        type=int,
+        default=None,
+        help="Override number of convolutional filters; defaults to checkpoint metadata",
+    )
+    parser.add_argument(
+        "--num-blocks",
+        type=int,
+        default=None,
+        help="Override number of residual blocks; defaults to checkpoint metadata",
+    )
+    parser.add_argument(
+        "--bootstrap", action="store_true", help="Start with uniform-prior baseline data"
     )
     parser.add_argument(
         "--fresh", action="store_true", help="Start fresh (delete existing model)"
@@ -202,6 +262,9 @@ def main():
             if f.exists():
                 f.unlink()
                 print(f"  Removed {f}")
+        if replay.SELFPLAY_DIR.exists():
+            shutil.rmtree(replay.SELFPLAY_DIR)
+            print(f"  Removed {replay.SELFPLAY_DIR}")
 
     print("=" * 60)
     print("HTMF Iterative Training")
@@ -210,16 +273,22 @@ def main():
     print(f"Games per iteration: {args.games}")
     print(f"Playouts per move: {args.playouts}")
     print(f"Epochs per iteration: {args.epochs}")
+    print(f"Eval pairs: {args.eval_pairs}")
+    print(f"Eval playouts: {args.eval_playouts}")
+    print(f"Promotion score: {args.promotion_score:.3f}")
     print("=" * 60)
 
     # Check if we need to bootstrap
     if args.bootstrap or not MODEL_FINAL.exists():
-        print("\nBootstrapping with traditional MCTS self-play...")
+        print("\nBootstrapping with uniform-prior baseline self-play...")
         # Generate high-quality data with many playouts
         new_data = generate_selfplay_data(args.games * 2, args.playouts, use_nn=False)
         merge_training_data(new_data)
         train_model(args.epochs * 2, num_filters=args.num_filters, num_blocks=args.num_blocks)  # Train longer for initial model
         save_iteration(0)
+        _, _, _, bootstrap_score = evaluate_models(args.eval_pairs, args.eval_playouts)
+        if bootstrap_score >= args.promotion_score:
+            promote_browser_model()
 
     for iteration in range(1, args.iterations + 1):
         print(f"\n{'=' * 60}")
@@ -230,20 +299,30 @@ def main():
         new_data = generate_selfplay_data(args.games, args.playouts, use_nn=True)
         merge_training_data(new_data)
 
+        backup_dir = backup_current_model()
+
         # Train on all data
         train_model(args.epochs, num_filters=args.num_filters, num_blocks=args.num_blocks)
 
         # Save this iteration
         save_iteration(iteration)
 
-        # Evaluate against pure MCTS
-        nn_wins, mcts_wins, draws = evaluate_models()
-        win_rate = nn_wins / max(1, nn_wins + mcts_wins + draws) * 100
+        # Evaluate against the production uniform-prior baseline
+        model_wins, baseline_wins, draws, score = evaluate_models(
+            args.eval_pairs, args.eval_playouts
+        )
 
-        print(f"\nIteration {iteration} complete: NN win rate = {win_rate:.1f}%")
+        print(
+            f"\nIteration {iteration} complete: model={model_wins}, baseline={baseline_wins}, "
+            f"draws={draws}, score={score:.3f}"
+        )
 
-        if win_rate >= 55:
-            print("Model is now competitive with pure MCTS!")
+        if score >= args.promotion_score:
+            print("Model passed promotion gate.")
+            promote_browser_model()
+        else:
+            print("Model did not pass promotion gate; rolling back training artifact.")
+            restore_model_backup(backup_dir)
 
     print("\n" + "=" * 60)
     print("Training complete!")

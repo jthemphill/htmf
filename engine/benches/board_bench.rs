@@ -18,9 +18,9 @@ fn benchmark_board_moves(c: &mut Criterion) {
         }
     }
 
-    c.bench_function("board_moves", |b| b.iter(|| {
-        black_box(board.moves(black_box(src_idx)))
-    }));
+    c.bench_function("board_moves", |b| {
+        b.iter(|| black_box(board.moves(black_box(src_idx))))
+    });
 }
 
 criterion_group!(benches, benchmark_board_moves);

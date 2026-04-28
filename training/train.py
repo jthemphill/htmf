@@ -5,7 +5,7 @@ Train a neural network for HTMF using PyTorch.
 The network has two heads:
 - Policy head: probability distribution over moves
   - Drafting: 60 values (one per cell)
-  - Movement: 168 values (4 penguins x 6 directions x 7 distances)
+  - Movement: 2520 values (60 source cells x 6 directions x 7 distances)
 - Value head: predicted win probability for current player
 
 Usage:
@@ -14,6 +14,7 @@ Usage:
 
 import argparse
 import json
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -26,10 +27,11 @@ from torch.utils.data import DataLoader, Dataset
 NUM_CELLS = 60
 NUM_CHANNELS = 8
 NUM_FEATURES = NUM_CHANNELS * NUM_CELLS  # 480
-NUM_PENGUINS = 4
 NUM_DIRECTIONS = 6
 MAX_DISTANCE = 7
-MOVEMENT_POLICY_SIZE = NUM_PENGUINS * NUM_DIRECTIONS * MAX_DISTANCE  # 168
+POLICY_VERSION = 2
+MOVEMENT_POLICY_SIZE = NUM_CELLS * NUM_DIRECTIONS * MAX_DISTANCE  # 2520
+VALID_TEACHERS = {"uniform", "nn_root"}
 
 # Grid dimensions for Conv2D (8 rows, alternating 7/8 columns -> embed in 8x8)
 NUM_ROWS = 8
@@ -69,9 +71,6 @@ ARTIFACTS_DIR = Path("./artifacts")
 TRAINING_DATA = ARTIFACTS_DIR / "training_data.jsonl"
 MODEL_CHECKPOINT = ARTIFACTS_DIR / "model_final.pt"
 ONNX_MODEL = ARTIFACTS_DIR / "model.onnx"
-# Legacy paths for backward compatibility
-ONNX_DRAFTING = ARTIFACTS_DIR / "model_drafting.onnx"
-ONNX_MOVEMENT = ARTIFACTS_DIR / "model_movement.onnx"
 
 
 class HTMFDataset(Dataset):
@@ -80,10 +79,63 @@ class HTMFDataset(Dataset):
     def __init__(self, data_path: Path):
         self.drafting_samples: list[dict] = []
         self.movement_samples: list[dict] = []
+        self.teacher_counts: Counter[str] = Counter()
 
         with open(data_path) as f:
-            for line in f:
+            for line_num, line in enumerate(f, start=1):
                 sample = json.loads(line)
+                policy_version = sample.get("policy_version")
+                if policy_version != POLICY_VERSION:
+                    raise ValueError(
+                        f"{data_path}:{line_num}: expected policy_version={POLICY_VERSION}, "
+                        f"got {policy_version!r}. Regenerate selfplay data; v1 movement "
+                        "policies are not compatible with the absolute source-cell encoding."
+                    )
+
+                if "turn" not in sample:
+                    raise ValueError(
+                        f"{data_path}:{line_num}: missing turn metadata. Regenerate "
+                        "policy-v2 selfplay data before training."
+                    )
+
+                teacher = sample.get("teacher")
+                if teacher not in VALID_TEACHERS:
+                    raise ValueError(
+                        f"{data_path}:{line_num}: expected teacher in "
+                        f"{sorted(VALID_TEACHERS)}, got {teacher!r}. Rebuild replay "
+                        "so legacy samples are normalized."
+                    )
+
+                if not isinstance(sample.get("teacher_playouts"), int):
+                    raise ValueError(
+                        f"{data_path}:{line_num}: teacher_playouts must be an integer"
+                    )
+
+                if not isinstance(sample.get("model_prior_weight"), int | float):
+                    raise ValueError(
+                        f"{data_path}:{line_num}: model_prior_weight must be numeric"
+                    )
+
+                if not isinstance(sample.get("run_id"), str) or not sample["run_id"]:
+                    raise ValueError(
+                        f"{data_path}:{line_num}: run_id must be a non-empty string"
+                    )
+
+                if "teacher_model" in sample and not isinstance(sample["teacher_model"], str):
+                    raise ValueError(
+                        f"{data_path}:{line_num}: teacher_model must be a string when present"
+                    )
+
+                expected_policy_len = (
+                    NUM_CELLS if sample["is_drafting"] else MOVEMENT_POLICY_SIZE
+                )
+                if len(sample["policy"]) != expected_policy_len:
+                    raise ValueError(
+                        f"{data_path}:{line_num}: expected policy length "
+                        f"{expected_policy_len}, got {len(sample['policy'])}"
+                    )
+
+                self.teacher_counts[teacher] += 1
                 if sample["is_drafting"]:
                     self.drafting_samples.append(sample)
                 else:
@@ -91,6 +143,13 @@ class HTMFDataset(Dataset):
 
         print(f"Loaded {len(self.drafting_samples)} drafting samples")
         print(f"Loaded {len(self.movement_samples)} movement samples")
+        print(
+            "Teacher counts: "
+            + ", ".join(
+                f"{teacher}={self.teacher_counts.get(teacher, 0)}"
+                for teacher in sorted(VALID_TEACHERS)
+            )
+        )
 
     def __len__(self):
         return len(self.drafting_samples) + len(self.movement_samples)
@@ -388,7 +447,7 @@ class HTMFNet(nn.Module):
     - Input: 8 channels x 8x8 grid (60 valid cells embedded in 64)
     - Shared trunk: Initial conv + residual blocks (shared between all heads)
     - Drafting policy head: outputs 60 cell probabilities
-    - Movement policy head: outputs 168 move probabilities (4 penguins × 6 dirs × 7 dists)
+    - Movement policy head: outputs 2520 move probabilities (60 source cells × 6 dirs × 7 dists)
     - Value head: predicts win probability
     - Ownership head: predicts per-cell ownership at game end (60 cells × 3 classes)
     - Score difference head: predicts final score difference distribution (185 bins)
@@ -468,6 +527,8 @@ def train_model(
     device: torch.device,
     is_drafting: bool,
     batch_size: int = 256,
+    value_weight: float = 0.25,
+    aux_weight: float = 0.05,
 ) -> tuple[float, float, float, float]:
     """Train the model for one epoch.
 
@@ -557,13 +618,13 @@ def train_model(
             # Combine PDF and CDF losses (equal weighting as in KataGo)
             score_diff_loss = pdf_loss + cdf_loss
 
-        # Combined loss with auxiliary targets
-        # Weight auxiliary losses lower to avoid overwhelming main objectives
+        # Policy priors are the only v1 search signal. Value and auxiliary heads
+        # stay as regularizers, weighted low enough not to drown out policy loss.
         loss = (
             policy_loss
-            + value_loss
-            + 0.5 * ownership_loss
-            + 0.5 * score_diff_loss
+            + value_weight * value_loss
+            + aux_weight * ownership_loss
+            + aux_weight * score_diff_loss
         )
         loss.backward()
         optimizer.step()
@@ -589,7 +650,7 @@ def export_to_onnx(model: HTMFNet, path: Path):
     - Input: features (batch, 480)
     - Outputs:
       - drafting_policy (batch, 60)
-      - movement_policy (batch, 168)
+      - movement_policy (batch, 2520)
       - value (batch, 1)
       - ownership (batch, 60, 3) - per-cell ownership prediction
       - score_diff (batch, 185) - score difference distribution
@@ -626,6 +687,23 @@ def export_to_onnx(model: HTMFNet, path: Path):
     )
 
 
+def compatible_state_dict(
+    model: HTMFNet, state_dict: dict[str, torch.Tensor]
+) -> tuple[dict[str, torch.Tensor], list[str]]:
+    """Return only checkpoint tensors whose names and shapes match this model."""
+    current_state = model.state_dict()
+    compatible = {}
+    skipped = []
+
+    for name, tensor in state_dict.items():
+        if name in current_state and current_state[name].shape == tensor.shape:
+            compatible[name] = tensor
+        else:
+            skipped.append(name)
+
+    return compatible, skipped
+
+
 def main():
     parser = argparse.ArgumentParser(description="Train HTMF neural network")
     parser.add_argument(
@@ -634,10 +712,33 @@ def main():
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--batch-size", type=int, default=256, help="Batch size")
     parser.add_argument(
-        "--num-filters", type=int, default=64, help="Number of conv filters"
+        "--num-filters",
+        type=int,
+        default=None,
+        help="Number of conv filters; defaults to checkpoint metadata or 64 for a fresh model",
     )
     parser.add_argument(
-        "--num-blocks", type=int, default=4, help="Number of residual blocks"
+        "--num-blocks",
+        type=int,
+        default=None,
+        help="Number of residual blocks; defaults to checkpoint metadata or 4 for a fresh model",
+    )
+    parser.add_argument(
+        "--value-weight",
+        type=float,
+        default=0.25,
+        help="Loss weight for the value head; policy remains the primary search signal",
+    )
+    parser.add_argument(
+        "--aux-weight",
+        type=float,
+        default=0.05,
+        help="Loss weight for ownership and score-difference auxiliary heads",
+    )
+    parser.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Train from random initialization instead of loading model_final.pt",
     )
     args = parser.parse_args()
 
@@ -683,25 +784,44 @@ def main():
     if drafting_ownerships is not None or movement_ownerships is not None:
         print("Auxiliary targets detected: ownership, score_diff")
 
+    checkpoint = None
+    state_dict = None
+    if args.fresh:
+        print("Fresh training requested; not loading existing checkpoint.")
+    elif MODEL_CHECKPOINT.exists():
+        print(f"Loading existing model metadata from {MODEL_CHECKPOINT}...")
+        checkpoint = torch.load(
+            MODEL_CHECKPOINT, map_location=device, weights_only=True
+        )
+        if isinstance(checkpoint, dict) and "model" in checkpoint:
+            state_dict = checkpoint["model"]
+            if args.num_filters is None and "num_filters" in checkpoint:
+                args.num_filters = int(checkpoint["num_filters"])
+            if args.num_blocks is None and "num_blocks" in checkpoint:
+                args.num_blocks = int(checkpoint["num_blocks"])
+        else:
+            state_dict = checkpoint
+
+    if args.num_filters is None:
+        args.num_filters = 64
+    if args.num_blocks is None:
+        args.num_blocks = 4
+
     # Create single shared model
     model = HTMFNet(num_filters=args.num_filters, num_blocks=args.num_blocks).to(device)
 
     # Load existing weights if available
-    if MODEL_CHECKPOINT.exists():
-        print(f"Loading existing model from {MODEL_CHECKPOINT}...")
-        checkpoint = torch.load(
-            MODEL_CHECKPOINT, map_location=device, weights_only=True
+    if state_dict is not None:
+        compatible, skipped = compatible_state_dict(model, state_dict)
+        missing, unexpected = model.load_state_dict(compatible, strict=False)
+        print(
+            f"Loaded {len(compatible)} tensors from existing checkpoint "
+            f"({len(skipped)} shape/name mismatches skipped)"
         )
-        # Handle both old format (direct state_dict) and new format (dict with "model" key)
-        if "model" in checkpoint:
-            state_dict = checkpoint["model"]
-        else:
-            # Old format: checkpoint is the state_dict directly
-            state_dict = checkpoint
-
-        # Load weights, allowing for missing keys (e.g., new auxiliary heads)
-        model.load_state_dict(state_dict, strict=False)
-        print("Loaded existing model weights (auxiliary heads will be randomly initialized if not present)")
+        if missing:
+            print(f"Initialized {len(missing)} tensors from scratch")
+        if unexpected:
+            print(f"Ignored {len(unexpected)} unexpected tensors")
 
     # Single optimizer for the entire model
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -717,6 +837,8 @@ def main():
     print(f"Learning rate: {args.lr} (with cosine annealing schedule)")
     print(f"Warmup epochs: {warmup_epochs}")
     print(f"Batch size: {args.batch_size}")
+    print(f"Value loss weight: {args.value_weight}")
+    print(f"Auxiliary loss weight: {args.aux_weight}")
     print()
 
     for epoch in range(1, args.epochs + 1):
@@ -732,6 +854,8 @@ def main():
             device,
             is_drafting=True,
             batch_size=args.batch_size,
+            value_weight=args.value_weight,
+            aux_weight=args.aux_weight,
         )
 
         # Train on movement data
@@ -746,6 +870,8 @@ def main():
             device,
             is_drafting=False,
             batch_size=args.batch_size,
+            value_weight=args.value_weight,
+            aux_weight=args.aux_weight,
         )
 
         # Print detailed loss analysis
@@ -757,19 +883,19 @@ def main():
         print(f"\nDRAFTING PHASE:")
         print(f"  Raw losses:      P={d_policy_loss:.4f}  V={d_value_loss:.4f}  O={d_ownership_loss:.4f}  S={d_score_diff_loss:.4f}")
         if d_ownership_loss > 0:
-            print(f"  Weighted (0.5):                                   O={0.5*d_ownership_loss:.4f}  S={0.5*d_score_diff_loss:.4f}")
-            total_weighted = d_policy_loss + d_value_loss + 0.5*d_ownership_loss + 0.5*d_score_diff_loss
+            print(f"  Weighted:        V={args.value_weight*d_value_loss:.4f}  O={args.aux_weight*d_ownership_loss:.4f}  S={args.aux_weight*d_score_diff_loss:.4f}")
+            total_weighted = d_policy_loss + args.value_weight*d_value_loss + args.aux_weight*d_ownership_loss + args.aux_weight*d_score_diff_loss
             print(f"  Total weighted loss: {total_weighted:.4f}")
-            print(f"  Contribution %:  P={100*d_policy_loss/total_weighted:.1f}%  V={100*d_value_loss/total_weighted:.1f}%  O={100*0.5*d_ownership_loss/total_weighted:.1f}%  S={100*0.5*d_score_diff_loss/total_weighted:.1f}%")
+            print(f"  Contribution %:  P={100*d_policy_loss/total_weighted:.1f}%  V={100*args.value_weight*d_value_loss/total_weighted:.1f}%  O={100*args.aux_weight*d_ownership_loss/total_weighted:.1f}%  S={100*args.aux_weight*d_score_diff_loss/total_weighted:.1f}%")
 
         # Movement losses
         print(f"\nMOVEMENT PHASE:")
         print(f"  Raw losses:      P={m_policy_loss:.4f}  V={m_value_loss:.4f}  O={m_ownership_loss:.4f}  S={m_score_diff_loss:.4f}")
         if m_ownership_loss > 0:
-            print(f"  Weighted (0.5):                                   O={0.5*m_ownership_loss:.4f}  S={0.5*m_score_diff_loss:.4f}")
-            total_weighted = m_policy_loss + m_value_loss + 0.5*m_ownership_loss + 0.5*m_score_diff_loss
+            print(f"  Weighted:        V={args.value_weight*m_value_loss:.4f}  O={args.aux_weight*m_ownership_loss:.4f}  S={args.aux_weight*m_score_diff_loss:.4f}")
+            total_weighted = m_policy_loss + args.value_weight*m_value_loss + args.aux_weight*m_ownership_loss + args.aux_weight*m_score_diff_loss
             print(f"  Total weighted loss: {total_weighted:.4f}")
-            print(f"  Contribution %:  P={100*m_policy_loss/total_weighted:.1f}%  V={100*m_value_loss/total_weighted:.1f}%  O={100*0.5*m_ownership_loss/total_weighted:.1f}%  S={100*0.5*m_score_diff_loss/total_weighted:.1f}%")
+            print(f"  Contribution %:  P={100*m_policy_loss/total_weighted:.1f}%  V={100*args.value_weight*m_value_loss/total_weighted:.1f}%  O={100*args.aux_weight*m_ownership_loss/total_weighted:.1f}%  S={100*args.aux_weight*m_score_diff_loss/total_weighted:.1f}%")
 
         # Update learning rate (warmup for first N epochs, then cosine annealing)
         current_lr = optimizer.param_groups[0]['lr']
@@ -791,6 +917,7 @@ def main():
             "model": model.state_dict(),
             "num_filters": args.num_filters,
             "num_blocks": args.num_blocks,
+            "policy_version": POLICY_VERSION,
         },
         MODEL_CHECKPOINT,
     )

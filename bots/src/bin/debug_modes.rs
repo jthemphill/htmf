@@ -1,11 +1,11 @@
-//! Debug benchmark: Compare MCTS modes
+//! Debug benchmark: Compare policy-prior sources
 //!
 //! This tests:
-//! 1. Pure MCTS (UCB1) vs PUCT with uniform priors - PUCT should be similar or better
+//! 1. Production baseline vs itself
 //! 2. PUCT with NN priors vs PUCT with uniform priors - shows if NN is helping
 //!
-//! The PUCT mode uses random rollouts for evaluation (same as Pure MCTS),
-//! but uses the PUCT selection formula which outperforms UCB1.
+//! All modes use the same PUCT search and random rollout evaluation. The only
+//! thing that changes is the policy prior source.
 
 use std::sync::Arc;
 
@@ -135,12 +135,11 @@ fn main() {
     println!("Playouts per move: {}", PLAYOUTS);
     println!("Games per comparison: {}", NUM_GAMES);
 
-    // Test 1: Pure MCTS (UCB1) vs PUCT with uniform priors
-    // PUCT should be similar or better than UCB1
+    // Test 1: Baseline implementation paths should be equivalent.
     run_comparison(
-        "Test 1: Pure MCTS (UCB1) vs PUCT (uniform priors)",
-        "Pure",
-        "PUCT",
+        "Test 1: Production baseline vs explicit uniform priors",
+        "Baseline",
+        "Uniform",
         |game, player| MCTSBot::new(game, player),
         |game, player| MCTSBot::with_neural_net(game, player, None),
     );
@@ -161,12 +160,12 @@ fn main() {
                 |game, player| MCTSBot::with_neural_net(game, player, None),
             );
 
-            // Test 3: PUCT with NN priors vs Pure MCTS
+            // Test 3: PUCT with NN priors vs production baseline
             let nn_clone2 = nn.clone();
             run_comparison(
-                "Test 3: PUCT (NN priors) vs Pure MCTS (UCB1)",
+                "Test 3: PUCT (NN priors) vs production baseline",
                 "NN",
-                "Pure",
+                "Baseline",
                 move |game, player| MCTSBot::with_neural_net(game, player, Some(nn_clone2.clone())),
                 |game, player| MCTSBot::new(game, player),
             );
@@ -179,7 +178,7 @@ fn main() {
 
     println!("\n\nInterpretation Guide:");
     println!("=====================");
-    println!("- PUCT should be similar or better than Pure MCTS");
+    println!("- Baseline vs Uniform should look roughly even");
     println!("- If NN >> Uniform: Neural network policy priors are helping");
     println!("- If Uniform >> NN: Neural network priors are hurting (bad training)");
 }

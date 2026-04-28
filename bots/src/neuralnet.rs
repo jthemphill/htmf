@@ -1,3 +1,4 @@
+use crate::policy::policy_size;
 use htmf::NUM_CELLS;
 use tract_onnx::prelude::*;
 
@@ -12,7 +13,7 @@ pub struct NeuralNet {
 
 /// Output from neural network inference
 pub struct NeuralNetOutput {
-    /// Policy logits (60 for drafting, 3600 for movement)
+    /// Policy logits (60 for drafting, 2520 for movement)
     pub policy_logits: Vec<f32>,
     /// Value estimate (win probability for current player)
     pub value: f32,
@@ -23,7 +24,7 @@ impl NeuralNet {
     ///
     /// The model should have:
     /// - Input: features (1, 480)
-    /// - Outputs: drafting_policy (1, 60), movement_policy (1, 168), value (1, 1)
+    /// - Outputs: drafting_policy (1, 60), movement_policy (1, 2520), value (1, 1)
     pub fn load(model_path: &str) -> TractResult<Self> {
         let model = tract_onnx::onnx()
             .model_for_path(model_path)?
@@ -52,8 +53,8 @@ impl NeuralNet {
         let features = extract_features(game, current_player);
         let is_drafting = !game.finished_drafting();
 
-        let input: Tensor = tract_ndarray::Array2::from_shape_vec((1, NUM_FEATURES), features)?
-            .into();
+        let input: Tensor =
+            tract_ndarray::Array2::from_shape_vec((1, NUM_FEATURES), features)?.into();
 
         let outputs = self.model.run(tvec!(input.into()))?;
 
@@ -65,6 +66,19 @@ impl NeuralNet {
             .iter()
             .copied()
             .collect();
+        let expected_policy_size = policy_size(is_drafting);
+        if policy_logits.len() != expected_policy_size {
+            return Err(TractError::msg(format!(
+                "model output {} has {} logits, expected {} for policy encoding v2",
+                if is_drafting {
+                    "drafting_policy"
+                } else {
+                    "movement_policy"
+                },
+                policy_logits.len(),
+                expected_policy_size
+            )));
+        }
 
         // Convert tanh output [-1, 1] to probability [0, 1]
         let raw_value: f32 = outputs[2].to_array_view::<f32>()?[[0, 0]];

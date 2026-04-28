@@ -2,6 +2,7 @@ use wasm_bindgen::prelude::*;
 
 use htmf::board::Player;
 use htmf::game::GameState;
+use htmf::NUM_CELLS;
 use htmf_bots::MCTSBot;
 
 mod utils;
@@ -97,6 +98,17 @@ impl Game {
             .moves(src)
             .into_iter()
             .collect()
+    }
+
+    pub fn features_for_active_player(&self) -> Vec<f32> {
+        let Some(current_player) = self.bot.root_game.state.active_player().map(|p| p.id) else {
+            return vec![0.0; 8 * NUM_CELLS];
+        };
+        extract_features(&self.bot.root_game.state, current_player)
+    }
+
+    pub fn apply_policy_logits(&mut self, logits: Vec<f32>) {
+        self.bot.update_root_priors_from_logits(&logits);
     }
 
     pub fn place_penguin(&mut self, dst: u8) -> Result<(), JsValue> {
@@ -211,4 +223,47 @@ impl Default for Game {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn extract_features(game: &GameState, current_player: usize) -> Vec<f32> {
+    let opponent = 1 - current_player;
+    let is_drafting = !game.finished_drafting();
+
+    let mut features = vec![0.0f32; 8 * NUM_CELLS];
+
+    for cell in 0..NUM_CELLS as u8 {
+        if game.board.fish[0].contains(cell) {
+            features[cell as usize] = 1.0;
+        }
+        if game.board.fish[1].contains(cell) {
+            features[NUM_CELLS + cell as usize] = 1.0;
+        }
+        if game.board.fish[2].contains(cell) {
+            features[2 * NUM_CELLS + cell as usize] = 1.0;
+        }
+    }
+
+    for cell in game.board.penguins[current_player].into_iter() {
+        features[3 * NUM_CELLS + cell as usize] = 1.0;
+    }
+
+    for cell in game.board.penguins[opponent].into_iter() {
+        features[4 * NUM_CELLS + cell as usize] = 1.0;
+    }
+
+    for cell in game.board.claimed[current_player].into_iter() {
+        features[5 * NUM_CELLS + cell as usize] = 1.0;
+    }
+
+    for cell in game.board.claimed[opponent].into_iter() {
+        features[6 * NUM_CELLS + cell as usize] = 1.0;
+    }
+
+    if is_drafting {
+        for i in 0..NUM_CELLS {
+            features[7 * NUM_CELLS + i] = 1.0;
+        }
+    }
+
+    features
 }
