@@ -2,6 +2,8 @@
 default:
     @just --list
 
+bazel := `if command -v bazel > /dev/null; then echo bazel; elif command -v bazelisk > /dev/null; then echo bazelisk; else echo bazel; fi`
+
 # Remove build artifacts
 clean:
     rm -rf wasm/pkg www/dist
@@ -10,20 +12,32 @@ clean:
 install_cargo:
     @command -v cargo > /dev/null || (echo "Cargo not found. Please install Rust from https://rustup.rs/" && exit 1)
 
+# Check that Bazel or Bazelisk is installed
+install_bazel:
+    @command -v bazel > /dev/null || command -v bazelisk > /dev/null || (echo "Bazel not found. Install Bazelisk from https://github.com/bazelbuild/bazelisk and rerun this command." && exit 1)
+
 # Run Rust tests
-test_rust: install_cargo
-    cargo test
+test_rust: install_bazel
+    {{bazel}} test //engine:unit_test //bots:unit_test
 
-# Install wasm-pack
-install_wasm_pack: install_cargo
-    cargo install wasm-pack
+# Build native Rust libraries and binaries with Bazel
+build_rust: install_bazel
+    {{bazel}} build //engine:htmf //bots:htmf_bots //bots:debug_modes //bots:nn_vs_mcts //selfplay:selfplay
 
-# Build WASM package
-build_wasm: install_wasm_pack
-    wasm-pack build wasm --target web --profiling
+# Build WASM package with Bazel
+build_wasm: install_bazel
+    {{bazel}} build //wasm:htmf_wasm_pkg
+
+# Refresh the source-tree WASM package consumed by Bun workspaces
+sync_wasm_pkg: build_wasm
+    mkdir -p wasm/pkg
+    cp -f bazel-bin/wasm/htmf_wasm_pkg/htmf_wasm.d.ts wasm/pkg/htmf_wasm.d.ts
+    cp -f bazel-bin/wasm/htmf_wasm_pkg/htmf_wasm.js wasm/pkg/htmf_wasm.js
+    cp -f bazel-bin/wasm/htmf_wasm_pkg/htmf_wasm_bg.wasm wasm/pkg/htmf_wasm_bg.wasm
+    cp -f bazel-bin/wasm/htmf_wasm_pkg/package.json wasm/pkg/package.json
 
 # Install bun dependencies
-install: build_wasm
+install: sync_wasm_pkg
     bun install
 
 # Install Playwright browsers
