@@ -28,6 +28,21 @@ To run all tests:
 just test
 ```
 
+## Bazel Rust builds
+
+The Rust crates can also be built and tested with Bazel. Use
+[Bazelisk](https://github.com/bazelbuild/bazelisk) or Bazel matching the
+version in `.bazelversion`.
+
+```sh
+just build_rust
+just test_rust
+just build_wasm_bazel
+```
+
+`just sync_wasm_pkg` copies the Bazel-built WebAssembly package into `wasm/pkg`
+so the existing Bun workspace import of `htmf-wasm` continues to work.
+
 ## Pull Request Previews
 
 When you open a pull request, a preview of your changes will be automatically deployed to GitHub Pages. The preview URL will be posted as a comment on your PR, allowing reviewers to test your changes before merging.

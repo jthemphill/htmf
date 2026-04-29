@@ -1,0 +1,14 @@
+load("@rules_rust_wasm_bindgen//:defs.bzl", "rust_wasm_bindgen_toolchain")
+
+exports_files(["Cargo.Bazel.lock"])
+
+rust_wasm_bindgen_toolchain(
+    name = "toolchain_impl",
+    wasm_bindgen_cli = "@wasm_bindgen_cli//:wasm-bindgen-cli__wasm-bindgen",
+)
+
+toolchain(
+    name = "toolchain",
+    toolchain = ":toolchain_impl",
+    toolchain_type = "@rules_rust_wasm_bindgen//:toolchain_type",
+)

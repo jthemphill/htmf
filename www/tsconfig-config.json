@@ -3,6 +3,7 @@
   "compilerOptions": {
     "types": ["node"],
     "allowJs": true,
+    "noEmit": true,
     "isolatedDeclarations": false
   },
   "files": ["eslint.config.mjs", "vite.config.ts", "vitest.config.ts"]

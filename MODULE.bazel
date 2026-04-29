@@ -1,0 +1,40 @@
+module(
+    name = "htmf",
+    version = "0.1.0",
+)
+
+bazel_dep(name = "rules_rust", version = "0.69.0")
+bazel_dep(name = "rules_rust_wasm_bindgen", version = "0.69.0")
+
+rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
+rust.toolchain(
+    edition = "2021",
+    versions = ["1.91.1"],
+)
+
+crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
+crate.from_cargo(
+    name = "crates",
+    cargo_lockfile = "//:Cargo.lock",
+    manifests = ["//:Cargo.toml"],
+)
+use_repo(crate, "crates")
+
+wasm_bindgen_cli = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
+wasm_bindgen_cli.spec(
+    package = "wasm-bindgen-cli",
+    repositories = ["wasm_bindgen_cli"],
+    version = "=0.2.117",
+)
+wasm_bindgen_cli.annotation(
+    crate = "wasm-bindgen-cli",
+    gen_all_binaries = True,
+    repositories = ["wasm_bindgen_cli"],
+)
+wasm_bindgen_cli.from_specs(
+    name = "wasm_bindgen_cli",
+    cargo_lockfile = "//tools/wasm_bindgen:Cargo.Bazel.lock",
+)
+use_repo(wasm_bindgen_cli, "wasm_bindgen_cli")
+
+register_toolchains("//tools/wasm_bindgen:toolchain")
