@@ -6,6 +6,7 @@
 //! Usage: nn_vs_mcts [num_games] [num_playouts] [--uniform]
 //!   --uniform: Use uniform priors instead of trained NN (for baseline comparison)
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -14,6 +15,36 @@ use htmf::game::GameState;
 use htmf_bots::{MCTSBot, NeuralNet};
 use rand::prelude::*;
 use rayon::prelude::*;
+
+struct ProgressTracker {
+    completed_games: AtomicUsize,
+    total_games: usize,
+    report_every: usize,
+    started_at: Instant,
+}
+
+impl ProgressTracker {
+    fn new(total_games: usize) -> Self {
+        Self {
+            completed_games: AtomicUsize::new(0),
+            total_games,
+            report_every: (total_games / 20).max(1),
+            started_at: Instant::now(),
+        }
+    }
+
+    fn finish_game(&self) {
+        let completed = self.completed_games.fetch_add(1, Ordering::Relaxed) + 1;
+        if completed == self.total_games || completed % self.report_every == 0 {
+            println!(
+                "Progress: {completed}/{} games ({:.0}%) in {:.1}s",
+                self.total_games,
+                100.0 * completed as f64 / self.total_games as f64,
+                self.started_at.elapsed().as_secs_f64()
+            );
+        }
+    }
+}
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -79,6 +110,8 @@ fn main() {
         mcts_time: Duration,
     }
 
+    let progress = ProgressTracker::new(num_games);
+
     // Run games in parallel
     let results: Vec<GameResult> = (0..num_games)
         .into_par_iter()
@@ -90,11 +123,8 @@ fn main() {
             let mut rng = StdRng::seed_from_u64(game_num as u64);
             let mut game = GameState::new_two_player(&mut rng);
 
-            let mut nn_bot = MCTSBot::with_neural_net(
-                game.clone(),
-                Player { id: nn_player },
-                nn.clone(),
-            );
+            let mut nn_bot =
+                MCTSBot::with_neural_net(game.clone(), Player { id: nn_player }, nn.clone());
             let mut mcts_bot = MCTSBot::new(game.clone(), Player { id: mcts_player });
 
             let mut move_count = 0;
@@ -138,6 +168,8 @@ fn main() {
                 2 // Draw
             };
 
+            progress.finish_game();
+
             GameResult {
                 game_num,
                 nn_player,
@@ -164,9 +196,18 @@ fn main() {
 
     for r in &sorted_results {
         let result_str = match r.result {
-            0 => { nn_wins += 1; "NN wins" }
-            1 => { mcts_wins += 1; "MCTS wins" }
-            _ => { draws += 1; "Draw" }
+            0 => {
+                nn_wins += 1;
+                "NN wins"
+            }
+            1 => {
+                mcts_wins += 1;
+                "MCTS wins"
+            }
+            _ => {
+                draws += 1;
+                "Draw"
+            }
         };
         total_nn_time += r.nn_time;
         total_mcts_time += r.mcts_time;
@@ -185,13 +226,28 @@ fn main() {
 
     println!();
     println!("Results:");
-    println!("  NN wins:   {} ({:.1}%)", nn_wins, 100.0 * nn_wins as f64 / num_games as f64);
-    println!("  MCTS wins: {} ({:.1}%)", mcts_wins, 100.0 * mcts_wins as f64 / num_games as f64);
-    println!("  Draws:     {} ({:.1}%)", draws, 100.0 * draws as f64 / num_games as f64);
+    println!(
+        "  NN wins:   {} ({:.1}%)",
+        nn_wins,
+        100.0 * nn_wins as f64 / num_games as f64
+    );
+    println!(
+        "  MCTS wins: {} ({:.1}%)",
+        mcts_wins,
+        100.0 * mcts_wins as f64 / num_games as f64
+    );
+    println!(
+        "  Draws:     {} ({:.1}%)",
+        draws,
+        100.0 * draws as f64 / num_games as f64
+    );
 
     println!();
     println!("Thinking time:");
     println!("  NN total:   {:.2}s", total_nn_time.as_secs_f64());
     println!("  MCTS total: {:.2}s", total_mcts_time.as_secs_f64());
-    println!("  NN/MCTS ratio: {:.2}x", total_nn_time.as_secs_f64() / total_mcts_time.as_secs_f64());
+    println!(
+        "  NN/MCTS ratio: {:.2}x",
+        total_nn_time.as_secs_f64() / total_mcts_time.as_secs_f64()
+    );
 }
