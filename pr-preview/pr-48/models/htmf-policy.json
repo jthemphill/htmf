@@ -1,0 +1,29 @@
+{
+  "model": "htmf-policy.onnx",
+  "format": "onnx",
+  "featureVersion": 1,
+  "policyVersion": 2,
+  "features": {
+    "shape": [1, 480],
+    "channels": [
+      "one_fish",
+      "two_fish",
+      "three_fish",
+      "current_player_penguins",
+      "opponent_penguins",
+      "current_player_claimed",
+      "opponent_claimed",
+      "is_drafting"
+    ]
+  },
+  "policy": {
+    "draftingSize": 60,
+    "movementSize": 2520,
+    "movementEncoding": "source_cell * 42 + direction * 7 + distance_minus_one"
+  },
+  "serving": {
+    "runtime": "onnxruntime-web",
+    "executionProviders": ["webgpu", "wasm"],
+    "modelPriorWeight": 0.05
+  }
+}
