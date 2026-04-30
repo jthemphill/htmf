@@ -38,6 +38,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-library-
 
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: htmf
+          external-cache: true
+          repository-cache: true
+
       - name: Setup bun
         uses: oven-sh/setup-bun@v2
         with:

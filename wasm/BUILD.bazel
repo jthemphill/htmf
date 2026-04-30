@@ -1,0 +1,65 @@
+load("@crates//:defs.bzl", "aliases", "all_crate_deps")
+load("@rules_rust//rust:defs.bzl", "rust_shared_library")
+load("@rules_rust_wasm_bindgen//:defs.bzl", "rust_wasm_bindgen")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["Cargo.toml"])
+
+rust_shared_library(
+    name = "htmf_wasm_raw",
+    srcs = glob(["src/**/*.rs"]),
+    aliases = aliases(),
+    crate_features = ["console_error_panic_hook"],
+    crate_name = "htmf_wasm",
+    crate_root = "src/lib.rs",
+    deps = all_crate_deps(normal = True) + [
+        "//bots:htmf_bots",
+        "//engine:htmf",
+    ],
+    edition = "2021",
+    rustc_flags = [
+        "--cfg",
+        'getrandom_backend="wasm_js"',
+    ],
+)
+
+rust_wasm_bindgen(
+    name = "htmf_wasm_bindgen",
+    out_name = "htmf_wasm",
+    target = "web",
+    wasm_file = ":htmf_wasm_raw",
+)
+
+genrule(
+    name = "htmf_wasm_pkg",
+    srcs = [
+        ":htmf_wasm_bindgen",
+        "package.template.json",
+    ],
+    outs = [
+        "htmf_wasm_pkg/htmf_wasm.d.ts",
+        "htmf_wasm_pkg/htmf_wasm.js",
+        "htmf_wasm_pkg/htmf_wasm_bg.wasm",
+        "htmf_wasm_pkg/package.json",
+    ],
+    cmd = """
+set -eu
+out_dir="$(@D)/htmf_wasm_pkg"
+mkdir -p "$$out_dir"
+for src in $(SRCS); do
+  case "$$(basename "$$src")" in
+    htmf_wasm.d.ts|htmf_wasm.js|htmf_wasm_bg.wasm|package.json)
+      cp "$$src" "$$out_dir/"
+      ;;
+    package.template.json)
+      cp "$$src" "$$out_dir/package.json"
+      ;;
+  esac
+done
+test -f "$$out_dir/htmf_wasm.d.ts"
+test -f "$$out_dir/htmf_wasm.js"
+test -f "$$out_dir/htmf_wasm_bg.wasm"
+test -f "$$out_dir/package.json"
+""",
+)

@@ -1,0 +1,18 @@
+load("@crates//:defs.bzl", "aliases", "all_crate_deps")
+load("@rules_rust//rust:defs.bzl", "rust_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["Cargo.toml"])
+
+rust_binary(
+    name = "selfplay",
+    srcs = ["src/main.rs"],
+    aliases = aliases(),
+    deps = all_crate_deps(normal = True) + [
+        "//bots:htmf_bots",
+        "//engine:htmf",
+    ],
+    edition = "2021",
+    proc_macro_deps = all_crate_deps(proc_macro = True),
+)

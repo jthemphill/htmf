@@ -1,0 +1,18 @@
+{
+  "name": "htmf-wasm",
+  "type": "module",
+  "collaborators": [
+    "Jeff Hemphill <jthemphill@gmail.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "htmf_wasm_bg.wasm",
+    "htmf_wasm.js",
+    "htmf_wasm.d.ts"
+  ],
+  "main": "htmf_wasm.js",
+  "types": "htmf_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

@@ -5,4 +5,4 @@ target
 train/data
 node_modules
 www/dist
-
+bazel-*
