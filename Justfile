@@ -43,7 +43,7 @@ install: sync_wasm_pkg
 
 # Install Playwright browsers
 playwright_install:
-    cd www && bunx playwright install --with-deps
+    cd www && bunx playwright install chromium
 
 # Start development server
 dev: install
