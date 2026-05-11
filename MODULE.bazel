@@ -47,7 +47,7 @@ wasm_bindgen_cli = use_extension("@rules_rust//crate_universe:extensions.bzl", "
 wasm_bindgen_cli.spec(
     package = "wasm-bindgen-cli",
     repositories = ["wasm_bindgen_cli"],
-    version = "=0.2.117",
+    version = "=0.2.121",
 )
 wasm_bindgen_cli.annotation(
     crate = "wasm-bindgen-cli",
