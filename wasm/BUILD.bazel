@@ -13,14 +13,14 @@ rust_shared_library(
     crate_features = ["console_error_panic_hook"],
     crate_name = "htmf_wasm",
     crate_root = "src/lib.rs",
-    deps = all_crate_deps(normal = True) + [
-        "//bots:htmf_bots",
-        "//engine:htmf",
-    ],
     edition = "2021",
     rustc_flags = [
         "--cfg",
         'getrandom_backend="wasm_js"',
+    ],
+    deps = all_crate_deps(normal = True) + [
+        "//bots:htmf_bots",
+        "//engine:htmf",
     ],
 )
 

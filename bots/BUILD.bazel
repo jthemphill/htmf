@@ -11,44 +11,45 @@ rust_library(
     aliases = aliases(),
     crate_name = "htmf_bots",
     crate_root = "src/lib.rs",
+    edition = "2021",
     deps = all_crate_deps(normal = True) + [
         "//engine:htmf",
     ],
-    edition = "2021",
 )
 
 rust_test(
     name = "unit_test",
+    size = "small",
     aliases = aliases(
         normal_dev = True,
         proc_macro_dev = True,
     ),
     crate = ":htmf_bots",
+    edition = "2021",
+    proc_macro_deps = all_crate_deps(proc_macro_dev = True),
     deps = all_crate_deps(normal_dev = True) + [
         "//engine:htmf",
     ],
-    edition = "2021",
-    proc_macro_deps = all_crate_deps(proc_macro_dev = True),
 )
 
 rust_binary(
     name = "debug_modes",
     srcs = ["src/bin/debug_modes.rs"],
     aliases = aliases(),
+    edition = "2021",
     deps = all_crate_deps(normal = True) + [
         ":htmf_bots",
         "//engine:htmf",
     ],
-    edition = "2021",
 )
 
 rust_binary(
     name = "nn_vs_mcts",
     srcs = ["src/bin/nn_vs_mcts.rs"],
     aliases = aliases(),
+    edition = "2021",
     deps = all_crate_deps(normal = True) + [
         ":htmf_bots",
         "//engine:htmf",
     ],
-    edition = "2021",
 )

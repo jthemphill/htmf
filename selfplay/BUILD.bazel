@@ -9,10 +9,10 @@ rust_binary(
     name = "selfplay",
     srcs = ["src/main.rs"],
     aliases = aliases(),
+    edition = "2021",
+    proc_macro_deps = all_crate_deps(proc_macro = True),
     deps = all_crate_deps(normal = True) + [
         "//bots:htmf_bots",
         "//engine:htmf",
     ],
-    edition = "2021",
-    proc_macro_deps = all_crate_deps(proc_macro = True),
 )
