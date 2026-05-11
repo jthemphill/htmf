@@ -3,6 +3,7 @@ default:
     @just --list
 
 bazel := `if command -v bazel > /dev/null; then echo bazel; elif command -v bazelisk > /dev/null; then echo bazelisk; else echo bazel; fi`
+bazel_config := env_var_or_default("BAZEL_CONFIG", "--config=buildbuddy -c opt")
 
 # Remove build artifacts
 clean:
@@ -18,15 +19,15 @@ install_bazel:
 
 # Run Rust tests
 test_rust: install_bazel
-    {{bazel}} test //engine:unit_test //bots:unit_test
+    {{bazel}} test {{bazel_config}} //engine:unit_test //bots:unit_test
 
 # Build native Rust libraries and binaries with Bazel
 build_rust: install_bazel
-    {{bazel}} build //engine:htmf //bots:htmf_bots //bots:debug_modes //bots:nn_vs_mcts //selfplay:selfplay
+    {{bazel}} build {{bazel_config}} //engine:htmf //bots:htmf_bots //bots:debug_modes //bots:nn_vs_mcts //selfplay:selfplay
 
 # Build WASM package with Bazel
 build_wasm: install_bazel
-    {{bazel}} build //wasm:htmf_wasm_pkg
+    {{bazel}} build {{bazel_config}} --remote_download_outputs=toplevel //wasm:htmf_wasm_pkg
 
 # Refresh the source-tree WASM package consumed by Bun workspaces
 sync_wasm_pkg: build_wasm
