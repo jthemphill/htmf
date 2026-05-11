@@ -61,5 +61,7 @@ wasm_bindgen_cli.from_specs(
 use_repo(wasm_bindgen_cli, "wasm_bindgen_cli")
 
 register_toolchains("//tools/wasm_bindgen:toolchain")
+
 register_toolchains("@llvm_toolchain//:all")
+
 register_toolchains("@llvm_toolchain_linux_exec//:all")
