@@ -11,38 +11,25 @@ on:
 
 jobs:
   test:
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest]
-        node-version: [24.x]
-
-    name: Test WWW on ${{matrix.os}}
-    runs-on: ${{matrix.os}}
+    name: Test WWW
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Get date
-        id: date
-        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
-      - name: Cargo cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo
-            ~/.rustup
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Get Playwright version
+        id: playwright-version
+        shell: bash
+        run: |
+          version=$(node -p "require('./www/package.json').devDependencies.playwright")
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
 
-      - name: Library caches
-        uses: actions/cache@v4
+      - name: Playwright browser cache
+        uses: actions/cache@v5.0.5
         with:
-          path: |
-            ~/.cache
-            ~/Library/Caches/
-          key: ${{ runner.os }}-library-${{ steps.date.outputs.date }}
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
 
       - name: Setup Bazel for BuildBuddy execution
         if: env.IS_FORK_PR != 'true'
@@ -58,12 +45,12 @@ jobs:
           mode: local
 
       - name: Setup bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@v2.0.2
         with:
           bun-version: latest
 
       - name: Setup just
-        uses: extractions/setup-just@v3
+        uses: extractions/setup-just@v3.1.0
 
       - name: Run tests
         run: just test
