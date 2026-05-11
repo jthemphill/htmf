@@ -10,6 +10,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
 
 jobs:
   deploy-preview:
@@ -38,7 +39,35 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-library-
 
+      - name: Configure BuildBuddy auth
+        if: env.IS_FORK_PR != 'true'
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+        run: |
+          if [ -z "$BUILDBUDDY_API_KEY" ]; then
+            echo "BUILDBUDDY_API_KEY is required for trusted CI runs." >&2
+            exit 1
+          fi
+
+          echo 'BAZEL_CONFIG=--config=buildbuddy -c opt' >> "$GITHUB_ENV"
+
+      - name: Configure local Bazel for fork PR
+        if: env.IS_FORK_PR == 'true'
+        run: echo 'BAZEL_CONFIG=-c opt' >> "$GITHUB_ENV"
+
       - name: Setup Bazel
+        if: env.IS_FORK_PR != 'true'
+        uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: false
+          external-cache: true
+          repository-cache: true
+          bazelrc: |
+            common:buildbuddy --remote_header=x-buildbuddy-api-key=${{ secrets.BUILDBUDDY_API_KEY }}
+
+      - name: Setup Bazel
+        if: env.IS_FORK_PR == 'true'
         uses: bazel-contrib/setup-bazel@0.15.0
         with:
           bazelisk-cache: true
