@@ -1,0 +1,58 @@
+name: Setup Bazel
+description: Configure Bazel for BuildBuddy-backed trusted CI or local fork PR execution.
+
+inputs:
+  mode:
+    description: Use "buildbuddy" for trusted CI or "local" for fork PRs.
+    required: true
+  buildbuddy-api-key:
+    description: BuildBuddy API key. When omitted, mode "buildbuddy" falls back to local execution.
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Configure BuildBuddy execution
+      if: inputs.mode == 'buildbuddy'
+      shell: bash
+      env:
+        BUILDBUDDY_API_KEY: ${{ inputs.buildbuddy-api-key }}
+      run: |
+        if [ -z "$BUILDBUDDY_API_KEY" ]; then
+          echo "BUILDBUDDY_API_KEY is not set; falling back to local Bazel execution."
+          echo 'BAZEL_CONFIG=-c opt' >> "$GITHUB_ENV"
+          echo 'SETUP_BAZEL_USE_BUILDBUDDY=false' >> "$GITHUB_ENV"
+        else
+          echo 'BAZEL_CONFIG=--config=buildbuddy -c opt' >> "$GITHUB_ENV"
+          echo 'SETUP_BAZEL_USE_BUILDBUDDY=true' >> "$GITHUB_ENV"
+        fi
+
+    - name: Configure Bazel for local execution
+      if: inputs.mode == 'local'
+      shell: bash
+      run: |
+        echo 'BAZEL_CONFIG=-c opt' >> "$GITHUB_ENV"
+        echo 'SETUP_BAZEL_USE_BUILDBUDDY=false' >> "$GITHUB_ENV"
+
+    - name: Setup Bazel for BuildBuddy execution
+      if: env.SETUP_BAZEL_USE_BUILDBUDDY == 'true'
+      uses: bazel-contrib/setup-bazel@0.15.0
+      with:
+        bazelisk-cache: true
+        disk-cache: false
+        external-cache: true
+        repository-cache: true
+        bazelrc: |
+          common --curses=no
+          common:buildbuddy --remote_header=x-buildbuddy-api-key=${{ inputs.buildbuddy-api-key }}
+
+    - name: Setup Bazel for local execution
+      if: env.SETUP_BAZEL_USE_BUILDBUDDY != 'true'
+      uses: bazel-contrib/setup-bazel@0.15.0
+      with:
+        bazelisk-cache: true
+        disk-cache: htmf
+        external-cache: true
+        repository-cache: true
+        bazelrc: |
+          common --curses=no
