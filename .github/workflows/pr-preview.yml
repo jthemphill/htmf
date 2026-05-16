@@ -35,12 +35,12 @@ jobs:
           mode: local
 
       - name: Setup bun
-        uses: oven-sh/setup-bun@v2.0.2
+        uses: oven-sh/setup-bun@v2.2.0
         with:
           bun-version: latest
 
       - name: Setup just
-        uses: extractions/setup-just@v3.1.0
+        uses: extractions/setup-just@v4.0.0
 
       - name: Build webapp
         run: just build_www

@@ -4,7 +4,8 @@ build --announce_rc
 build --incompatible_strict_action_env
 
 # Remote execution on BuildBuddy's managed Linux executors.
-# API keys should stay in a user-level bazelrc or CI secret:
+# API keys should stay in buildbuddy.bazelrc:
+#   common --config=buildbuddy
 #   common --remote_header=x-buildbuddy-api-key=...
 common:buildbuddy --remote_timeout=10m
 build:buildbuddy --bes_backend=grpcs://remote.buildbuddy.io
@@ -19,3 +20,5 @@ build:buildbuddy --remote_download_minimal
 build:buildbuddy --remote_executor=grpcs://remote.buildbuddy.io
 build:buildbuddy --@rules_rust//rust/settings:extra_exec_rustc_flags=-Clink-self-contained=no
 build:buildbuddy --@rules_rust//rust/settings:extra_rustc_flags=-Clink-self-contained=no
+
+try-import %workspace%/buildbuddy.bazelrc

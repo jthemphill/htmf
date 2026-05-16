@@ -1,5 +1,6 @@
 *.pyc
 .venv
+buildbuddy.bazelrc
 __screenshots__
 target
 train/data

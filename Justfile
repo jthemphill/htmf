@@ -3,7 +3,7 @@ default:
     @just --list
 
 bazel := `if command -v bazel > /dev/null; then echo bazel; elif command -v bazelisk > /dev/null; then echo bazelisk; else echo bazel; fi`
-bazel_config := env_var_or_default("BAZEL_CONFIG", "--config=buildbuddy -c opt")
+bazel_config := env_var_or_default("BAZEL_CONFIG", "-c opt")
 
 # Remove build artifacts
 clean:

@@ -32,7 +32,14 @@ just test
 
 The Rust crates can also be built and tested with Bazel. Use
 [Bazelisk](https://github.com/bazelbuild/bazelisk) or Bazel matching the
-version in `.bazelversion`.
+version in `.bazelversion`. By default, these commands build locally. To use
+BuildBuddy remote execution by default, keep your API key in ignored
+repo-local `buildbuddy.bazelrc`:
+
+```sh
+common --remote_header=x-buildbuddy-api-key=...
+common --config=buildbuddy
+```
 
 ```sh
 just build_rust
