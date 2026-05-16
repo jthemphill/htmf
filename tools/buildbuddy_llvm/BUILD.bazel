@@ -1,0 +1,134 @@
+load("@rules_cc//cc:defs.bzl", "cc_toolchain")
+load("@toolchains_buildbuddy//templates:cc_toolchain_config.bzl", "cc_toolchain_config")
+
+package(default_visibility = ["//visibility:public"])
+
+platform(
+    name = "linux_x86_64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+        "@bazel_tools//tools/cpp:clang",
+    ],
+    exec_properties = {
+        "Arch": "amd64",
+        "OSFamily": "Linux",
+        "container-image": "docker://gcr.io/flame-public/rbe-ubuntu24-04@sha256:f7db0d4791247f032fdb4451b7c3ba90e567923a341cc6dc43abfc283436791a",
+        "dockerNetwork": "off",
+    },
+)
+
+toolchain(
+    name = "cc_toolchain",
+    exec_compatible_with = [
+        "@bazel_tools//tools/cpp:clang",
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    toolchain = ":local_cc_toolchain",
+    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+)
+
+filegroup(
+    name = "empty",
+    srcs = [],
+)
+
+filegroup(
+    name = "compiler_deps",
+    srcs = [
+        ":BUILD.bazel",
+    ],
+)
+
+cc_toolchain(
+    name = "local_cc_toolchain",
+    all_files = ":compiler_deps",
+    ar_files = ":compiler_deps",
+    as_files = ":compiler_deps",
+    compiler_files = ":compiler_deps",
+    dwp_files = ":empty",
+    linker_files = ":compiler_deps",
+    objcopy_files = ":empty",
+    strip_files = ":empty",
+    supports_param_files = 1,
+    toolchain_config = ":cc_toolchain_config",
+    toolchain_identifier = "buildbuddy-ubuntu24-clang-18.1.8",
+)
+
+cc_toolchain_config(
+    name = "cc_toolchain_config",
+    abi_libc_version = "local",
+    abi_version = "local",
+    compile_flags = [
+        "-U_FORTIFY_SOURCE",
+        "-fstack-protector",
+        "-Wall",
+        "-Wunused-but-set-parameter",
+        "-Wno-free-nonheap-object",
+        "-fno-omit-frame-pointer",
+    ],
+    compiler = "clang",
+    coverage_compile_flags = ["--coverage"],
+    coverage_link_flags = ["--coverage"],
+    cpu = "k8",
+    cxx_builtin_include_directories = [
+        "/usr/lib/llvm-18/lib/clang/18/include",
+        "/usr/lib/gcc/x86_64-linux-gnu/13/include",
+        "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed",
+        "/usr/local/include",
+        "/usr/include",
+        "/usr/include/x86_64-linux-gnu",
+        "/usr/include/c++/13",
+        "/usr/include/x86_64-linux-gnu/c++/13",
+        "/usr/include/c++/13/backward",
+    ],
+    cxx_flags = ["-std=c++17"],
+    dbg_compile_flags = ["-g"],
+    host_system_name = "local",
+    link_flags = [
+        "-fuse-ld=lld",
+        "-Wl,-no-as-needed",
+        "-Wl,-z,relro,-z,now",
+        "-pass-exit-codes",
+        "-lstdc++",
+        "-lm",
+    ],
+    link_libs = [],
+    opt_compile_flags = [
+        "-g0",
+        "-O2",
+        "-D_FORTIFY_SOURCE=1",
+        "-DNDEBUG",
+        "-ffunction-sections",
+        "-fdata-sections",
+    ],
+    opt_link_flags = ["-Wl,--gc-sections"],
+    supports_start_end_lib = True,
+    target_libc = "local",
+    target_system_name = "local",
+    tool_paths = {
+        "ar": "/usr/bin/llvm-ar",
+        "cpp": "/usr/bin/clang-cpp",
+        "dwp": "/usr/bin/llvm-dwp",
+        "gcc": "/usr/bin/clang",
+        "gcov": "/usr/bin/llvm-cov",
+        "ld": "/usr/bin/ld.lld",
+        "nm": "/usr/bin/llvm-nm",
+        "objcopy": "/usr/bin/llvm-objcopy",
+        "objdump": "/usr/bin/llvm-objdump",
+        "strip": "/usr/bin/llvm-strip",
+    },
+    toolchain_identifier = "buildbuddy-ubuntu24-clang-18.1.8",
+    unfiltered_compile_flags = [
+        "-fno-canonical-system-headers",
+        "-Wno-builtin-macro-redefined",
+        "-D__DATE__=\"redacted\"",
+        "-D__TIMESTAMP__=\"redacted\"",
+        "-D__TIME__=\"redacted\"",
+    ],
+)
