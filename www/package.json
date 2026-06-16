@@ -41,7 +41,7 @@
     "@types/react-dom": "19.2.3",
     "@typescript-eslint/eslint-plugin": "8.59.3",
     "@vitejs/plugin-react": "6.0.2",
-    "@vitest/browser": "4.1.6",
+    "@vitest/browser": "4.1.8",
     "@vitest/browser-playwright": "4.1.6",
     "@rolldown/plugin-babel": "0.2.3",
     "babel-plugin-react-compiler": "1.0.0",
