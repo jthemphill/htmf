@@ -3,7 +3,7 @@ use tract_onnx::prelude::*;
 
 const NUM_FEATURES: usize = 8 * NUM_CELLS;
 
-type Model = SimplePlan<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn TypedOp>>>;
+type Model = Arc<TypedRunnableModel>;
 
 /// Neural network wrapper for policy and value prediction
 pub struct NeuralNet {
@@ -61,13 +61,13 @@ impl NeuralNet {
         // Select the appropriate policy based on game phase
         let policy_output_idx = if is_drafting { 0 } else { 1 };
         let policy_logits: Vec<f32> = outputs[policy_output_idx]
-            .to_array_view::<f32>()?
+            .to_plain_array_view::<f32>()?
             .iter()
             .copied()
             .collect();
 
         // Convert tanh output [-1, 1] to probability [0, 1]
-        let raw_value: f32 = outputs[2].to_array_view::<f32>()?[[0, 0]];
+        let raw_value: f32 = outputs[2].to_plain_array_view::<f32>()?[[0, 0]];
         let value = (raw_value + 1.0) / 2.0;
 
         Ok(NeuralNetOutput {

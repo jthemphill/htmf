@@ -3,10 +3,10 @@
     "wasm/pkg",
     "www"
   ],
-"trustedDependencies": [
+  "trustedDependencies": [
     "esbuild"
   ],
   "devDependencies": {
-    "bun-types": "^1.3.11"
+    "bun-types": "^1.3.14"
   }
 }

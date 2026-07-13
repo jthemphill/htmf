@@ -3,10 +3,17 @@ module(
     version = "0.1.0",
 )
 
-bazel_dep(name = "rules_rust", version = "0.69.0")
-bazel_dep(name = "rules_rust_wasm_bindgen", version = "0.69.0")
+bazel_dep(name = "rules_rust", version = "0.71.3")
+bazel_dep(name = "rules_rust_wasm_bindgen", version = "0.71.0")
 bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4")
-bazel_dep(name = "toolchains_llvm", version = "1.7.0")
+bazel_dep(name = "toolchains_llvm", version = "1.8.0")
+
+single_version_override(
+    module_name = "rules_rust",
+    patch_strip = 1,
+    patches = ["//tools/patches:rules-rust-imacros-path.patch"],
+    version = "0.71.3",
+)
 
 use_extension("@toolchains_buildbuddy//:extensions.bzl", "buildbuddy")
 
@@ -47,7 +54,7 @@ wasm_bindgen_cli = use_extension("@rules_rust//crate_universe:extensions.bzl", "
 wasm_bindgen_cli.spec(
     package = "wasm-bindgen-cli",
     repositories = ["wasm_bindgen_cli"],
-    version = "=0.2.121",
+    version = "=0.2.126",
 )
 wasm_bindgen_cli.annotation(
     crate = "wasm-bindgen-cli",

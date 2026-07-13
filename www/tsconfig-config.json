@@ -6,5 +6,5 @@
     "noEmit": true,
     "isolatedDeclarations": false
   },
-  "files": ["eslint.config.mjs", "vite.config.ts", "vitest.config.ts"]
+  "files": ["vite.config.ts", "vitest.config.ts"]
 }
